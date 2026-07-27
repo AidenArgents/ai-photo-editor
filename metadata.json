@@ -1,0 +1,6 @@
+{
+  "name": "AI Photo Editor",
+  "description": "An intuitive web application that leverages the Gemini API's 'Nano Banana' model to perform powerful, prompt-based image editing. Users can upload a photo, describe their desired changes in plain text, and receive an AI-generated edited version of their image.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
