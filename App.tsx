@@ -9,52 +9,47 @@ import Loader from './components/Loader';
 import { WandSparklesIcon, DownloadIcon, LayersIcon } from './components/Icons';
 
 const PROMPT_TEMPLATES: Record<string, string> = {
-  combine: `Creatively combine the elements and styles of the first and second images. 
-
-# My Request
-[Describe any additional changes here, e.g., "Combine these two images creatively. Surprise me with the composition."]`,
-  replace_person: `Replace the person in the first image with the person from the second image. 
+  replace_background: `Use the Secondary Image as the target scene/background blueprint and seamlessly blend the product from the Main Image into it.
 
 # Instructions for AI
-- The first image is the scene.
-- The second image contains the new person.
-- Extract the person from the second image.
-- Remove the original person from the first image.
-- Place the new person into the scene, matching lighting, shadows, and perspective.
-- Then, apply my specific request below.
+- Keep the main product from the First Image 100% intact with absolute pixel fidelity.
+- Use the Second Image as the reference for background atmosphere, lighting, and composition.
+- Render realistic physical contact shadows and ambient reflections under and around the product to ensure silky-smooth fusion.
 
 # My Request
-[Describe any additional changes here, e.g., "dont't change other things."]`,
-  add_logo: `Add the second image as a logo or watermark onto the first image.
+[Describe placement or specific scene adjustments here, e.g., "Place the product on the center marble table, basking in warm afternoon sunlight."]`,
+  combine: `Creatively combine the lighting atmosphere and style of the Secondary Image with the product from the Main Image.
+
+# Instructions for AI
+- Use the Second Image as a visual blueprint for lighting, mood, and aesthetic tone.
+- Preserve the product subject from the First Image accurately while harmonizing its environmental relighting.
+
+# My Request
+[Describe artistic vision here, e.g., "Harmonize the product with the dreamy sunset tones of the reference image."]`,
+  replace_product: `Replace the main product in the Reference Scene (Second Image) with my product from the First Image.
+
+# Instructions for AI
+- The Second Image is the background scene blueprint.
+- Replace its original product with the authentic product subject from the First Image.
+- Ensure shadows and lighting match the scene perfectly.
+
+# My Request
+[Describe any positioning specifics here, e.g., "Make sure the old product is completely removed and my product sits in its place naturally."]`,
+  add_logo: `Overlay the logo/watermark from the Second Image onto the Main Image.
   
 # Instructions for AI
-- The first image is the main picture.
-- The second image is the logo.
-- Preserve the transparency of the logo.
-- Then, apply my specific request below.
+- Maintain logo transparency and clean edges.
+- Superimpose naturally onto the main photo.
 
 # My Request
-[Describe placement, size, or other effects here, e.g., "Overlay this second image logo onto first image. Their sizes have already been adjusted, so they can be directly superimposed."]`,
-  replace_background: `Use the second image as a new background for the main subject in the first image.
+[Describe logo placement and sizing here, e.g., "Place the logo neatly in the top right corner with subtle opacity."]`,
+  replace_person: `Replace the person in the First Image with the person from the Second Image. 
 
 # Instructions for AI
-- The first image contains the main subject.
-- The second image is the new background.
-- Extract the subject and place it on the new background realistically.
-- Then, apply my specific request below.
+- Match facial features, lighting, skin tone reflections, and perspective precisely.
 
 # My Request
-[Describe any additional changes here, e.g., "Seamlessly blend the main product from the first image into the second image, ensuring a natural and harmonious integration of both elements."]`,
-  replace_product: `Replace the main product in the first image with the product from the second image.
-
-# Instructions for AI
-- The first image is the scene.
-- The second image contains the new product.
-- Swap the products, maintaining the scene's lighting and style.
-- Then, apply my specific request below.
-
-# My Request
-[Describe any additional changes here, e.g., "Make sure the first image products are totally gone."]`
+[Describe specifics here, e.g., "Keep the original pose and outfit intact, only swap the person's identity and blend the neck/shadows smoothly."]`
 };
 
 export default function App(): React.JSX.Element {
@@ -157,7 +152,8 @@ export default function App(): React.JSX.Element {
         aspectRatio,
         highFidelityPreserve,
         selectedModel,
-        customApiKey
+        customApiKey,
+        mergeMode
       );
       setEditedImage(result);
     } catch (e: unknown)      {
@@ -167,7 +163,7 @@ export default function App(): React.JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  }, [originalImage, secondaryImage, prompt, aspectRatio, highFidelityPreserve, selectedModel, customApiKey]);
+  }, [originalImage, secondaryImage, prompt, aspectRatio, highFidelityPreserve, selectedModel, customApiKey, mergeMode]);
 
   const handleDownloadClick = () => {
     if (!editedImage) return;
@@ -198,31 +194,32 @@ export default function App(): React.JSX.Element {
           <div className="lg:col-span-3 bg-white/80 rounded-2xl p-4 shadow-lg border border-pink-200 flex flex-col gap-3">
             <h2 className="text-xl font-bold text-pink-600">1. Upload Images</h2>
             <div className="flex flex-col gap-2">
-              <h3 className="text-lg font-semibold text-gray-700">Main Image</h3>
+              <h3 className="text-lg font-semibold text-gray-700">Main Product / Subject <span className="text-xs font-normal text-pink-600 ml-1">(产品主图)</span></h3>
+              <p className="text-xs text-gray-500 -mt-1 mb-1">Your core product or subject to be preserved and edited.</p>
               <ImageUpload onImageUpload={handleImageUpload} onImageRemove={handleImageRemove} />
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="flex items-center gap-2">
                 <LayersIcon />
-                <h3 className="text-lg font-semibold text-gray-700">Combine Images <span className="text-sm font-normal text-gray-500">(Optional)</span></h3>
+                <h3 className="text-lg font-semibold text-gray-700">Reference Blueprint <span className="text-xs font-normal text-pink-600 ml-1">(场景/期望效果图)</span></h3>
               </div>
-              <p className="text-xs text-gray-500 -mt-1">Upload a second image to merge, replace, or add elements.</p>
+              <p className="text-xs text-gray-500 -mt-1 mb-1">Optional: Upload a reference background scene, style, or target composition.</p>
               <ImageUpload onImageUpload={handleSecondaryImageUpload} onImageRemove={handleSecondaryImageRemove} />
               {secondaryImage && (
-                <div className="mt-2">
-                  <label htmlFor="merge-mode" className="block text-sm font-medium text-gray-700 mb-1">How to combine:</label>
+                <div className="mt-3 p-3 bg-pink-100/40 rounded-lg border border-pink-200">
+                  <label htmlFor="merge-mode" className="block text-sm font-bold text-pink-800 mb-1">Fusion Mode (合成与重绘目标):</label>
                   <select
                     id="merge-mode"
                     name="merge-mode"
                     value={mergeMode}
                     onChange={handleMergeModeChange}
-                    className="block w-full p-2 bg-white border-2 border-pink-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+                    className="block w-full p-2 bg-white border-2 border-pink-300 rounded-lg text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-400"
                   >
-                    <option value="combine">Combine Styles & Elements</option>
-                    <option value="replace_person">Replace Person</option>
-                    <option value="add_logo">Add as Logo/Watermark</option>
-                    <option value="replace_background">Use as Background</option>
-                    <option value="replace_product">Replace Product</option>
+                    <option value="replace_background">Background Fusion (场景融合·将主产品自然融进参考场景)</option>
+                    <option value="combine">Style & Lighting Reference (风格光影参考·构图与氛围渲染)</option>
+                    <option value="replace_product">Replace Product (主体调换·用主图替换参考图中的产品)</option>
+                    <option value="add_logo">Add Logo / Watermark (叠加标志·添加水印或品牌LOGO)</option>
+                    <option value="replace_person">Replace Person (人物模特调换·面部与姿态融合)</option>
                   </select>
                 </div>
               )}

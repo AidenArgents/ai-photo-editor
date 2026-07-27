@@ -95,6 +95,75 @@ ${cleaned}
 3. Keep the rest of the image intact with high fidelity to the original.`;
 }
 
+// --- COMMERCIAL PHOTOGRAPHY PROMPT ENGINES ---
+
+/**
+ * Dual-Image Synchronized Role-Mapped Blending Engine
+ * Enforces strict role division between Main Product (Immutable) and Reference Blueprint (Scene/Style),
+ * while injecting mandatory physical contact shadows and relighting rules.
+ */
+function buildDualImageSynchronizedPrompt(userPrompt: string, mergeMode: string, isPadded: boolean): string {
+  const modeInstructions: Record<string, string> = {
+    replace_background: `**PRIMARY TASK (Background Fusion & Scene Synthesis)**:
+- IMAGE 1 contains our core commercial product subject. You MUST preserve its shape, textures, branding, typography, and material reflection with 100% pixel fidelity. Do NOT alter or deform the product itself!
+- IMAGE 2 is the reference background scene blueprint. Extract its environmental lighting, architectural style, color palette, and composition.
+- Seamlessly place the product from IMAGE 1 into the reference scene of IMAGE 2.
+- **CRITICAL RELIGHTING & PHYSICAL SHADOW RULES (MANDATORY)**: Analyze the Key Light direction and color temperature of IMAGE 2. Render realistic physical contact shadows (Contact Shadows), ambient occlusion (AO), and ground reflections underneath and around the product from IMAGE 1 so it sits firmly on the surface without any sticker effect ("贴纸感").`,
+    combine: `**PRIMARY TASK (Style, Atmosphere & Lighting Reference)**:
+- IMAGE 1 is our main product/subject. Preserve its structure and identity accurately.
+- IMAGE 2 serves as a visual blueprint for mood, lighting, aesthetic style, and color grading.
+- Creatively blend the environmental lighting and aesthetic atmosphere of IMAGE 2 into the scene of IMAGE 1, ensuring natural shadow casting and harmonious color integration.`,
+    replace_product: `**PRIMARY TASK (Product Replacement in Reference Scene)**:
+- IMAGE 2 is the scene blueprint. Replace whatever product is originally in IMAGE 2 with the authentic product subject from IMAGE 1.
+- Maintain the original scene's lighting, perspective, and depth of field. Ensure realistic shadow casting under our new product.`,
+    add_logo: `**PRIMARY TASK (Logo / Watermark Superimposition)**:
+- IMAGE 1 is the main photo. IMAGE 2 is the logo/watermark graphic.
+- Overlay IMAGE 2 onto IMAGE 1 naturally while preserving transparency and sharp edges.`,
+    replace_person: `**PRIMARY TASK (Person Identity Replacement)**:
+- IMAGE 1 is the base photo. IMAGE 2 contains the target person identity.
+- Swap the person identity into IMAGE 1 while matching facial features, skin tone reflections, lighting angles, and neck/body boundary shadows smoothly.`
+  };
+
+  const selectedInstruction = modeInstructions[mergeMode] || modeInstructions.combine;
+  const paddingNote = isPadded 
+    ? `\n**NOTE ON CANVAS PADDING**: The input image(s) have been pre-padded with solid white border bars to fit the target aspect ratio. You must seamlessly outpaint and fill these padded white border regions with coherent background textures and natural lighting extensions!` 
+    : "";
+
+  return `You are an elite commercial photography AI master and physical rendering engine. You are provided with TWO reference images and a user instruction.
+
+# IMAGE ROLES:
+- **IMAGE 1 (Main Product / Subject)**: The first image provided. This is our core commercial asset.
+- **IMAGE 2 (Reference Blueprint)**: The second image provided. This serves as our target scene, style, or lighting blueprint.
+
+${selectedInstruction}${paddingNote}
+
+# USER'S SPECIFIC CUSTOM REQUEST:
+"${userPrompt}"
+
+# FINAL MASTER INSTRUCTION:
+Generate a single, flawless, commercial-grade photograph that executes the Primary Task and Custom Request. Ensure zero sticker effect ("贴纸感") by strictly enforcing physical contact shadows and environmental light harmonization!`;
+}
+
+/**
+ * Single-Image Outpainting & Relighting Engine
+ * Designed specifically for images with padded white border bars to ensure high fidelity of the central product
+ * while synthesizing seamless background extensions with realistic contact shadows.
+ */
+function buildSingleImageOutpaintingPrompt(userPrompt: string): string {
+  return `You are an elite commercial photography AI master and physical rendering engine. The provided image has been pre-padded with solid white border bars around the original photo to fit the desired aspect ratio without cropping or stretching our core product.
+
+# PRIMARY TASK (High-Fidelity Outpainting & Relighting):
+1. **100% PRODUCT FIDELITY**: Keep the original central product/subject 100% intact with absolute pixel fidelity. Do NOT deform, blur, or alter any logos, textures, or typography on the product.
+2. **SEAMLESS OUTPAINTING**: Creatively and realistically synthesize and fill in the padded white border bars to extend the original background scene outward.
+3. **PHYSICAL RELIGHTING & CONTACT SHADOWS (CRITICAL RULE)**: Where the original product meets the newly extended bottom/ground areas, you MUST render realistic physical contact shadows (Contact Shadows), ground reflections, and ambient occlusion (AO). The boundary between the original photo and the new extension must be 100% invisible and silky smooth!
+
+# USER'S SPECIFIC CUSTOM REQUEST:
+"${userPrompt}"
+
+# FINAL MASTER INSTRUCTION:
+Execute the outpainting and specific request to produce a cohesive, studio-quality commercial photograph with natural depth, realistic lighting, and zero padding seams!`;
+}
+
 // Helper to get image as base64
 async function getImageAsBase64(ai: GoogleGenAI, model: string, parts: any[]): Promise<string> {
   const response = await ai.models.generateContent({
@@ -137,6 +206,7 @@ app.post(
       const prompt = req.body.prompt;
       const aspectRatio = req.body.aspectRatio || "auto";
       const highFidelityPreserve = req.body.highFidelityPreserve === "true";
+      const mergeMode = req.body.mergeMode || "combine";
 
       const imageFile = req.files?.["image"]?.[0];
       const secondaryImageFile = req.files?.["secondaryImage"]?.[0];
@@ -177,10 +247,13 @@ app.post(
         const parts: any[] = [imagePart];
 
         if (secondaryImageFile) {
+          console.log(`Server: Applying Dual-Image Synchronized Engine (Mode: ${mergeMode})...`);
           parts.push(bufferToGenerativePart(secondaryImageFile.buffer, secondaryImageFile.mimetype));
+          const dualPrompt = buildDualImageSynchronizedPrompt(prompt, mergeMode, false);
+          parts.push({ text: optimizePromptForEditing(dualPrompt) });
+        } else {
+          parts.push({ text: optimizePromptForEditing(prompt) });
         }
-
-        parts.push({ text: optimizePromptForEditing(prompt) });
 
         const resultBase64 = await getImageAsBase64(ai, editModel, parts);
         return res.json({ imageUrl: resultBase64 });
@@ -199,15 +272,15 @@ app.post(
         const parts: any[] = [imagePart];
 
         if (secondaryImageFile) {
+          console.log(`Server: Applying Dual-Image Synchronized Engine with Padding (Mode: ${mergeMode})...`);
           parts.push(bufferToGenerativePart(secondaryImageFile.buffer, secondaryImageFile.mimetype));
+          const dualPrompt = buildDualImageSynchronizedPrompt(prompt, mergeMode, true);
+          parts.push({ text: optimizePromptForEditing(dualPrompt) });
+        } else {
+          console.log("Server: Applying Single-Image Outpainting & Relighting Engine...");
+          const singlePrompt = buildSingleImageOutpaintingPrompt(prompt);
+          parts.push({ text: optimizePromptForEditing(singlePrompt) });
         }
-
-        const augmentedPrompt = `The input image has been padded with white bars to fit the desired aspect ratio. Your first and most important task is to creatively and realistically fill in these white areas to extend the original scene, making it look completely natural. After extending the scene, proceed to follow the user's main request for the entire image.
-
-# User's Main Request
-${prompt}`;
-
-        parts.push({ text: optimizePromptForEditing(augmentedPrompt) });
 
         const resultBase64 = await getImageAsBase64(ai, editModel, parts);
         return res.json({ imageUrl: resultBase64 });
@@ -223,22 +296,24 @@ ${prompt}`;
             secondaryImageFile.buffer,
             secondaryImageFile.mimetype
           );
-          finalPrompt = `You are an expert image generator. Your task is to create a new image that combines elements from two sources, paying close attention to the user's instructions.
+          finalPrompt = `You are an elite commercial photography AI generator. Your task is to generate a new high-quality image that fuses elements from two described sources, strictly following the user's instructions and physical relighting rules.
 
-# PRIMARY IMAGE (This is the main scene or subject):
+# PRIMARY IMAGE (Main Product / Subject Asset):
 Description: "${image1Description}"
-**CRITICAL INSTRUCTION:** The user wants to preserve the key elements (like the main subject or the background scene) from this primary image. You MUST reproduce these elements with the highest possible fidelity. Treat the user's prompt as an instruction to *edit* or *add to* this base image.
+**CRITICAL INSTRUCTION:** Preserve the key product/subject identity from this primary description with absolute fidelity.
 
-# SECONDARY IMAGE (This contains new elements to add):
+# SECONDARY IMAGE (Reference Blueprint - Scene, Style & Lighting):
 Description: "${image2Description}"
 
-# USER'S GOAL (The most important instructions):
-"${prompt}"
+# FUSION & RELIGHTING RULES (CRITICAL):
+- Mode: ${mergeMode}
+- Harmonize the lighting and atmosphere of the reference scene with the main product.
+- Render realistic contact shadows, ambient reflections, and ground occlusion so the product integrates naturally into the scene without any sticker effect!
 
-# FINAL TASK:
-Generate a single, cohesive, high-quality new image that follows the USER'S GOAL. Remember to prioritize preserving the specified elements from the PRIMARY IMAGE while integrating elements from the SECONDARY IMAGE as requested.`;
+# USER'S SPECIFIC GOAL:
+"${prompt}"`;
         } else {
-          finalPrompt = `You are an expert image editor who generates a new image based on a description of an original and a user's request.
+          finalPrompt = `You are an elite commercial photography AI generator creating an edited version of an original image description.
 
 # ORIGINAL IMAGE DESCRIPTION:
 "${image1Description}"
@@ -246,7 +321,7 @@ Generate a single, cohesive, high-quality new image that follows the USER'S GOAL
 # USER'S MODIFICATION REQUEST:
 "${prompt}"
 
-**CRITICAL INSTRUCTION:** Your goal is to create an *edited version* of the original image, not a completely new one. Follow the user's request precisely. For any parts of the image not mentioned in the user's request, you must preserve them from the original description with the highest possible fidelity.`;
+**CRITICAL INSTRUCTION:** Follow the user's request precisely while preserving the untouched parts of the original image description with high fidelity. When generating new background or floor elements, ensure realistic physical contact shadows and lighting gradients!`;
         }
 
         // Use the selected image generation model (Nano Banana / Nano Banana 2)

@@ -144,7 +144,8 @@ export const editImage = async (
   aspectRatio: string,
   highFidelityPreserve: boolean,
   model?: string,
-  customApiKey?: string
+  customApiKey?: string,
+  mergeMode: string = 'combine'
 ): Promise<string> => {
   try {
     let finalImage = await optimizeImageForUpload(imageFile);
@@ -170,6 +171,9 @@ export const editImage = async (
     formData.append('prompt', prompt);
     formData.append('aspectRatio', aspectRatio);
     formData.append('highFidelityPreserve', highFidelityPreserve ? 'true' : 'false');
+    if (mergeMode) {
+      formData.append('mergeMode', mergeMode);
+    }
     if (model) {
       formData.append('model', model);
     }
