@@ -3,6 +3,9 @@ setlocal EnableDelayedExpansion
 title AI Photo Editor - Update
 cd /d "%~dp0"
 
+if exist "%~dp0.runtime\node\node.exe" set "PATH=%~dp0.runtime\node;%PATH%"
+if exist "%~dp0.runtime\git\cmd\git.exe" set "PATH=%~dp0.runtime\git\cmd;%PATH%"
+
 echo ===================================================
 echo        AI Photo Editor - Safe Update
 echo ===================================================
@@ -10,15 +13,20 @@ echo.
 
 where git >nul 2>nul
 if errorlevel 1 (
-    echo [ERROR] Git is not installed or is not available in PATH.
-    echo ZIP downloads cannot use one-click Git updates.
-    goto failed
+    echo [INFO] Git is missing. Preparing the local runtime first...
+    call "%~dp0install.bat" /quiet
+    if errorlevel 1 goto failed
+    if exist "%~dp0.runtime\node\node.exe" set "PATH=%~dp0.runtime\node;%PATH%"
+    if exist "%~dp0.runtime\git\cmd\git.exe" set "PATH=%~dp0.runtime\git\cmd;%PATH%"
 )
+
+where git >nul 2>nul
+if errorlevel 1 goto failed
 
 git rev-parse --is-inside-work-tree >nul 2>nul
 if errorlevel 1 (
     echo [ERROR] This folder is not a Git clone.
-    echo Download the new ZIP manually, or clone the GitHub repository with Git.
+    echo Run setup.bat once to prepare automatic updates.
     goto failed
 )
 
@@ -55,6 +63,7 @@ echo.
 echo ===================================================
 echo [OK] AI Photo Editor has been updated successfully.
 echo ===================================================
+if /i "%~1"=="/quiet" exit /b 0
 echo Press any key to close this window...
 pause > nul
 exit /b 0
@@ -62,6 +71,7 @@ exit /b 0
 :failed
 echo.
 echo [ERROR] Update was not completed. Existing files were not overwritten automatically.
+if /i "%~1"=="/quiet" exit /b 1
 echo Press any key to close this window...
 pause > nul
 exit /b 1

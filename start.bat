@@ -8,23 +8,30 @@ echo        AI Photo Editor - Background Service
 echo ===================================================
 echo.
 
+if exist "%~dp0.runtime\node\node.exe" set "PATH=%~dp0.runtime\node;%PATH%"
+if exist "%~dp0.runtime\git\cmd\git.exe" set "PATH=%~dp0.runtime\git\cmd;%PATH%"
+
 echo [1/3] Checking environment dependencies...
+set "NEED_INSTALL="
 where node >nul 2>nul
-if errorlevel 1 (
-    echo [ERROR] Node.js is not installed or is not available in PATH.
-    echo Please install Node.js first, then run this file again.
-    goto failed
-)
+if errorlevel 1 set "NEED_INSTALL=1"
 where npm >nul 2>nul
-if errorlevel 1 (
-    echo [ERROR] npm is not available in PATH.
-    goto failed
-)
-if not exist "node_modules" (
-    echo [INFO] First run: installing project dependencies...
+if errorlevel 1 set "NEED_INSTALL=1"
+if not exist "node_modules" set "NEED_INSTALL=1"
+
+if defined NEED_INSTALL (
+    echo [INFO] First run: preparing the local runtime and project dependencies...
     call "%~dp0install.bat" /quiet
     if errorlevel 1 goto failed
 )
+
+if exist "%~dp0.runtime\node\node.exe" set "PATH=%~dp0.runtime\node;%PATH%"
+if exist "%~dp0.runtime\git\cmd\git.exe" set "PATH=%~dp0.runtime\git\cmd;%PATH%"
+
+where node >nul 2>nul
+if errorlevel 1 goto failed
+where npm >nul 2>nul
+if errorlevel 1 goto failed
 
 echo [2/3] API Key configuration...
 echo [INFO] Each user enters their own Gemini API Key in the web page.

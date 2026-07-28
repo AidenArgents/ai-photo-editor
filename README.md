@@ -10,71 +10,107 @@ http://localhost:3000
 
 每位用户需要在页面右上角填写自己的 Gemini API Key。
 
-## 第一次下载到电脑
+## 第一次使用（推荐）
 
-### 第一步：安装 Git
+不需要提前安装 Git、Node.js，也不需要输入命令。
 
-下载安装 Git for Windows：
+1. 打开项目页面：
+
+   https://github.com/AidenArgents/ai-photo-editor
+
+2. 点击绿色的 `Code`，再点击 `Download ZIP`。
+3. 把 ZIP 解压到想存放程序的位置。
+4. 打开解压后的文件夹，双击：
+
+```text
+setup.bat
+```
+
+安装程序会自动：
+
+- 检查电脑环境；
+- 缺少 Git 或 Node.js 时，下载项目专用的便携版本；
+- 准备以后需要的一键更新功能；
+- 安装项目依赖；
+- 启动程序并打开浏览器。
+
+便携运行环境只保存在项目自己的 `.runtime` 文件夹，不会安装到 Windows 系统。
+
+安装过程中需要保持网络连接。第一次安装下载内容较多，请等待窗口显示完成。
+
+### 填写 API Key
+
+在页面右上角填写自己的 Gemini API Key，即可开始使用。
+
+API Key 只保存在当前电脑的浏览器中，不会随项目上传。
+
+## `setup.bat` 和 `install.bat` 的区别
+
+### `setup.bat`：第一次使用
+
+第一次把程序下载到电脑后，优先双击 `setup.bat`。
+
+它负责完整的首次准备工作：
+
+- 检查 Git 和 Node.js；
+- 缺少时下载项目专用的便携版本；
+- 让 Download ZIP 得到的文件夹也能使用 `update.bat`；
+- 安装项目依赖；
+- 启动程序并打开浏览器。
+
+### `install.bat`：安装或修复依赖
+
+`install.bat` 用于项目文件夹已经准备好的情况。
+
+它会：
+
+- 检查并准备 Git 和 Node.js；
+- 安装或修复 `node_modules` 项目依赖。
+
+它不会重新下载项目，也不会启动程序。运行完成后，需要再双击 `start.bat`。
+
+通常情况下：
+
+- 第一次使用：运行 `setup.bat`；
+- 依赖损坏或安装不完整：运行 `install.bat`；
+- 平时打开程序：运行 `start.bat`。
+
+## 手动安装 Git 和 Node.js（可选）
+
+普通用户不需要手动安装。`setup.bat` 和 `install.bat` 会在项目内部准备便携版本。
+
+如果希望 Git 和 Node.js 也能供电脑上的其他程序使用，可以提前手动安装系统版本。
+
+### 安装 Git for Windows
+
+下载地址：
 
 https://git-scm.com/download/win
 
 安装时保持默认选项即可。
 
-### 第二步：安装 Node.js
+### 安装 Node.js
 
-电脑还必须安装 Node.js。如果已经安装，可以跳过这一步。
-
-下载地址：
+建议安装 LTS 长期支持版：
 
 https://nodejs.org/
 
 安装时保持默认选项即可。
 
-### 第三步：把程序克隆到电脑
+安装完成后重新打开项目文件夹，再运行 `setup.bat`。程序检测到系统已经安装 Git 和 Node.js 后，会直接复用，不再下载便携版本。
 
-下载位置可以自己选择。
+## 使用 Git 克隆（可选）
 
-1. 打开 PowerShell。
-2. 例如要把程序下载到 `D:\`，在 PowerShell 中依次运行：
+电脑已经安装 Git 时，也可以使用克隆方式。
+
+例如要下载到 `D:\`，打开 PowerShell 后运行：
 
 ```powershell
 cd D:\
 git clone https://github.com/AidenArgents/ai-photo-editor.git
 ```
 
-程序会自动下载到 `D:\ai-photo-editor` 文件夹。
-
-如果这是 Private 私有仓库，需要先登录获得权限的 GitHub 账号。
-
-## 第一次安装和启动
-
-打开刚刚克隆得到的 `ai-photo-editor` 文件夹。
-
-### 第一步：安装程序依赖
-
-双击运行：
-
-```text
-install.bat
-```
-
-等待窗口显示安装完成。
-
-### 第二步：启动程序
-
-双击运行：
-
-```text
-start.bat
-```
-
-程序会在后台启动，并自动打开浏览器。
-
-### 第三步：填写 API Key
-
-在页面右上角填写自己的 Gemini API Key，即可开始使用。
-
-API Key 只保存在当前电脑的浏览器中，不会随项目上传。
+然后打开 `D:\ai-photo-editor`，双击 `setup.bat`。
 
 ## 平时使用
 
@@ -112,8 +148,6 @@ update.bat
 
 更新工具会自动下载新版本、安装需要的依赖并重新启动程序。
 
-如果程序是通过 GitHub 的 Download ZIP 下载的，`update.bat` 不能自动更新，需要重新下载新版 ZIP。
-
 ## 出现问题时
 
 ### 依赖损坏或安装不完整
@@ -146,7 +180,8 @@ http://localhost:3000
 
 | 文件 | 用途 |
 |---|---|
-| `install.bat` | 第一次安装或修复依赖 |
+| `setup.bat` | 第一次自动安装并启动 |
+| `install.bat` | 自动准备运行环境或修复依赖 |
 | `start.bat` | 启动程序 |
 | `stop.bat` | 关闭程序 |
 | `restart.bat` | 重启程序 |

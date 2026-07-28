@@ -8,11 +8,24 @@ echo        AI Photo Editor - Restarting Service
 echo ===================================================
 echo.
 
-if not exist "node_modules" (
-    echo [INFO] Project dependencies are missing. Installing them first...
+if exist "%~dp0.runtime\node\node.exe" set "PATH=%~dp0.runtime\node;%PATH%"
+if exist "%~dp0.runtime\git\cmd\git.exe" set "PATH=%~dp0.runtime\git\cmd;%PATH%"
+
+set "NEED_INSTALL="
+where node >nul 2>nul
+if errorlevel 1 set "NEED_INSTALL=1"
+where npm >nul 2>nul
+if errorlevel 1 set "NEED_INSTALL=1"
+if not exist "node_modules" set "NEED_INSTALL=1"
+
+if defined NEED_INSTALL (
+    echo [INFO] Preparing the local runtime and project dependencies...
     call "%~dp0install.bat" /quiet
     if errorlevel 1 goto failed
 )
+
+if exist "%~dp0.runtime\node\node.exe" set "PATH=%~dp0.runtime\node;%PATH%"
+if exist "%~dp0.runtime\git\cmd\git.exe" set "PATH=%~dp0.runtime\git\cmd;%PATH%"
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0services\server-control.ps1" restart
 if errorlevel 1 goto failed

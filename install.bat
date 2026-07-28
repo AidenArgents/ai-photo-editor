@@ -8,10 +8,24 @@ echo        AI Photo Editor - Install Dependencies
 echo ===================================================
 echo.
 
+if exist "%~dp0.runtime\node\node.exe" set "PATH=%~dp0.runtime\node;%PATH%"
+if exist "%~dp0.runtime\git\cmd\git.exe" set "PATH=%~dp0.runtime\git\cmd;%PATH%"
+
+echo [1/2] Checking Git and Node.js...
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0services\ensure-runtime.ps1" -EnsureGit -EnsureNode
+if errorlevel 1 goto failed
+
+if exist "%~dp0.runtime\node\node.exe" set "PATH=%~dp0.runtime\node;%PATH%"
+if exist "%~dp0.runtime\git\cmd\git.exe" set "PATH=%~dp0.runtime\git\cmd;%PATH%"
+
+where git >nul 2>nul
+if errorlevel 1 (
+    echo [ERROR] Git could not be prepared.
+    goto failed
+)
 where node >nul 2>nul
 if errorlevel 1 (
-    echo [ERROR] Node.js is not installed or is not available in PATH.
-    echo Please install Node.js first, then run this file again.
+    echo [ERROR] Node.js could not be prepared.
     goto failed
 )
 
@@ -24,10 +38,10 @@ if errorlevel 1 (
 echo [INFO] Node.js:
 node --version
 echo [INFO] npm:
-npm --version
+call npm.cmd --version
 echo.
-echo [INFO] Installing the versions locked in package-lock.json...
-call npm ci
+echo [2/2] Installing the versions locked in package-lock.json...
+call npm.cmd ci
 if errorlevel 1 goto failed
 
 echo.
