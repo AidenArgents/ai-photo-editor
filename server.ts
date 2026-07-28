@@ -1,8 +1,19 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
+import dns from "dns";
+import http from "http";
+import https from "https";
 import multer from "multer";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Modality } from "@google/genai";
+
+// 强制优先使用 IPv4 解析，彻底解决访问马帮 instudio 及阿里云 CDN 时由于 IPv6 黑洞导致的 12000ms 超时假死问题
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch (e) {
+  // 忽略不支持的环境
+}
 
 const app = express();
 const PORT = 3000;
@@ -102,38 +113,59 @@ ${cleaned}
  * Enforces strict role division between Main Product (Immutable) and Reference Blueprint (Scene/Style),
  * while injecting mandatory physical contact shadows and relighting rules.
  */
-function buildDualImageSynchronizedPrompt(userPrompt: string, mergeMode: string, isPadded: boolean): string {
+function buildDualImageSynchronizedPrompt(userPrompt: string, mergeMode: string, isPadded: boolean, mainImageCount: number = 1): string {
+  // 动态生成图片角色描述：支持 1 张或多张主产品图
+  const refImageIndex = mainImageCount + 1;
+  let mainImageRoleDesc: string;
+  let img1Ref: string; // 在 mode 指令中引用主产品的简称
+
+  if (mainImageCount === 1) {
+    mainImageRoleDesc = `- **IMAGE 1 (Main Product / Subject)**: The first image provided. This is our core commercial asset.`;
+    img1Ref = "IMAGE 1";
+  } else {
+    mainImageRoleDesc = `- **IMAGES 1–${mainImageCount} (Complete Product Series & Kit)**: The first ${mainImageCount} images provided. These show our complete commercial product series from different angles, including packaging storage boxes, individual screw/anchor items, hand actions, tools, and accessories. Treat them ALL as authoritative product assets!`;
+    img1Ref = `IMAGES 1–${mainImageCount}`;
+  }
+  const img2Ref = `IMAGE ${refImageIndex}`;
+
   const modeInstructions: Record<string, string> = {
+    custom: `**PRIMARY TASK (Custom User-Driven Multi-Asset Synthesis)**:
+- ${img1Ref} represent our complete product kit and features.
+- ${img2Ref} serves as our reference blueprint (for layout, packaging instructions, or scene style).
+- **CRITICAL ASSET INCLUSION RULE (MANDATORY)**: You MUST NOT drop, ignore, or omit any of the uploaded product photos! You must actively analyze, combine, and synthesize ALL product items shown across ${img1Ref} (e.g. storage box, screws, hand actions, accessories) into the final picture exactly as instructed by the user below!`,
+    remove_watermark: `**PRIMARY TASK (Corner Retouching & Restoration)**:
+- Cleanly retouch and restore the bottom-right corner area of ${img1Ref} to remove any small overlay graphics, symbols, or text labels.
+- Seamlessly reconstruct the underlying background color, texture, and lighting in that corner so it blends invisibly with zero trace left.`,
     replace_background: `**PRIMARY TASK (Background Fusion & Scene Synthesis)**:
-- IMAGE 1 contains our core commercial product subject. You MUST preserve its shape, textures, branding, typography, and material reflection with 100% pixel fidelity. Do NOT alter or deform the product itself!
-- IMAGE 2 is the reference background scene blueprint. Extract its environmental lighting, architectural style, color palette, and composition.
-- Seamlessly place the product from IMAGE 1 into the reference scene of IMAGE 2.
-- **CRITICAL RELIGHTING & PHYSICAL SHADOW RULES (MANDATORY)**: Analyze the Key Light direction and color temperature of IMAGE 2. Render realistic physical contact shadows (Contact Shadows), ambient occlusion (AO), and ground reflections underneath and around the product from IMAGE 1 so it sits firmly on the surface without any sticker effect ("贴纸感").`,
+- ${img1Ref} contains our core commercial product subject. You MUST preserve its shape, textures, branding, typography, and material reflection with 100% pixel fidelity. Do NOT alter or deform the product itself!
+- ${img2Ref} is the reference background scene blueprint. Extract its environmental lighting, architectural style, color palette, and composition.
+- Seamlessly place the product from ${img1Ref} into the reference scene of ${img2Ref}.
+- **CRITICAL RELIGHTING & PHYSICAL SHADOW RULES (MANDATORY)**: Analyze the Key Light direction and color temperature of ${img2Ref}. Render realistic physical contact shadows (Contact Shadows), ambient occlusion (AO), and ground reflections underneath and around the product from ${img1Ref} so it sits firmly on the surface without any sticker effect ("贴纸感").`,
     combine: `**PRIMARY TASK (Style, Atmosphere & Lighting Reference)**:
-- IMAGE 1 is our main product/subject. Preserve its structure and identity accurately.
-- IMAGE 2 serves as a visual blueprint for mood, lighting, aesthetic style, and color grading.
-- Creatively blend the environmental lighting and aesthetic atmosphere of IMAGE 2 into the scene of IMAGE 1, ensuring natural shadow casting and harmonious color integration.`,
+- ${img1Ref} is our main product/subject. Preserve its structure and identity accurately.
+- ${img2Ref} serves as a visual blueprint for mood, lighting, aesthetic style, and color grading.
+- Creatively blend the environmental lighting and aesthetic atmosphere of ${img2Ref} into the scene of ${img1Ref}, ensuring natural shadow casting and harmonious color integration.`,
     replace_product: `**PRIMARY TASK (Product Replacement in Reference Scene)**:
-- IMAGE 2 is the scene blueprint. Replace whatever product is originally in IMAGE 2 with the authentic product subject from IMAGE 1.
+- ${img2Ref} is the scene blueprint. Replace whatever product is originally in ${img2Ref} with the authentic product subject from ${img1Ref}.
 - Maintain the original scene's lighting, perspective, and depth of field. Ensure realistic shadow casting under our new product.`,
     add_logo: `**PRIMARY TASK (Logo / Watermark Superimposition)**:
-- IMAGE 1 is the main photo. IMAGE 2 is the logo/watermark graphic.
-- Overlay IMAGE 2 onto IMAGE 1 naturally while preserving transparency and sharp edges.`,
+- ${img1Ref} is the main photo. ${img2Ref} is the logo/watermark graphic.
+- Overlay ${img2Ref} onto ${img1Ref} naturally while preserving transparency and sharp edges.`,
     replace_person: `**PRIMARY TASK (Person Identity Replacement)**:
-- IMAGE 1 is the base photo. IMAGE 2 contains the target person identity.
-- Swap the person identity into IMAGE 1 while matching facial features, skin tone reflections, lighting angles, and neck/body boundary shadows smoothly.`
+- ${img1Ref} is the base photo. ${img2Ref} contains the target person identity.
+- Swap the person identity into ${img1Ref} while matching facial features, skin tone reflections, lighting angles, and neck/body boundary shadows smoothly.`
   };
 
-  const selectedInstruction = modeInstructions[mergeMode] || modeInstructions.combine;
+  const selectedInstruction = modeInstructions[mergeMode] || modeInstructions.custom || modeInstructions.combine;
   const paddingNote = isPadded 
     ? `\n**NOTE ON CANVAS PADDING**: The input image(s) have been pre-padded with solid white border bars to fit the target aspect ratio. You must seamlessly outpaint and fill these padded white border regions with coherent background textures and natural lighting extensions!` 
     : "";
 
-  return `You are an elite commercial photography AI master and physical rendering engine. You are provided with TWO reference images and a user instruction.
+  return `You are an elite commercial photography AI master and physical rendering engine. You are provided with ${mainImageCount + 1} reference images and a user instruction.
 
 # IMAGE ROLES:
-- **IMAGE 1 (Main Product / Subject)**: The first image provided. This is our core commercial asset.
-- **IMAGE 2 (Reference Blueprint)**: The second image provided. This serves as our target scene, style, or lighting blueprint.
+${mainImageRoleDesc}
+- **${img2Ref} (Reference Blueprint)**: The LAST image provided. This serves as our target scene, style, or lighting blueprint.
 
 ${selectedInstruction}${paddingNote}
 
@@ -141,7 +173,27 @@ ${selectedInstruction}${paddingNote}
 "${userPrompt}"
 
 # FINAL MASTER INSTRUCTION:
-Generate a single, flawless, commercial-grade photograph that executes the Primary Task and Custom Request. Ensure zero sticker effect ("贴纸感") by strictly enforcing physical contact shadows and environmental light harmonization!`;
+Generate a single, flawless, commercial-grade photograph that executes the Primary Task and Custom Request. Ensure zero sticker effect ("贴纸感") by strictly enforcing physical contact shadows and environmental light harmonization while including all uploaded product assets!`;
+}
+
+/**
+ * Multi-Product Only Synthesis Engine (when uploading multiple product images without reference scene)
+ */
+function buildMultiProductOnlyPrompt(userPrompt: string, imageCount: number): string {
+  return `You are an elite commercial photography AI master. You are provided with ${imageCount} reference images showing our complete commercial product series and kit.
+
+# IMAGE ROLES:
+- **IMAGES 1–${imageCount} (Complete Product Series & Kit)**: The ${imageCount} images provided show our complete product kit from different angles, including packaging storage boxes, individual items, hands/tools, and usage details. Treat them ALL as authoritative product assets.
+
+# CRITICAL ASSET INCLUSION RULE (MANDATORY):
+- DO NOT drop, ignore, or omit any of the uploaded product photos!
+- You must actively analyze, combine, and synthesize ALL key product components shown across IMAGES 1–${imageCount} (e.g. storage box, screws, hand actions, accessories) into a single cohesive commercial design according to the user's instructions.
+
+# USER'S SPECIFIC CUSTOM REQUEST:
+"${userPrompt}"
+
+# FINAL MASTER INSTRUCTION:
+Generate a single, high-impact commercial advertisement photo that faithfully incorporates all product items from the uploaded photos without missing any key assets!`;
 }
 
 /**
@@ -199,6 +251,7 @@ app.post(
   "/api/edit-image",
   upload.fields([
     { name: "image", maxCount: 1 },
+    { name: "images", maxCount: 10 },
     { name: "secondaryImage", maxCount: 1 },
   ]),
   async (req: any, res: any) => {
@@ -208,10 +261,11 @@ app.post(
       const highFidelityPreserve = req.body.highFidelityPreserve === "true";
       const mergeMode = req.body.mergeMode || "combine";
 
-      const imageFile = req.files?.["image"]?.[0];
+      const imageFiles = req.files?.["images"] || (req.files?.["image"] ? [req.files?.["image"][0]] : []);
+      const imageFile = imageFiles[0];
       const secondaryImageFile = req.files?.["secondaryImage"]?.[0];
 
-      if (!imageFile) {
+      if (!imageFiles || imageFiles.length === 0 || !imageFile) {
         return res.status(400).json({ error: "Main image is required." });
       }
 
@@ -219,12 +273,16 @@ app.post(
         return res.status(400).json({ error: "Prompt is required." });
       }
 
-      // Retrieve custom API key from request headers or default to server key
-      const customApiKey = req.headers["x-gemini-api-key"];
-      const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+      // Every user supplies their own API key from the page.
+      const customApiKeyHeader = req.headers["x-gemini-api-key"];
+      const apiKey = (
+        Array.isArray(customApiKeyHeader)
+          ? customApiKeyHeader[0]
+          : customApiKeyHeader
+      )?.trim();
       if (!apiKey) {
         return res.status(200).json({
-          error: "Gemini API 密钥未配置。请在页面右上角的 API Key 输入框中粘贴您的个人 Gemini API 密钥，或者在服务器端配置 GEMINI_API_KEY 环境变量。",
+          error: "Gemini API 密钥未配置。请在页面右上角填写您自己的 Gemini API Key。",
         });
       }
 
@@ -238,19 +296,25 @@ app.post(
       });
 
       // Model for image-to-image editing tasks
-      const editModel = req.body.model || "gemini-3.1-flash-lite-image";
+      const editModel = req.body.model || "gemini-2.5-flash-image";
 
       // Path 1: Auto / Original Aspect Ratio
       if (aspectRatio === "auto") {
-        console.log("Server: Processing auto aspect-ratio image edit...");
-        const imagePart = bufferToGenerativePart(imageFile.buffer, imageFile.mimetype);
-        const parts: any[] = [imagePart];
+        console.log("Server: Processing auto aspect-ratio image edit with", imageFiles.length, "main image(s)...");
+        const parts: any[] = [];
+        for (const f of imageFiles) {
+          parts.push(bufferToGenerativePart(f.buffer, f.mimetype));
+        }
 
         if (secondaryImageFile) {
           console.log(`Server: Applying Dual-Image Synchronized Engine (Mode: ${mergeMode})...`);
           parts.push(bufferToGenerativePart(secondaryImageFile.buffer, secondaryImageFile.mimetype));
-          const dualPrompt = buildDualImageSynchronizedPrompt(prompt, mergeMode, false);
+          const dualPrompt = buildDualImageSynchronizedPrompt(prompt, mergeMode, false, imageFiles.length);
           parts.push({ text: optimizePromptForEditing(dualPrompt) });
+        } else if (imageFiles.length > 1) {
+          console.log(`Server: Applying Multi-Product Synthesis Engine (${imageFiles.length} images)...`);
+          const multiPrompt = buildMultiProductOnlyPrompt(prompt, imageFiles.length);
+          parts.push({ text: optimizePromptForEditing(multiPrompt) });
         } else {
           parts.push({ text: optimizePromptForEditing(prompt) });
         }
@@ -267,15 +331,21 @@ app.post(
 
       if (highFidelityPreserve) {
         // High fidelity with client-padded image
-        console.log("Server: Processing high fidelity preserve image edit...");
-        const imagePart = bufferToGenerativePart(imageFile.buffer, imageFile.mimetype);
-        const parts: any[] = [imagePart];
+        console.log("Server: Processing high fidelity preserve image edit with", imageFiles.length, "main image(s)...");
+        const parts: any[] = [];
+        for (const f of imageFiles) {
+          parts.push(bufferToGenerativePart(f.buffer, f.mimetype));
+        }
 
         if (secondaryImageFile) {
           console.log(`Server: Applying Dual-Image Synchronized Engine with Padding (Mode: ${mergeMode})...`);
           parts.push(bufferToGenerativePart(secondaryImageFile.buffer, secondaryImageFile.mimetype));
-          const dualPrompt = buildDualImageSynchronizedPrompt(prompt, mergeMode, true);
+          const dualPrompt = buildDualImageSynchronizedPrompt(prompt, mergeMode, true, imageFiles.length);
           parts.push({ text: optimizePromptForEditing(dualPrompt) });
+        } else if (imageFiles.length > 1) {
+          console.log(`Server: Applying Multi-Product Synthesis Engine with Padding (${imageFiles.length} images)...`);
+          const multiPrompt = buildMultiProductOnlyPrompt(prompt, imageFiles.length);
+          parts.push({ text: optimizePromptForEditing(multiPrompt) });
         } else {
           console.log("Server: Applying Single-Image Outpainting & Relighting Engine...");
           const singlePrompt = buildSingleImageOutpaintingPrompt(prompt);
@@ -373,6 +443,94 @@ Description: "${image2Description}"
     }
   }
 );
+
+// Proxy endpoint to fetch remote images (e.g. from ERP systems like Mabang) or read local Windows/Unix files bypassing browser CORS & file:// restrictions
+app.get("/api/proxy-image", async (req: any, res: any) => {
+  try {
+    const targetUrl = req.query.url;
+    if (!targetUrl || typeof targetUrl !== "string") {
+      return res.status(400).json({ error: "Valid URL or file path is required." });
+    }
+    console.log("Server: Proxying image from URL or local path:", targetUrl);
+
+    // Check if it is a local file path (e.g. C:\..., D:\..., /Users/..., file://...)
+    let localPath = targetUrl.trim().replace(/^["']|["']$/g, "");
+    if (localPath.startsWith("file://")) {
+      localPath = decodeURIComponent(localPath.replace(/^file:\/\/\/?/, ""));
+      // If Windows path like /C:/..., remove leading slash
+      if (/^\/[a-zA-Z]:/.test(localPath)) {
+        localPath = localPath.substring(1);
+      }
+    }
+
+    // Check if localPath exists on disk as a file
+    if (fs.existsSync(localPath) && fs.statSync(localPath).isFile()) {
+      console.log("Server: Reading local image file:", localPath);
+      const buffer = fs.readFileSync(localPath);
+      const ext = path.extname(localPath).toLowerCase();
+      let contentType = "image/jpeg";
+      if (ext === ".png") contentType = "image/png";
+      else if (ext === ".webp") contentType = "image/webp";
+      else if (ext === ".gif") contentType = "image/gif";
+      else if (ext === ".svg") contentType = "image/svg+xml";
+
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      return res.send(buffer);
+    }
+
+    if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+      return res.status(400).json({ error: "Cannot find local file or valid HTTP URL: " + targetUrl });
+    }
+
+    const fetchUrlToBuffer = (urlStr: string, timeoutMs = 15000): Promise<{ buffer: Buffer; contentType: string }> => {
+      return new Promise((resolve, reject) => {
+        const parsedUrl = new URL(urlStr);
+        const client = parsedUrl.protocol === "https:" ? https : http;
+        const req = client.get(
+          urlStr,
+          {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+              "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+              "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+              "Referer": parsedUrl.origin + "/",
+            },
+            timeout: timeoutMs,
+          },
+          (res) => {
+            // 自动跟随 301/302/307/308 重定向（解决马帮 CDN 跳转阿里云 OSS 问题）
+            if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+              let nextUrl = res.headers.location;
+              if (nextUrl.startsWith("/")) nextUrl = parsedUrl.origin + nextUrl;
+              return resolve(fetchUrlToBuffer(nextUrl, timeoutMs));
+            }
+            if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+              return reject(new Error(`HTTP Error ${res.statusCode}: ${res.statusMessage || "Unknown Error"}`));
+            }
+            const contentType = res.headers["content-type"] || "image/jpeg";
+            const chunks: Buffer[] = [];
+            res.on("data", (chunk) => chunks.push(chunk));
+            res.on("end", () => resolve({ buffer: Buffer.concat(chunks), contentType }));
+          }
+        );
+        req.on("error", (err) => reject(err));
+        req.on("timeout", () => {
+          req.destroy();
+          reject(new Error(`Request timed out after ${timeoutMs}ms`));
+        });
+      });
+    };
+
+    const { buffer, contentType } = await fetchUrlToBuffer(targetUrl, 15000);
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.send(buffer);
+  } catch (error: any) {
+    console.error("Error proxying image:", error);
+    res.status(500).json({ error: error.message || "Failed to proxy image." });
+  }
+});
 
 // Global error handling middleware to ensure no HTML error pages are returned to client API requests
 app.use((err: any, req: any, res: any, next: any) => {

@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电商AI套图生成工作台</title>
+<style>
+:root{
+  --bg:#f5f7fa;--card:#fff;--card2:#f8fafc;--bdr:#e2e8f0;
+  --t1:#1e293b;--t2:#475569;--t3:#94a3b8;
+  --blue:#3b82f6;--blue-l:#dbeafe;--blue-d:#1d4ed8;
+  --grn:#10b981;--grn-l:#d1fae5;--org:#f59e0b;--org-l:#fef3c7;--red:#ef4444;
+  --vio:#7c3aed;--pink:#ec4899;
+  --r:10px;--r2:14px;
+  --sh:0 1px 3px rgba(0,0,0,.04);--sh2:0 4px 14px rgba(0,0,0,.06);
+  --f:system-ui,-apple-system,'Segoe UI','Microsoft YaHei','PingFang SC','Noto Sans SC',sans-serif;--fm:'Consolas','Menlo','Microsoft YaHei',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-webkit-font-smoothing:antialiased}
+.ctn{max-width:96%;margin:0 auto;padding:0 24px}
+
+/* Header */
+.hd{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.95);backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr)}
+.hd-row1{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 24px}
+.hd-b{display:flex;align-items:center;gap:10px}
+.hd-l{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--blue),var(--vio));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px}
+.hd-t{font-size:14px;font-weight:700}.hd-s{font-size:10px;color:var(--t3)}
+.hd-nav{display:flex;gap:3px}
+.hd-nav a{padding:4px 14px;border-radius:14px;font-size:11px;font-weight:600;color:var(--t3);text-decoration:none;border:1px solid var(--bdr);background:#fff;transition:.2s}
+.hd-nav a:hover,.hd-nav a.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+/* API bar in header */
+.hd-api{padding:6px 24px;background:var(--card2);border-top:1px solid var(--bdr);display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px}
+.hd-api label{font-weight:600;color:var(--t2);white-space:nowrap}
+.hd-api-input{padding:5px 8px;border:1.5px solid var(--bdr);border-radius:6px;font-size:11px;font-family:var(--fm);outline:none;background:#fff;min-width:180px}
+.hd-api-input:focus{border-color:var(--blue)}
+.hd-api select{padding:5px 6px;border:1.5px solid var(--bdr);border-radius:6px;font-size:10px;font-family:var(--f);outline:none;background:#fff;max-width:340px}
+.api-dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}.api-dot.on{background:var(--grn)}
+.hd-api .hint{color:var(--t3);font-size:10px}
+.hd-api .hint a{color:var(--blue)}
+
+/* Section blocks */
+.block{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r2);margin-bottom:20px;box-shadow:var(--sh);overflow:hidden}
+.block-h{padding:14px 20px;background:var(--card2);border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between}
+.block-t{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.block-t .num{width:24px;height:24px;border-radius:6px;background:var(--blue);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
+.block-body{padding:20px}
+
+/* Forms */
+.cd{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r2);padding:20px;box-shadow:var(--sh)}
+.cd-t{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.fg{margin-bottom:12px}.fl{display:block;font-size:12px;font-weight:500;color:var(--t2);margin-bottom:4px}
+.fl.rq::after{content:" *";color:var(--red)}
+.fi,.fs,.ft{width:100%;padding:9px 12px;border-radius:var(--r);border:1.5px solid var(--bdr);background:var(--card2);font-size:13px;color:var(--t1);font-family:var(--f);outline:none;transition:.2s}
+.fi:focus,.fs:focus,.ft:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-l)}
+.ft{resize:vertical;min-height:60px;line-height:1.5}.fs{cursor:pointer}
+.fi-hint{font-size:10px;color:var(--t3);margin-top:3px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 20px;border-radius:var(--r);font-size:12px;font-weight:600;border:none;cursor:pointer;transition:.2s;font-family:var(--f)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-p{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,.2)}.btn-p:hover:not(:disabled){background:var(--blue-d)}
+.btn-g{background:var(--grn);color:#fff}.btn-g:hover:not(:disabled){background:#059669}
+.btn-x{background:var(--card2);color:var(--t2);border:1px solid var(--bdr)}.btn-x:hover{background:#eef1f6}
+.btn-full{width:100%}.btn-lg{padding:13px 28px;font-size:14px;border-radius:var(--r2)}
+.btn-sm{padding:5px 12px;font-size:11px}
+.btn-cp{background:var(--card2);color:var(--blue);border:1px solid var(--bdr);font-size:10px;padding:3px 10px;border-radius:6px}
+.btn-cp:hover{background:var(--blue-l)}.btn-cp.ok{background:var(--grn-l);color:var(--grn);border-color:var(--grn)}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+
+/* Upload */
+.up-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.up-label{font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px;display:flex;align-items:center;gap:4px}
+.up-tag{font-size:9px;padding:1px 6px;border-radius:4px;font-weight:600}
+.up-tag.main{background:var(--blue-l);color:var(--blue-d)}.up-tag.sub{background:#f1f5f9;color:var(--t3)}
+.up-box{border:2px dashed var(--bdr);border-radius:var(--r);background:var(--card2);position:relative;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;transition:.2s;cursor:pointer}
+.up-box:hover{border-color:var(--blue);background:var(--blue-l)}
+.up-box.dragover{border-color:var(--blue);background:var(--blue-l)}
+.up-box.has-img{border:1px solid var(--bdr);border-style:solid;background:#fff;cursor:default}
+.up-box.has-img:hover{background:#fff;border-color:var(--bdr)}
+.up-t{font-size:11px;color:var(--t3);text-align:center;padding:0 8px;line-height:1.5}.up-t b{color:var(--blue)}
+.up-prev{width:100%;height:100%;object-fit:contain;display:block;padding:6px}
+.up-overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;gap:6px;opacity:0;transition:.2s;pointer-events:none}
+.up-box.has-img:hover .up-overlay{opacity:1;pointer-events:auto}
+.up-overlay button{padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;font-family:var(--f)}
+.up-overlay .ov-ch{background:#fff;color:var(--t1)}.up-overlay .ov-rm{background:rgba(255,255,255,.2);color:#fff}.up-overlay .ov-rm:hover{background:var(--red)}
+.up-url-row{display:flex;gap:4px;margin-top:4px}
+.up-url-row input{flex:1;padding:5px 8px;border:1.5px solid var(--bdr);border-radius:6px;font-size:10px;outline:none;font-family:var(--f);background:var(--card2)}
+.up-url-row input:focus{border-color:var(--blue)}
+.up-url-row button{padding:5px 10px;border:none;border-radius:6px;background:var(--blue);color:#fff;font-size:10px;font-weight:600;cursor:pointer;font-family:var(--f)}
+
+/* Grid */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.cas{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:768px){.g2{grid-template-columns:1fr}}
+.warn{padding:8px 12px;border-radius:var(--r);font-size:11px;background:var(--org-l);border-left:3px solid var(--org);color:#92400e;margin-bottom:12px}
+
+/* Concept cards - vertical, editable */
+.cc-list{display:flex;flex-direction:column;gap:12px}
+.cc{background:var(--card);border:1.5px solid var(--bdr);border-radius:var(--r2);padding:16px;position:relative;transition:.2s}
+.cc:hover{border-color:var(--blue);box-shadow:var(--sh2)}.cc.ap{border-color:var(--grn);background:#f0fdf4}
+.cc-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cc-ico{font-size:22px}.cc-n{font-size:10px;color:var(--t3)}.cc-nm{font-size:13px;font-weight:700}.cc-sub{font-size:10px;color:var(--t3)}
+.cc-edit{width:100%;font-size:11px;color:var(--t1);line-height:1.8;white-space:pre-line;border:1.5px solid var(--bdr);border-radius:var(--r);padding:10px;background:#fff;font-family:var(--f);resize:vertical;min-height:120px;outline:none;transition:.2s}
+.cc-edit:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-l)}
+.cc-ok{position:absolute;top:12px;right:12px;padding:4px 12px;border-radius:6px;font-size:10px;font-weight:600;border:none;cursor:pointer;font-family:var(--f);transition:.2s}
+.cc-ok.pn{background:var(--blue-l);color:var(--blue)}.cc-ok.pn:hover{background:var(--blue);color:#fff}
+.cc-ok.dn{background:var(--grn-l);color:var(--grn)}
+
+/* Style recommendation tags */
+.sty-tag{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;border:1.5px solid var(--blue);background:#fff;color:var(--blue-d);cursor:pointer;transition:.2s;font-family:var(--f)}
+.sty-tag:hover{background:var(--blue);color:#fff}
+.sty-tag.sel{background:var(--blue);color:#fff;font-weight:700}
+
+/* Prompt cards */
+.pc{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r2);overflow:hidden;margin-bottom:14px}
+.pc-h{padding:12px 16px;background:var(--card2);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px}
+.pc-ico{font-size:22px}.pc-t{font-size:14px;font-weight:700}.pc-s{font-size:11px;color:var(--t3)}
+.pc-b{padding:16px}
+.pc-sec{margin-bottom:14px}.pc-sec:last-child{margin-bottom:0}
+.pc-ll{font-size:11px;font-weight:600;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}
+.pc-edit{width:100%;padding:10px;border-radius:var(--r);background:#fff;border:1.5px solid var(--bdr);font-size:11px;line-height:1.7;color:var(--t1);font-family:var(--fm);resize:vertical;min-height:80px;outline:none;transition:.2s}
+.pc-edit:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-l)}
+.pc-lang-toggle{display:flex;gap:0;border:1.5px solid var(--bdr);border-radius:6px;overflow:hidden;margin-left:auto}
+.pc-lang-btn{padding:3px 12px;font-size:10px;font-weight:600;border:none;cursor:pointer;font-family:var(--f);background:var(--card2);color:var(--t3);transition:.15s}
+.pc-lang-btn.active{background:var(--blue);color:#fff}
+.pc-sec.inactive{opacity:.4}.pc-sec.inactive .pc-edit{background:var(--card2);color:var(--t3)}
+
+/* Image grid */
+.ig{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:768px){.ig{grid-template-columns:1fr 1fr}}
+.ic{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r2);overflow:hidden;transition:.2s;position:relative}.ic:hover{box-shadow:var(--sh2)}
+.is{width:100%;aspect-ratio:1;background:var(--card2);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.is img{width:100%;height:100%;object-fit:contain;cursor:pointer}
+/* Hover zoom overlay */
+.zoom-overlay{position:fixed;z-index:999;pointer-events:none;border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.3);max-width:80vw;max-height:80vh;object-fit:contain;background:#fff}
+.ld{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--t3);font-size:11px}
+.sp{width:28px;height:28px;border:3px solid var(--bdr);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.er{color:var(--red);font-size:11px;text-align:center;padding:12px}
+.ii{padding:10px 12px}.il{font-size:12px;font-weight:700;margin-bottom:2px}.isu{font-size:10px;color:var(--t3)}.ia{display:flex;gap:4px;margin-top:6px}
+
+/* Edit Modal */
+.mo-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.mo{background:#fff;border-radius:var(--r2);max-width:880px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.12)}
+.mo-h{padding:14px 18px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center}
+.mo-t{font-size:15px;font-weight:700}.mo-x{background:none;border:none;font-size:18px;cursor:pointer;color:var(--t3)}
+.mo-b{padding:18px}
+.mo-imgs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.mo-ib{border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;aspect-ratio:1;background:var(--card2);display:flex;align-items:center;justify-content:center}
+.mo-ib img{max-width:100%;max-height:100%;object-fit:contain}
+.mo-il{font-size:11px;font-weight:600;color:var(--t2);margin-bottom:3px;text-align:center}
+
+.ft2{text-align:center;padding:20px;margin-top:24px;border-top:1px solid var(--bdr);font-size:11px;color:var(--t3)}.ft2 a{color:var(--blue)}
+.hid{display:none!important}.mt{margin-top:14px}
+
+/* Floating side nav */
+.side-nav{position:fixed;right:16px;top:50%;transform:translateY(-50%);z-index:90;display:flex;flex-direction:column;gap:8px}
+.sn-item{display:flex;align-items:center;gap:6px;padding:6px 12px 6px 6px;border-radius:20px;background:rgba(255,255,255,.9);backdrop-filter:blur(8px);border:1.5px solid var(--bdr);text-decoration:none;color:var(--t3);transition:.2s;box-shadow:var(--sh)}
+.sn-item:hover{border-color:var(--blue);color:var(--blue)}
+.sn-item.active{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,.25)}
+.sn-num{width:22px;height:22px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.sn-item.active .sn-num{background:rgba(255,255,255,.25);color:#fff}
+.sn-txt{font-size:11px;font-weight:600;white-space:nowrap}
+@media(max-width:768px){.sn-txt{display:none}.sn-item{padding:6px}}
+</style>
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    const syncGlobalKey = () => {
+      const globalKey = localStorage.getItem('gemini_custom_api_key') || '';
+      const keyEl = document.getElementById('aKey');
+      if (keyEl && keyEl.value !== globalKey) {
+        keyEl.value = globalKey;
+        if (typeof ckApi === 'function') ckApi();
+      }
+    };
+    syncGlobalKey();
+    window.addEventListener('storage', syncGlobalKey);
+    setInterval(syncGlobalKey, 600);
+  });
+</script>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header class="hd">
+  <div class="hd-row1">
+    <div class="hd-b"><div class="hd-l">AI</div><div><div class="hd-t">电商AI套图生成工作台</div><div class="hd-s">E-Commerce Set Image Studio</div></div></div>
+    <nav class="hd-nav">
+      <a href="#" onclick="event.preventDefault();openSettings()" style="background:var(--card2);border-color:var(--bdr)">⚙️</a>
+    </nav>
+  </div>
+  <!-- Global API Settings -->
+  <div class="hd-api">
+    <div class="api-dot" id="aDot"></div>
+    <input id="aKey" type="hidden" value="">
+    <label>文本:</label>
+	<select class="hd-api select" id="txtMdl" onchange="saveSettings()">
+	  <option value="gemini-2.5-flash" selected>2.5 Flash · 入$0.30/¥2.16 M · 出$2.50/¥18 M（2026-10-16停用）</option>
+	  <option value="gemini-3.5-flash-lite">3.5 Flash-Lite · 入$0.30/¥2.16 M · 出$2.50/¥18 M（新款低成本）</option>
+	  <option value="gemini-3.6-flash">3.6 Flash · 入$1.50/¥10.80 M · 出$7.50/¥54 M（新款高质量）</option>
+	  <option value="gemini-3.1-flash-lite">3.1 Flash-Lite · 入$0.25/¥1.80 M · 出$1.50/¥10.80 M</option>
+	  <option value="gemini-3.1-pro-preview">3.1 Pro · 入$2/¥14.40 M · 出$12/¥86.40 M（预览版）</option>
+	  <option value="gemini-3-flash-preview">3 Flash · 入$0.50/¥3.60 M · 出$3/¥21.60 M（预览版）</option>
+	  <option value="gemini-2.5-flash-lite">2.5 Flash-Lite · 入$0.10/¥0.72 M · 出$0.40/¥2.88 M（2026-10-16停用）</option>
+	  <option value="gemini-2.5-pro">2.5 Pro · 入$1.25/¥9 M · 出$10/¥72 M（2026-10-16停用）</option>
+	</select>
+	<label>生图:</label>
+	<select class="hd-api select" id="aMdl" onchange="saveSettings()">
+	  <option value="gemini-2.5-flash-image" selected>Nano Banana · 最高1K $0.039/¥0.28（2026-10-02停用）</option>
+	  <option value="gemini-3.1-flash-image">Nano Banana 2 · 1K $0.067/¥0.48（推荐·最高支持4K）</option>
+	  <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite · 1K $0.0336/¥0.24（快速省钱）</option>
+	  <option value="gemini-3-pro-image">Nano Banana Pro · 1K/2K $0.134/¥0.96 · 4K $0.24/¥1.73</option>
+	</select>
+    <span class="hint"><a href="https://aistudio.google.com/apikey" target="_blank">获取Key →</a> · Key存于浏览器本地</span>
+    <label style="display:flex;align-items:center;gap:4px;margin-left:auto;cursor:pointer;user-select:none"><input type="checkbox" id="autoMode" onchange="saveSettings()" style="cursor:pointer"><span style="font-size:11px;font-weight:600;color:var(--t2)">全自动</span><span style="font-size:10px;color:var(--t3)">（不保证最终质量）</span></label>
+  </div>
+</header>
+
+<!-- Floating right-side step nav -->
+<nav class="side-nav" id="sideNav">
+  <a href="#step1" class="sn-item active" onclick="scrollToBlock('step1')"><span class="sn-num">1</span><span class="sn-txt">产品信息</span></a>
+  <a href="#step2" class="sn-item" onclick="scrollToBlock('step2')"><span class="sn-num">2</span><span class="sn-txt">设计理念</span></a>
+  <a href="#step3" class="sn-item" onclick="scrollToBlock('step3')"><span class="sn-num">3</span><span class="sn-txt">提示词</span></a>
+  <a href="#step4" class="sn-item" onclick="scrollToBlock('step4')"><span class="sn-num">4</span><span class="sn-txt">出图</span></a>
+</nav>
+
+<div class="ctn" style="padding-top:16px;padding-bottom:40px">
+
+<!-- ═══════════ STEP 1: 产品信息 ═══════════ -->
+<div class="block" id="step1">
+  <div class="block-h"><div class="block-t"><span class="num">1</span>产品信息录入</div></div>
+  <div class="block-body">
+    <div class="g2">
+      <div>
+        <div class="cd-t">🔍 快速抓取</div>
+        <div class="fg">
+          <label class="fl rq">参考产品SPU</label>
+          <div style="display: flex; gap: 10px;">
+            <input type="text" id="pSku" class="fi" placeholder="输入 SPU 编号 (按回车键直接抓取)..." onkeypress="if(event.key==='Enter') fetchSPUData()">
+            <button class="btn btn-g" id="fetchErpBtn" style="flex-shrink: 0; padding: 0 24px;" onclick="fetchSPUData()">↓ 抓取 ERP</button>
+          </div>
+        </div>
+
+        <div class="cd-t" style="margin-top: 16px;">📦 产品资料</div>
+        <div class="fg"><label class="fl rq">产品信息（名称、描述、卖点、促销）</label><textarea class="ft" id="iInfo" rows="5" placeholder="把产品相关信息都填在这里，AI 会根据当前工具自动提取特征与卖点。&#10;例如：透明质酸保湿精华液 30ml，透明玻璃瓶身，金色瓶盖&#10;72小时持久保湿、医美级玻尿酸、敏感肌友好&#10;限时5折" oninput="saveSettings()"></textarea>
+<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
+  <span style="font-size:10px;color:var(--t3);align-self:center;white-space:nowrap">快捷限制：</span>
+  <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要出现包装图" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要出现包装图')">🚫 不要包装图</button>
+  <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要有健康医疗类的描述" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要有健康医疗类的描述')">🚫 不要医疗描述</button>
+  <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要出现产品价格" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要出现产品价格')">🚫 不要价格</button>
+  <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要产品/包装清单图" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要产品/包装清单图')">🚫 不要清单图</button>
+</div>
+<div class="fi-hint" style="margin-top:4px">💡 描述越具体，AI 生成的细节和排版越准确 · 促销或主打卖点直接写在这里即可<br>💡 后续可从表格自动填入 · 点击标签追加限制条件，再次点击取消</div></div>
+        <div class="up-row">
+          <div>
+            <div class="up-label">产品图 <span class="up-tag main">必填·主图</span></div>
+            <div class="up-box" id="upBox1" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');dropImg(event,'prod')" onclick="if(!prodImgData)document.getElementById('upF1').click()">
+              <input type="file" accept="image/*" id="upF1" onchange="fileImg(this,'prod')" style="display:none">
+              <div id="prodPh"><div style="font-size:28px;margin-bottom:6px">📷</div><div class="up-t"><b>点击上传</b> / 拖入 / 粘贴</div></div>
+              <img id="prodPv" class="up-prev hid">
+              <div class="up-overlay"><button class="ov-ch" onclick="event.stopPropagation();document.getElementById('upF1').click()">换图</button><button class="ov-rm" onclick="event.stopPropagation();clearImg('prod')">删除</button></div>
+            </div>
+            <div class="up-url-row"><input type="text" id="urlProd" placeholder="粘贴图片或URL" onpaste="pasteImg(event,'prod')"><button onclick="loadUrl('prod')">加载</button></div>
+          </div>
+          <div>
+            <div class="up-label">参考图 <span class="up-tag sub">可选</span></div>
+            <div class="up-box" id="upBox2" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');dropImg(event,'ref')" onclick="if(!refImgData)document.getElementById('upF2').click()">
+              <input type="file" accept="image/*" id="upF2" onchange="fileImg(this,'ref')" style="display:none">
+              <div id="refPh"><div style="font-size:28px;margin-bottom:6px">🎨</div><div class="up-t"><b>点击上传</b> / 拖入 / 粘贴</div></div>
+              <img id="refPv" class="up-prev hid">
+              <div class="up-overlay"><button class="ov-ch" onclick="event.stopPropagation();document.getElementById('upF2').click()">换图</button><button class="ov-rm" onclick="event.stopPropagation();clearImg('ref')">删除</button></div>
+            </div>
+            <div class="up-url-row"><input type="text" id="urlRef" placeholder="粘贴图片或URL" onpaste="pasteImg(event,'ref')"><button onclick="loadUrl('ref')">加载</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="cd-t">⚙️ 输出设置</div>
+        <div class="fg"><label class="fl rq">目标市场</label><div class="cas"><select class="fs" id="iMkt1" onchange="updateSubMarket();saveSettings()"><option value="latam">🌎 拉美</option><option value="sea">🌏 东南亚</option></select><select class="fs" id="iMkt2" onchange="syncLang();saveSettings()"></select></div></div>
+        <div class="fg"><label class="fl rq">文案语言</label><select class="fs" id="iLang" onchange="saveSettings()"><option value="es-MX">🇲🇽 墨西哥西班牙语 (Español Mexicano)</option><option value="pt-BR">🇧🇷 巴西葡萄牙语 (Português Brasileiro)</option><option value="id">🇮🇩 印尼语 (Bahasa Indonesia)</option><option value="tl-en">🇵🇭 菲律宾英语 (菲英混合)</option><option value="fil">🇵🇭 菲律宾语 (Filipino)</option><option value="vi">🇻🇳 越南语 (Tiếng Việt)</option><option value="th">🇹🇭 泰语 (ภาษาไทย)</option><option value="ms">🇲🇾 马来语 (Bahasa Melayu)</option><option value="en">🌐 英语 (English)</option></select><div class="fi-hint">💡 选择市场后自动匹配（英语适用于菲/马来/新加坡）</div></div>
+        <div class="fg"><label class="fl">画幅比例</label><select class="fs" id="iAR" onchange="saveSettings()"><option value="auto">保持原图</option><option value="1:1">1:1 正方形</option><option value="3:4">3:4 竖版</option><option value="4:3">4:3 横版</option><option value="3:2">3:2 横版</option><option value="4:5">4:5 竖版</option><option value="16:9">16:9 宽屏</option><option value="9:16">9:16 竖屏</option></select></div>
+        <div class="fg"><label class="fl">风格偏好（可选）</label><input class="fi" id="iStyle" placeholder="如：韩系清冷、高奢极简、日系治愈" onchange="saveSettings()">
+          <div class="fi-hint">💡 填了优先使用偏好，留空AI自动匹配</div>
+          <div style="margin-top:8px;padding:10px 12px;background:var(--card2);border:1px solid var(--bd);border-radius:var(--r);font-size:11px;color:var(--t2);line-height:1.8">
+            <div style="font-weight:700;color:var(--t1);margin-bottom:4px">🎨 风格填写指南</div>
+            <div>· <b>填一个风格（推荐）</b>：定下整体视觉基调。套图会保持统一，多方案变体也会在同一风格下延展。</div>
+            <div>· <b>填多个风格</b>：AI 可能会随机分配或导致风格打架，最终结果不受控。</div>
+            <div>· <b>留空</b>：AI 完全自由发挥 / 按目标市场审美自动判断，适合探索阶段。</div>
+          </div>
+          <div style="margin-top:6px;padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:var(--r);font-size:11px;color:#0369a1;line-height:1.8">
+            <div style="font-weight:700;margin-bottom:4px">📌 三个工具怎么选</div>
+            <div>· <b>套图（本工具）</b>：同一风格 9 张成套，封面主图+场景+细节+卖点全覆盖，适合铺品上架。</div>
+            <div>· <b>主图</b>：产品占画面主体 60-75%，信息密度高，排版+卖点+平台风格，优先点击率。</div>
+            <div>· <b>场景图</b>：产品融入故事场景，重氛围，产品可小可偏，适合品牌种草、详情页。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="warn hid" id="vW">❌ <b>前置检查：</b><span id="vM"></span></div>
+    <button class="btn btn-p btn-lg btn-full mt" onclick="genConcepts()" id="genConBtn">🎨 生成9图设计理念</button>
+  </div>
+</div>
+
+<!-- ═══════════ STEP 2: 设计理念 ═══════════ -->
+<div class="block" id="step2">
+  <div class="block-h">
+    <div class="block-t"><span class="num">2</span>设计理念确认</div>
+    <div class="acts"><button class="btn btn-g btn-sm" onclick="okAll()">✅ 全部确认</button></div>
+  </div>
+  <div class="block-body">
+    <!-- Style Recommendation -->
+    <div id="styleRec" class="hid" style="margin-bottom:16px;padding:14px;border:1.5px solid var(--blue);border-radius:var(--r2);background:var(--blue-l)">
+      <div style="font-size:13px;font-weight:700;color:var(--blue-d);margin-bottom:8px">🎨 AI推荐风格方向（点击选择，可重新生成理念）</div>
+      <div id="styleRecItems" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="fi" id="customStyle" placeholder="或输入自定义风格..." style="flex:1;padding:7px 10px;font-size:12px">
+        <button class="btn btn-p btn-sm" onclick="regenWithStyle()">🔄 用此风格重新生成</button>
+      </div>
+    </div>
+    <div class="cc-list" id="cG"><div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">请先完成第①步，生成设计理念</div></div>
+    <div class="acts mt"><button class="btn btn-g btn-sm" onclick="okAll()">✅ 全部确认</button></div>
+    <button class="btn btn-g btn-lg btn-full mt" id="tpBtn" onclick="genPrompts()" disabled>⚡ 生成提示词（需全部确认）</button>
+  </div>
+</div>
+
+<!-- ═══════════ STEP 3: 提示词 ═══════════ -->
+<div class="block" id="step3">
+  <div class="block-h">
+    <div class="block-t"><span class="num">3</span>提示词编辑</div>
+    <div class="acts">
+      <div class="pc-lang-toggle" style="margin-right:6px"><button class="pc-lang-btn active" id="glbE" onclick="setAllLang('en')">🇺🇸 全部英文</button><button class="pc-lang-btn" id="glbZ" onclick="setAllLang('zh')">🇨🇳 全部中文</button></div>
+      <button class="btn btn-p btn-sm" onclick="cpAll()">📋 复制全部</button>
+    </div>
+  </div>
+  <div class="block-body">
+    <div id="pC"><div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">请先完成第②步，确认设计理念后生成提示词</div></div>
+    <button class="btn btn-p btn-lg btn-full mt" onclick="startGen()" id="gBtn" disabled>🖼️ 一键生成全部图片</button>
+  </div>
+</div>
+
+<!-- ═══════════ STEP 4: 出图 ═══════════ -->
+<div class="block" id="step4">
+  <div class="block-h">
+    <div class="block-t"><span class="num">4</span>图片结果</div>
+    <div class="acts"><button class="btn btn-p btn-sm" onclick="dlAll()">⬇ 下载全部</button></div>
+  </div>
+  <div class="block-body">
+    <div class="ig" id="iG"><div style="color:var(--t3);text-align:center;padding:40px;font-size:13px;grid-column:1/-1">请先完成第③步，点击一键生成图片</div></div>
+  </div>
+</div>
+
+</div>
+
+<!-- Mini Editor Modal -->
+<div class="mo-bg hid" id="mBg" onclick="if(event.target===this)hMo()">
+  <div class="mo" style="max-width:960px" onclick="event.stopPropagation()">
+    <div class="mo-h"><div class="mo-t" id="mTi">编辑图片</div><button class="mo-x" onclick="hMo()">✕</button></div>
+    <div class="mo-b" style="max-height:80vh;overflow-y:auto">
+      <!-- Reference images row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <div class="mo-il">产品原图 <button class="btn btn-sm btn-x" onclick="document.getElementById('mProdF').click()" style="font-size:9px;padding:2px 6px">换图</button></div>
+          <input type="file" accept="image/*" id="mProdF" onchange="miniEditorChangeImg(this,'prod')" style="display:none">
+          <div class="mo-ib" style="aspect-ratio:1"><img id="mProdImg" style="max-width:100%;max-height:100%;object-fit:contain"></div>
+        </div>
+        <div>
+          <div class="mo-il">当前图片</div>
+          <div class="mo-ib" style="aspect-ratio:1"><img id="mImg" style="max-width:100%;max-height:100%;object-fit:contain"></div>
+        </div>
+        <div>
+          <div class="mo-il">编辑结果 <button class="btn btn-sm btn-g hid" id="mUseBtn" onclick="useEditResult()" style="font-size:9px;padding:2px 6px">← 用作当前图</button></div>
+          <div class="mo-ib" style="aspect-ratio:1" id="mRes"><span style="color:var(--t3);font-size:12px">编辑后显示在这里</span></div>
+        </div>
+      </div>
+      <!-- Reference image 2 -->
+      <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--t2);font-weight:600">参考图：</span>
+        <div style="width:48px;height:48px;border:1px solid var(--bdr);border-radius:6px;overflow:hidden;flex-shrink:0;background:var(--card2);display:flex;align-items:center;justify-content:center">
+          <img id="mRefImg" style="max-width:100%;max-height:100%;object-fit:contain">
+        </div>
+        <button class="btn btn-sm btn-x" onclick="document.getElementById('mRefF').click()">换图</button>
+        <button class="btn btn-sm btn-x" onclick="clearMiniRef()">清除</button>
+        <input type="file" accept="image/*" id="mRefF" onchange="miniEditorChangeImg(this,'ref')" style="display:none">
+        <span style="font-size:10px;color:var(--t3)" id="mRefHint">上传参考图后可选择合成模式</span>
+        <select id="mMergeMode" style="display:none;font-size:11px;padding:3px;border-radius:4px;border:1px solid var(--bdr);background:var(--card2);color:var(--t1)" onchange="changeMergeMode()">
+          <option value="combine">合并元素与风格 (Combine)</option>
+          <option value="replace_person">替换人物 (Replace Person)</option>
+          <option value="add_logo">叠加Logo/水印 (Add Logo)</option>
+          <option value="replace_background">替换背景 (Replace Background)</option>
+          <option value="replace_product">替换产品 (Replace Product)</option>
+        </select>
+      </div>
+      <!-- Prompt -->
+      <div class="fg"><label class="fl">提示词（可编辑，修改后点AI编辑生效）</label><textarea class="ft" id="mPmt" rows="4" style="font-size:11px;font-family:var(--fm)"></textarea></div>
+      <!-- Actions -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-p" onclick="runEdit()" id="mEBtn">✨ AI编辑</button>
+        <button class="btn btn-g hid" id="mABtn" onclick="applyEdit()">✅ 应用到第④步</button>
+        <button class="btn btn-x" onclick="dlIdx(editIdx)">⬇ 下载当前</button>
+        <button class="btn btn-x hid" id="mDlResBtn" onclick="dlEditResult()">⬇ 下载结果</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="mo-bg hid" id="sBg" onclick="if(event.target===this)closeSettings()">
+  <div class="mo" style="max-width:980px" onclick="event.stopPropagation()">
+    <div class="mo-h">
+      <div class="mo-t">⚙️ 高级参数设置</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:10px;color:var(--t3)">修改后点保存，存于浏览器本地</span>
+        <button class="btn btn-sm btn-x" onclick="resetAllPrompts()">🔄 全部重置</button>
+        <button class="btn btn-sm btn-g" onclick="savePromptSettings()">💾 保存</button>
+        <button class="mo-x" onclick="closeSettings()">✕</button>
+      </div>
+    </div>
+    <div class="mo-b" style="max-height:78vh;overflow-y:auto">
+
+      <!-- STEP 1 Section -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--blue)">
+          <span style="width:24px;height:24px;border-radius:6px;background:var(--blue);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">1</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--t1)">产品信息阶段</div>
+            <div style="font-size:10px;color:var(--t3)">上传产品图后自动运行 · 识别产品颜色，用于后续所有步骤的产品约束</div>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl" style="font-size:12px;font-weight:700">
+            📷 产品颜色识别 Prompt
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第②③④步中「用XX颜色指代产品」的约束词</span>
+          </label>
+          <textarea class="ft" id="sp_recognize" rows="2" style="font-size:11px;font-family:var(--fm)"></textarea>
+          <div class="fi-hint">变量：无。返回值会注入到 concept/prompt/imggen 中作为产品颜色约束。</div>
+        </div>
+      </div>
+
+      <!-- STEP 2 Section -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--grn)">
+          <span style="width:24px;height:24px;border-radius:6px;background:var(--grn);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">2</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--t1)">设计理念生成</div>
+            <div style="font-size:10px;color:var(--t3)">点击「生成9图设计理念」触发 · 影响理念卡片中展示的内容丰富度和质量</div>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl" style="font-size:12px;font-weight:700">
+            🎨 理念生成 System Prompt
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第②步9张理念卡片的内容、风格推荐、图片类型选择</span>
+          </label>
+          <textarea class="ft" id="sp_concept" rows="14" style="font-size:11px;font-family:var(--fm)"></textarea>
+          <div class="fi-hint">变量：<code>{lang}</code> 目标语言，<code>{market}</code> 目标市场，<code>{model}</code> 模特类型。市场审美（见下方）会自动追加到此prompt末尾。</div>
+        </div>
+        <div class="fg">
+          <label class="fl" style="font-size:12px;font-weight:700">
+            🌏 国家/地区市场审美描述
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第②步理念生成 + 第③步提示词生成的市场风格方向</span>
+          </label>
+          <div style="font-size:10px;color:var(--t3);margin-bottom:4px;padding:6px 10px;background:var(--org-l);border-radius:6px;border-left:3px solid var(--org)">
+            ⚠️ JSON格式，key对应市场代码（MX/BR/ID/PH/VN/TH/MY/SG）。修改此处会同步更新市场配置。
+          </div>
+          <textarea class="ft" id="sp_aesthetic" rows="12" style="font-size:11px;font-family:var(--fm)"></textarea>
+        </div>
+      </div>
+
+      <!-- STEP 3 Section -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--org)">
+          <span style="width:24px;height:24px;border-radius:6px;background:var(--org);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">3</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--t1)">提示词生成</div>
+            <div style="font-size:10px;color:var(--t3)">理念全部确认后触发 · 影响第③步英文/中文提示词的质量和格式</div>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl" style="font-size:12px;font-weight:700">
+            ⚡ 提示词生成 System Prompt
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第③步每张图的英文/中文提示词内容和结构</span>
+          </label>
+          <textarea class="ft" id="sp_prompt" rows="14" style="font-size:11px;font-family:var(--fm)"></textarea>
+          <div class="fi-hint">变量：<code>{lang}</code> 目标语言。市场审美描述和产品颜色约束会自动追加到此prompt末尾。</div>
+        </div>
+      </div>
+
+      <!-- STEP 4 Section -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--vio)">
+          <span style="width:24px;height:24px;border-radius:6px;background:var(--vio);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">4</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--t1)">图片生成</div>
+            <div style="font-size:10px;color:var(--t3)">点击「一键生成全部图片」触发 · 影响产品图如何被AI识别和处理</div>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl" style="font-size:12px;font-weight:700">
+            🖼️ 生图注入指令（imggen）
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第④步生图时，告诉AI如何处理产品图（保持原样、参考图用途等）</span>
+          </label>
+          <div style="font-size:10px;color:var(--t3);margin-bottom:4px;padding:6px 10px;background:var(--blue-l);border-radius:6px;border-left:3px solid var(--blue)">
+            💡 变量：<code>{refNote}</code> 自动替换为参考图说明（有/无参考图时不同）；<code>{prodAppearance}</code> 自动替换为产品颜色约束。这两个变量不要删除。
+          </div>
+          <textarea class="ft" id="sp_imggen" rows="7" style="font-size:11px;font-family:var(--fm)"></textarea>
+        </div>
+      </div>
+
+      <!-- KB Section -->
+      <div style="margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--t3)">
+          <span style="width:24px;height:24px;border-radius:6px;background:var(--t3);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">★</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--t1)">提示词知识库</div>
+            <div style="font-size:10px;color:var(--t3)">第②步理念生成时注入，供AI从中选词 · 当前 <span id="kbCount" style="color:var(--blue);font-weight:700"></span> 条目</div>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl" style="font-size:12px;font-weight:700">
+            📚 知识库 JSON
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第②步中AI可引用的风格/色调/构图/光照等关键词库</span>
+          </label>
+          <div style="font-size:10px;color:var(--t3);margin-bottom:4px">格式：{"分类":[{"e":"英文","z":"中文"},...],...}</div>
+          <textarea class="ft" id="sp_kb" rows="10" style="font-size:11px;font-family:var(--fm)"></textarea>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="ft2">
+  图片设计工具：<a href="https://ai.studio/apps/drive/1oQjlGfoj-er9msOhHj9DGNEAl9D6ZpIb?fullscreenApplet=true" target="_blank">点击进入 →</a>
+  · Powered by Gemini & Nano Banana · Designed by Aiden_Argents
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// KNOWLEDGE BASE (987 entries from AI图片提示词宝典)
+// 替换方法: 用完整JSON替换此对象
+// ═══════════════════════════════════════════════════════════════
+const KB={"风格":[{"e":"Pre-Raphaelite Brotherhood","z":"前拉斐尔派兄弟会"},{"e":"Surrealism","z":"超现实主义"},{"e":"Traditional culture","z":"传统文化"},{"e":"photoreal","z":"真实感"},{"e":"Hollywood-style","z":"电影风格"},{"e":"Suprematism","z":"至高主义"},{"e":"Japanese Ukiyo-e","z":"浮世绘"},{"e":"national geographic","z":"国家地理"},{"e":"Post-Impressionism","z":"后印象派"},{"e":"hyperrealism","z":"超写实主义"},{"e":"En plein air","z":"野外写生"},{"e":"Abstract","z":"抽象风"},{"e":"Game-style","z":"游戏风格"},{"e":"botw","z":"旷野之息"},{"e":"cinematic","z":"电影般的"},{"e":"poster of japanese graphic design","z":"日本海报风格"},{"e":"Cinematography style","z":"电影摄影风格"},{"e":"Gothic gloomy realism","z":"写实主义"},{"e":"Warframe","z":"星际战甲"},{"e":"Ashcan School","z":"垃圾桶派"},{"e":"architectural sketching","z":"建筑素描"},{"e":"Miniature movie style","z":"微缩模型电影风格"},{"e":"Anime","z":"日本动画片"},{"e":"Science fiction","z":"科幻"},{"e":"Pokémon","z":"宝可梦"},{"e":"Miyazaki Hayao style","z":"宫崎骏风格"},{"e":"APEX","z":"Apex英雄"},{"e":"film photography","z":"剪辑"},{"e":"symmetrical portrait","z":"对称肖像"},{"e":"Soejima Shigenori","z":"副岛成记"},{"e":"Magic realism","z":"魔幻现实"},{"e":"clear facial features","z":"清晰的面部特征"},{"e":"montage","z":"蒙太奇"},{"e":"The Elder Scrolls","z":"上古卷轴"},{"e":"Ethnic Art","z":"民族艺术"},{"e":"subsurface scattering","z":"次表面散射"},{"e":"black and white","z":"黑白"},{"e":"Neoclassical","z":"新古典主义"},{"e":"Disney-style","z":"迪士尼风"},{"e":"Flat design","z":"扁平化设计"},{"e":"Fashion","z":"时尚"},{"e":"Yamada Akihiro","z":"山田章博"},{"e":"risograph","z":"riso印刷风"},{"e":"From Software","z":"魂系游戏"},{"e":"Gothic-style","z":"哥特式"},{"e":"Color Field painting","z":"色块画"},{"e":"Material Design","z":"材质设计"},{"e":"Modern-style","z":"现代风格"},{"e":"roCoCo style","z":"洛可可风格"},{"e":"Ghibli Studio","z":"吉卜力风格"},{"e":"Ancient Chinese style","z":"中国古风风格"},{"e":"full details","z":"哥特式黑暗"},{"e":"CG style","z":"CG风格"},{"e":"children's picture book","z":"儿童绘本"},{"e":"jojo's bizarre adventure","z":"Jojo的奇妙冒险"},{"e":"manga","z":"漫画"},{"e":"paper sculptures","z":"纸雕塑风格"},{"e":"Pearl Milk Tea stvle","z":"珍珠奶茶风格"},{"e":"Fauvism","z":"野兽派"},{"e":"psychadelic art style","z":"迷幻艺术风格"},{"e":"retro vintage comic style","z":"复古老漫画风格"},{"e":"Motion design","z":"运动设计"},{"e":"cookierun kingdom and","z":"跑跑姜饼人"},{"e":"interior design","z":"室内设计"},{"e":"Japanese-style","z":"日本风格"},{"e":"blind box toy style","z":"盲盒玩具风格"},{"e":"Long shadow design","z":"长阴影设计"},{"e":"Eco-friendly-style","z":"环保清新风格"},{"e":"Social realism","z":"社会现实主义风格"},{"e":"Minimalist","z":"极简主义"},{"e":"League of legends","z":"英雄联盟"},{"e":"bioluminrscent","z":"生物发光效果"},{"e":"cutaway","z":"剖面图"},{"e":"Skeuomorphism","z":"拟物化设计"},{"e":"made of chrome","z":"镀铬效果"},{"e":"Country style","z":"乡村风格"},{"e":"splash","z":"飞溅效果"},{"e":"brutalist","z":"粗犷主义"},{"e":"ACGN","z":"二次元"},{"e":"Constructivist","z":"建构主义"},{"e":"Romanticism","z":"浪漫主义"},{"e":"Minimalism","z":"极简主义"},{"e":"weapon design","z":"武器设计"},{"e":"concept art","z":"概念艺术"},{"e":"American propaganda poster","z":"美国宣传海报"},{"e":"Immersive design","z":"沉浸式设计"},{"e":"Tonalism","z":"色调主义"},{"e":"American Country","z":"美式乡村风格"},{"e":"Makoto Shinkai","z":"新海诚"},{"e":"character concept art","z":"角色概念艺术"},{"e":"Industrial","z":"工业风格"},{"e":"painting","z":"油画"},{"e":"Mystic fantasy","z":"神秘幻想"},{"e":"Carving Art","z":"雕刻艺术风格"},{"e":"Acrylic painting","z":"丙烯画"},{"e":"Carl Larsson","z":"卡尔·拉尔松风格"},{"e":"Lolita","z":"洛丽塔风格"},{"e":"Handwriting style","z":"手写风格"},{"e":"Contemporary art","z":"当代艺术"},{"e":"stock illustration style","z":"童话故事书插图风格"},{"e":"Genre painting","z":"风俗画"},{"e":"Modern Minimalist","z":"现代简约风格"},{"e":"New Print Style","z":"新印刷风格"},{"e":"volumetric lihht","z":"体积法"},{"e":"Line art","z":"线条艺术"},{"e":"Mannerism","z":"后期文艺复兴"},{"e":"french art","z":"法国艺术"},{"e":"Prairie","z":"草原风格"},{"e":"Action painting","z":"行动绘画"},{"e":"Bauhaus","z":"包豪斯"},{"e":"Modern Luxury","z":"现代奢华风格"},{"e":"Pop art","z":"波普艺术"},{"e":"Munashichi","z":"六七质"},{"e":"ApocalypseRuins","z":"末日废墟"},{"e":"Chiaroscuro","z":"明暗对照法"},{"e":"by Alfons Mucha","z":"由阿尔方斯·穆卡制作"},{"e":"Cyanotype","z":"蓝晒"},{"e":"Hand-drawn style","z":"手绘风格"},{"e":"Emiliano Ponzi style","z":"埃米利亚诺·庞齐"},{"e":"Cartoon","z":"卡通"},{"e":"Eric Carle","z":"埃里克·卡尔"},{"e":"Filament","z":"丝状物"},{"e":"Pixel art","z":"像素风"},{"e":"Glitch Art","z":"故障艺术"},{"e":"Dutch Golden Age painting","z":"荷兰黄金时期绘画"},{"e":"Herge","z":"赫奇"},{"e":"Fairy tale style","z":"童话风格"},{"e":"Jon Klassen","z":"克拉森"},{"e":"doodle","z":"涂鸦"},{"e":"Leonardo Da Vinci","z":"达芬奇"},{"e":"Lens Flare","z":"镜头眩光"},{"e":"Light-electric Style","z":"光电风格"},{"e":"Vintage","z":"古着"},{"e":"Northern Renaissance","z":"北方文艺复兴"},{"e":"Makoto Shinkai's style","z":"新海诚风格"},{"e":"Vincent Van Gogh","z":"梵高"},{"e":"Victorian","z":"维多利亚时代"},{"e":"Roger Deakins","z":"罗杰·迪金斯"},{"e":"Mechanical Style","z":"机械风格"},{"e":"Emmanuel Lubezki","z":"曼努埃尔·阿尔贝托·克鲁"},{"e":"Hoyte van Hoytema","z":"霍华德·霍金斯"},{"e":"Robert Elswit","z":"罗伯特·艾尔斯沃思"},{"e":"Baroque","z":"巴洛克吋期"},{"e":"Mycelium","z":"菌丝体"},{"e":"Christopher Doyle","z":"克里斯托弗·道尔"},{"e":"Wally Pfister","z":"韦利·菲斯特"},{"e":"Paul Pique","z":"保罗·皮克"},{"e":"Walter Carvalho","z":"瓦尔特·卡塞尔"},{"e":"Impressionism","z":"印象派"},{"e":"Janusz Kaminski","z":"雅努斯·卡明斯基"},{"e":"Richard Scarry","z":"保罗·皮奎里查德·斯卡里"},{"e":"Mihai Malaimare Jr","z":"梅尔·兹格勒"},{"e":"Peter Suschitzky","z":"彼得·苏斯奇兹"},{"e":"Dadaism","z":"达达主义"},{"e":"Rob Gonsalves","z":"罗伯·冈萨尔夫斯"},{"e":"Jules O'Loughlin","z":"朱利安·洛夫里尼尔"},{"e":"Barry Ackroyd","z":"巴里·阿克罗伊"},{"e":"Bruno Delbonnel","z":"布鲁诺·德尔邦奈尔"},{"e":"StarWar","z":"罗伯·冈萨尔夫斯"},{"e":"Joseph LaShelle","z":"约瑟夫·拉·沙尔"},{"e":"Swirling","z":"打旋"},{"e":"Richard Kline","z":"理查德·克里特"},{"e":"Francis Kenny","z":"弗朗西斯·肯尼"},{"e":"Synthwave","z":"合成器浪潮"},{"e":"Matthew Libatique","z":"马修·里博特"},{"e":"Tracie Grimwood","z":"打旋"},{"e":"Bobby Bukowski","z":"鲍比·布科斯基"},{"e":"Ukiyo-estyle","z":"浮世绘风格"},{"e":"Vyacheslav Ivanov","z":"弗拉基米尔·伊凡诺夫"},{"e":"year 2000 kilo","z":"千禧风"},{"e":"18-19th century-style","z":"古典风格"},{"e":"Bruno Coulais","z":"布鲁诺·科瓦洛夫"},{"e":"Art Nouveau","z":"新艺术风格"},{"e":"Robert Richardson","z":"罗伯特·理查森"},{"e":"retro dark vintage","z":"复古暗复古"},{"e":"Rococo","z":"新艺术"},{"e":"futuristic","z":"未来主义"},{"e":"Renaissance","z":"文艺复兴"},{"e":"Voynich manuscript","z":"伏尼契手稿"},{"e":"Cubism","z":"立体派"},{"e":"CGSociety","z":"梦工厂"},{"e":"Forest","z":"森林风格"},{"e":"Tradition Chinese Ink Painting","z":"东方山水画"},{"e":"Ocean","z":"海洋风格"},{"e":"DreamWorks Pictures","z":"梦工厂黜业"},{"e":"Chinese-style","z":"中式风格"},{"e":"Ethnic","z":"民族风格"},{"e":"Steampunk","z":"蒸汽朋克"},{"e":"Art Deco Style","z":"艺术装饰风格"},{"e":"ink illustration","z":"水墨插图"},{"e":"Stained glass window","z":"彩色玻璃窗"},{"e":"ink render","z":"黑水渲染"},{"e":"Magic Realism Style","z":"魔幻现实主义风格"},{"e":"pointillism","z":"点彩派"},{"e":"Graphic ink render","z":"图形墨迹渲染"},{"e":"book page","z":"书页"},{"e":"Claude Monet","z":"克劳德莫奈"},{"e":"Abstract Art","z":"抽象表现主义"},{"e":"New Chinese Style","z":"新中式风格"},{"e":"realistic","z":"真实的"},{"e":"Pixar","z":"皮克斯"},{"e":"quilted art","z":"绗缝艺术"},{"e":"Ink Wash Painting Style","z":"水墨风格"},{"e":"partial anatomy","z":"局部解剖"},{"e":"Pulp Noir","z":"黑白电影时期"},{"e":"3D","z":"3D风格"},{"e":"color ink on paper","z":"纸本彩色墨水"},{"e":"Futuristic Style","z":"未来主义风格"},{"e":"90s video game","z":"90年代电视游戏"},{"e":"sophisticated","z":"复杂的"}],"色调":[{"e":"Maple Red","z":"枫叶红色系"},{"e":"Pop Art","z":"波普艺术色系"},{"e":"Mountain Blue","z":"雪山蓝色系"},{"e":"black background centered","z":"黑色背景居中"},{"e":"white and green tones","z":"白色和绿色调"},{"e":"red and black tones","z":"红色和黑色调"},{"e":"Muted Tones","z":"莫兰迪色系"},{"e":"yellow and black tones","z":"黄色和黑色调"},{"e":"Gold and silver tones","z":"金色和银色调"},{"e":"Titanium","z":"钛金属色系"},{"e":"neon shades","z":"霓虹色调"},{"e":"red","z":"红"},{"e":"Fresh Fruits","z":"鲜果色系"},{"e":"white","z":"白"},{"e":"black","z":"黑"},{"e":"Minimalist Black and White","z":"极简黑白色系"},{"e":"green","z":"绿"},{"e":"Warm Brown","z":"温暖棕色系"},{"e":"yellow","z":"黄"},{"e":"blue","z":"蓝"},{"e":"Soft Pink","z":"柔和粉色系"},{"e":"Fashionable Gray","z":"时尚灰色系"},{"e":"purple","z":"紫"},{"e":"Bright Orange","z":"亮丽橙色系"},{"e":"gray","z":"灰"},{"e":"Ivory White","z":"象牙白色系"},{"e":"brown","z":"棕"},{"e":"Natural Green","z":"自然绿色系"},{"e":"tan","z":"褐"},{"e":"Luxurious Gold","z":"奢华金色系"},{"e":"Black and white gray system","z":"黑白灰色系"},{"e":"orange","z":"橙"},{"e":"Steady Blue","z":"稳重蓝色系"},{"e":"Black background centered","z":"黑色背景为中心"},{"e":"Classic Red Black and White","z":"经典红黑白色系"},{"e":"laser candy paper color","z":"镭射糖果纸色"},{"e":"Chinese Red","z":"中国红"},{"e":"Coral Orange","z":"珊瑚橙色系"},{"e":"Whopper","z":"巨无霸色系"},{"e":"Dunhuang color system","z":"敦煌色系"},{"e":"Macarons","z":"马卡龙色"},{"e":"Hermes Orange","z":"爱马仕橙"},{"e":"Autumn Brown","z":"秋日棕色系"},{"e":"Morandi color","z":"莫兰迪色"},{"e":"High purity tone","z":"高纯度色调"},{"e":"Denim Blue","z":"丹宁蓝色系"},{"e":"Klein Blue","z":"克莱因蓝"},{"e":"Violet Purple","z":"紫罗兰紫色系"},{"e":"shine","z":"发光"},{"e":"Low purity tone","z":"低纯度色调"},{"e":"star flash","z":"星闪"},{"e":"Lemon Yellow","z":"柠檬黄色系"},{"e":"Malta Blue","z":"马耳他蓝"},{"e":"fluorescence","z":"荧光"},{"e":"Crystal Blue","z":"水晶蓝色系"},{"e":"holy light","z":"圣光"},{"e":"Mars Green","z":"马尔斯绿"},{"e":"reflections transparent iridescent colors","z":"反射透明彩虹色"},{"e":"Matisse color scheme","z":"马蒂斯色系"},{"e":"Candy","z":"糖果色系"},{"e":"Memphis color scheme","z":"孟菲斯色系"},{"e":"Carrot Red","z":"萝卜红色系"},{"e":"Coral","z":"珊瑚色系"},{"e":"Lavender","z":"紫罗兰色系"},{"e":"Mondrian color scheme","z":"蒙德里安色系"},{"e":"Emerald","z":"绿野仙踪色系"},{"e":"Rose Gold","z":"玫瑰金色系"},{"e":"Multi color matching","z":"多色彩搭配"},{"e":"Sky Blue","z":"浅蓝色系"},{"e":"Cobalt Blue","z":"钴蓝色系"},{"e":"Peacock Green","z":"孔雀绿"},{"e":"Graphite Black","z":"石墨黑色系"},{"e":"Tixiang Red","z":"提香红"},{"e":"Turquoise color","z":"只此青绿"},{"e":"Burgundy","z":"酒红色系"},{"e":"contrast ratio","z":"对比度"},{"e":"Turquoise","z":"土耳其蓝色系"},{"e":"tiffany blue","z":"蒂芙尼蓝"},{"e":"Mint Green","z":"薄荷绿色系"},{"e":"tints","z":"淡色调"},{"e":"Sunset Gradient","z":"日暮色系"}],"构图":[{"e":"polar opposites","z":"两极对称"},{"e":"zoom layer","z":"人物立绘缩放(剪影)图层"},{"e":"Nonlinear composition","z":"非线性构图"},{"e":"lens flare","z":"镜头光晕"},{"e":"overexposure","z":"过曝"},{"e":"Saturated composition","z":"饱和构图"},{"e":"bokeh","z":"背景散焦"},{"e":"caustics","z":"焦散"},{"e":"Point of view composition","z":"视角构图"},{"e":"Canon","z":"佳能"},{"e":"Fujifilm","z":"富士"},{"e":"Hasselblad","z":"哈数"},{"e":"Cut out composition","z":"剪影构图"},{"e":"Sony","z":"FE索尼镜头"},{"e":"Repetition composition","z":"重复构图"},{"e":"Sony FE GM","z":"索尼大师镜头"},{"e":"Focal point composition","z":"焦点构图"},{"e":"S-shaped composition","z":"S形构图"},{"e":"Horizontal composition","z":"横向构图"},{"e":"Contrast composition","z":"对比构图"},{"e":"Mandelbrot","z":"曼德博集合"},{"e":"Overlapping composition","z":"重叠构图"},{"e":"Isolation composition","z":"孤立构图"},{"e":"Wide view","z":"宽景"},{"e":"Bird view","z":"鸟瞰"},{"e":"Radial composition","z":"径向构图"},{"e":"Top view","z":"俯视"},{"e":"Split complementary composition","z":"分割互补构图"},{"e":"Up view","z":"仰视"},{"e":"Front view","z":"正面"},{"e":"Negative space composition","z":"负空间构图"},{"e":"Collage composition","z":"拼贴构图"},{"e":"Headshot","z":"头部特写"},{"e":"Depth","z":"深度"},{"e":"Ultrawide shot","z":"超广角"},{"e":"Texture","z":"纹理"},{"e":"Extreme closeup","z":"极端特写"},{"e":"afterimage","z":"残像"},{"e":"outside border","z":"一部分画到了背景框外面"},{"e":"Macro shot","z":"微距"},{"e":"fading border","z":"褪色边框"},{"e":"An expansive view of","z":"景观"},{"e":"rounded corners","z":"背景或画框是圆角"},{"e":"Portrait","z":"肖像"},{"e":"head out of frame","z":"头部脱框"},{"e":"Full body","z":"全身"},{"e":"isometric","z":"等轴"},{"e":"letterboxed","z":"宽银幕格式"},{"e":"Busts","z":"半身像"},{"e":"lineup","z":"一排人"},{"e":"Close up","z":"特写"},{"e":"mosaic art","z":"马赛克艺术"},{"e":"Profile","z":"侧面"},{"e":"Symmetrical body","z":"对称身体"},{"e":"Symmetrical face","z":"对称面孔"},{"e":"Rule of Thirds composition","z":"三分法构图"},{"e":"Symmetrical composition","z":"对称构图"},{"e":"Golden Ratio composition","z":"黄金分割构图"},{"e":"Asymmetrical composition","z":"非对称构图"},{"e":"partially underwater shot","z":"部分水下拍摄"},{"e":"Diagonal composition","z":"对角线构图"},{"e":"Dynamic symmetry composition","z":"动态对称构图"},{"e":"Juxtaposition composition","z":"并列构图"},{"e":"Converging lines composition","z":"汇聚线条构图"},{"e":"Vanishing point composition","z":"消失点构图"},{"e":"Framing composition","z":"画框构图"}],"光照":[{"e":"Soft illumination/ soft lights","z":"柔和光"},{"e":"Laser beam effect","z":"激光束效果"},{"e":"Fluorescent lighting","z":"荧光灯"},{"e":"Dim light effect","z":"暗光效果"},{"e":"Rays of shimmering light/ morning light","z":"耀眼的光线/晨光"},{"e":"Glowing text","z":"发光文本"},{"e":"Crepuscular ray","z":"暮光之光"},{"e":"Outer space view","z":"外太空视角"},{"e":"Starry sky effect","z":"星空效果"},{"e":"Cinematic lighting/ Dramatic lighting","z":"电影灯光"},{"e":"Bisexual lighting","z":"双面性灯光"},{"e":"Global illuminations","z":"全局照明"},{"e":"Neon cold lighting","z":"冷光霓虹灯"},{"e":"Orb light","z":"球形灯光"},{"e":"Rembrandt lighting","z":"雷姆布兰特灯光"},{"e":"Hard lighting","z":"强烈光线"},{"e":"Split lighting","z":"分光灯光"},{"e":"Studio lighting","z":"工作室灯光"},{"e":"Front lighting","z":"正面照明"},{"e":"Natural light","z":"自然光"},{"e":"chiaroscuro","z":"明暗对比"},{"e":"Indoor lighting","z":"室内照明"},{"e":"Back lighting","z":"背景照明"},{"e":"depth of field","z":"背景虚化"},{"e":"dithering","z":"抖动"},{"e":"drop shadow","z":"立绘阴影"},{"e":"Outdoor lighting","z":"室外照明"},{"e":"HDR lighting","z":"高动态范围照明"},{"e":"film grain","z":"胶片颗粒感/老电影滤镜"},{"e":"cinematic lighting","z":"电影光效"},{"e":"Clean background trending","z":"干净的背景"},{"e":"Real-time lighting","z":"实时照明"},{"e":"Fujicolor","z":"富士色彩"},{"e":"Dramatic lighting","z":"戏剧性灯光"},{"e":"halftone","z":"半调风格"},{"e":"Rim lighting","z":"边缘照明"},{"e":"Directional light","z":"定向光"},{"e":"motion blur","z":"动态模糊"},{"e":"image fill","z":"图像填充"},{"e":"chromatic aberration","z":"色差"},{"e":"motion lines","z":"体现运动的线"},{"e":"sparkle","z":"闪耀效果"},{"e":"Point light","z":"点光源"},{"e":"multiple monochrome","z":"多重单色"},{"e":"jpeg artifacts","z":"JPEG压缩失真"},{"e":"Spotlight","z":"聚光灯"},{"e":"blurry","z":"模糊的"},{"e":"Area light","z":"区域灯光"},{"e":"optical illusion","z":"视错觉"},{"e":"Ambient light","z":"环境光"},{"e":"glowing light","z":"荧光"},{"e":"anaglyph","z":"互补色"},{"e":"god rays","z":"神圣感顶光"},{"e":"Shadow light","z":"阴影光"},{"e":"Sun light","z":"太阳光"},{"e":"stereogram","z":"立体画"},{"e":"Ring light","z":"环形灯"},{"e":"scanlines","z":"扫描线"},{"e":"silhouette","z":"剪影"},{"e":"ray tracing","z":"光线追踪"},{"e":"speed lines","z":"速度线"},{"e":"Texture light","z":"纹理灯"},{"e":"vignetting","z":"晕影"},{"e":"reflection light","z":"反射光"},{"e":"Emissive material","z":"自发光材质"},{"e":"backlighting","z":"逆光"},{"e":"blending","z":"混合"},{"e":"bloom","z":"盛开"},{"e":"Spot light","z":"聚光灯"},{"e":"chromatic aberration abuse","z":"色差滥用"},{"e":"Hemisphere light","z":"半球灯光"},{"e":"Panel light","z":"面板灯"},{"e":"Strobe light","z":"频闪灯"},{"e":"Neon light","z":"霓虹灯"},{"e":"Volumetric lighting","z":"体积光"},{"e":"Hair glow","z":"头发发光效果"},{"e":"Cold light","z":"冷色光"},{"e":"Arc sparks","z":"电弧火花"},{"e":"Mood lighting","z":"情境灯光"},{"e":"Rainbow halo","z":"彩虹光环"},{"e":"Bright","z":"明亮"},{"e":"Glow in the dark","z":"夜光效果"}],"视角":[{"e":"Over the shoulder","z":"肩膀视角"},{"e":"Medium Long Shot","z":"中远景"},{"e":"Fisheye lens","z":"鱼眼视角"},{"e":"Long Shot","z":"远景"},{"e":"Macro lens","z":"微距视角"},{"e":"Over the Shoulder Shot","z":"过肩景"},{"e":"Reverse angle","z":"反转视角"},{"e":"Loose Shot","z":"松散景"},{"e":"Top View","z":"顶视图"},{"e":"Tight Shot","z":"近距离景"},{"e":"Scenery Shot","z":"风景照"},{"e":"Tilt-Shift","z":"倾斜移位"},{"e":"Bokeh","z":"背景虚化"},{"e":"Foreground","z":"前景"},{"e":"Satelite View","z":"卫星视图"},{"e":"Background","z":"背景"},{"e":"Bottom View","z":"底视图"},{"e":"Product View","z":"产品视图"},{"e":"Full Length Shot","z":"全身照(FLS)"},{"e":"Extreme Closeup View","z":"极端特写视图"},{"e":"Detail Shot","z":"大特写"},{"e":"Look Up","z":"仰视"},{"e":"Waist Shot","z":"腰部以上"},{"e":"Knee Shot","z":"膝盖以上"},{"e":"Cinematic Shot","z":"电影镜头"},{"e":"First-Person View","z":"第一人称视角"},{"e":"Extra Long Shot","z":"人在远方"},{"e":"In Focus","z":"焦点对准"},{"e":"Big Close-Up","z":"头部以上"},{"e":"Isometric View","z":"等距视图"},{"e":"Wide- Angle View","z":"广角镜头"},{"e":"Face Shot","z":"脸部特写"},{"e":"Closeup View","z":"特写视图"},{"e":"Free camera","z":"自由视角"},{"e":"High Angle View","z":"高角度视图"},{"e":"Fixed camera","z":"固定视角"},{"e":"pov","z":"主观视角"},{"e":"Arbitrary view","z":"随意视角"},{"e":"Backlight Style","z":"逆光摄影风格"},{"e":"Microscopic View","z":"微观"},{"e":"Low Angle Shot","z":"低角度视角"},{"e":"Top-down perspective","z":"俯视视角"},{"e":"multiple views","z":"多视图"},{"e":"Overhead","z":"俯拍视角"},{"e":"Side-scrolling perspective","z":"侧面视角"},{"e":"cut-in","z":"插入画面"},{"e":"Eye-level","z":"常规视角"},{"e":"Super Side Angle","z":"超侧角"},{"e":"blurry foreground","z":"前景模糊"},{"e":"Dutch","z":"交错视角"},{"e":"Close-up view","z":"短距离视角"},{"e":"Third-Person Perspective","z":"第三人称视角"},{"e":"cowboy shot","z":"七分身镜头"},{"e":"Long-shot view","z":"远距离视角"},{"e":"Two-Point Perspective","z":"两点透视"},{"e":"hatching","z":"线影法(纹理)"},{"e":"vanishing point","z":"远景透视画法"},{"e":"Portrait","z":"肖像"},{"e":"from outside","z":"室外看向室内(的镜头)"},{"e":"from side","z":"角色的侧面"},{"e":"atmospheric perspective","z":"大气距离感"},{"e":"panorama","z":"全景"},{"e":"Elevation Perspective","z":"立面透视"},{"e":"rotated","z":"经过旋转的"},{"e":"upside-down","z":"倒挂的"},{"e":"Ultra Wide Shot","z":"超广角镜头"},{"e":"360 view","z":"360度视角"},{"e":"A Cross-Section View of","z":"(核桃)的横截面图"},{"e":"Dynamic","z":"运动视角"},{"e":"Front, Side, Rear View","z":"前视图、侧视图、后视图"},{"e":"Extreme Close-Up","z":"极限特写"},{"e":"Medium Close-Up","z":"中特写"},{"e":"Perspective","z":"透视视角"},{"e":"Simulated camera","z":"模拟摄影机"},{"e":"Medium Shot","z":"中景"},{"e":"Follow camera","z":"跟随视角"},{"e":"First-person perspective","z":"内视镜视角"}],"渲染":[{"e":"Ambient Occlusion","z":"环境光遮蔽"},{"e":"Anti-aliasing","z":"抗锯齿"},{"e":"Volume rendering","z":"体积渲染"},{"e":"Ray Tracing","z":"光线追踪"},{"e":"Ray Casting","z":"光线投射"},{"e":"Grid-based Ray Tracing","z":"格点光线追踪"},{"e":"Importance Sampling","z":"重要性采样"},{"e":"Monte Carlo Rendering","z":"Monte Carlo 渲染"},{"e":"Texture Mapping","z":"贴图映射"},{"e":"Environment Mapping","z":"环境贴图"},{"e":"Global Illumination","z":"全局光照"},{"e":"Subpixel Sampling","z":"亚像素采样"},{"e":"Redshift Renderer","z":"Redshift渲染器"},{"e":"Unreal Engine","z":"虛幻引擎"},{"e":"C4D Renderer","z":"C4D渲染器"},{"e":"Octane render","z":"OC渲染"},{"e":"Blender Renderer","z":"Blender渲染器"},{"e":"Architectural visualisation","z":"建筑渲染"},{"e":"Corona Render","z":"室内渣染"},{"e":"Mental Ray","z":"Mental Ray渲染器"},{"e":"V-Ray","z":"v射线"},{"e":"Indigo Renderer","z":"靛蓝渲染器"},{"e":"Virtual engine","z":"虚拟引擎"},{"e":"3D rendering","z":"3D渲染"},{"e":"FStorm Renderer","z":"FStorm渲染器"},{"e":"Hyperrealism","z":"超真实"},{"e":"Corona Renderer","z":"Corona渲染器"}],"精度":[{"e":"High Resolution","z":"高分辨率"},{"e":"8K Resolution","z":"8K分辨率"},{"e":"16K Resolution","z":"16K分辨率"},{"e":"Ultra HD","z":"超高清"},{"e":"Super Clarity","z":"超清晰"},{"e":"High Definition","z":"高清"},{"e":"Ultra-high Resolution","z":"超高分辨率"},{"e":"Ultra HD HDR","z":"超高清HDR"},{"e":"Ultra-high Clarity","z":"超高清晰度"},{"e":"Ultra-high Definition","z":"超高清晰"},{"e":"Ultra HD Picture","z":"超高清画面"},{"e":"High Detail","z":"高细节"},{"e":"Hyper Quality","z":"高品质"}],"场景":[{"e":"Whimsically","z":"异想天开"},{"e":"Cave","z":"洞穴"},{"e":"Bedroom","z":"卧室"},{"e":"Grassland","z":"大草原"},{"e":"Dune","z":"沙滩"},{"e":"Lava cave","z":"熔岩洞穴"},{"e":"Rainforest","z":"热带雨林"},{"e":"Farmland","z":"农田"},{"e":"Ruins","z":"废墟"},{"e":"City","z":"城市"},{"e":"Deserted city buildings","z":"废弃城市建筑群"},{"e":"Near future city","z":"近未来都市"},{"e":"Marshland","z":"沼泽地"},{"e":"Street scenery","z":"街道风景"},{"e":"Canyon","z":"峡谷"},{"e":"Futuristicpark","z":"未来公园"},{"e":"GiantArchitecture","z":"巨大建筑"},{"e":"GiantMachines","z":"巨大机器"},{"e":"GothicCathedral","z":"哥特式大教堂"},{"e":"Hauntedforest","z":"鬼屋森林"},{"e":"Seabed","z":"海底"},{"e":"Hauntedmansion","z":"幽灵庄园"},{"e":"Alchemy Laboratory","z":"炼金室"},{"e":"Estuary","z":"河口"},{"e":"Industrial cityscape","z":"工业城市"},{"e":"postapocalyptic","z":"后启示录、未日后"},{"e":"Rain","z":"雨天"},{"e":"Inthemorningmist","z":"在晨雾中"},{"e":"rain","z":"雨天"},{"e":"Lcekingdom","z":"冰雪王国"},{"e":"In the morning mist","z":"在晨雾中"},{"e":"Full of sunlight","z":"充满阳光"},{"e":"LunarLandscape","z":"月球景观"},{"e":"Iceberg","z":"冰山"},{"e":"Lunar Landscape","z":"月球地貌"},{"e":"Galaxy","z":"银河"},{"e":"Lunarcolony","z":"月球殖民地"},{"e":"Cloud forest","z":"雨水林"},{"e":"MagicalForest","z":"魔幻森林"},{"e":"Beach","z":"海滩"},{"e":"Underwater cave","z":"时光穿越城市"},{"e":"MagicalKingdom","z":"魔法王国"},{"e":"Orchard","z":"果园"},{"e":"MarsExploration","z":"火星探险"},{"e":"Nebula","z":"星云"},{"e":"Medievalcastle","z":"中世纪城堡"},{"e":"Mount Everest","z":"珠穆朗玛峰"},{"e":"Mystic mountain","z":"神秘山脉"},{"e":"Meadow","z":"草原草地"},{"e":"MysticalForest","z":"神秘森林"},{"e":"Wormhole","z":"时空隧道"},{"e":"Desert","z":"沙漠"},{"e":"Mystictemple","z":"神秘寺庙"},{"e":"Ghost town","z":"幽灵镇"},{"e":"Sky garden","z":"空中花园"},{"e":"MythicalWorld","z":"神话世界"},{"e":"Neoncity","z":"霓虹城市"},{"e":"OuterSpace","z":"外太空"},{"e":"Alien planet","z":"外星球"},{"e":"ALchemyLaboratory","z":"炼金室"},{"e":"City park","z":"城市公园"},{"e":"Pirateisland","z":"海盗岛屿"},{"e":"Robotfactory","z":"机器人工厂"},{"e":"Cyberspace","z":"赛博空间"},{"e":"ALienplanet","z":"外星球"},{"e":"Forest","z":"森林"},{"e":"Overgrown nature","z":"杂草丛生"},{"e":"RomanticTown","z":"浪漫小镇"},{"e":"AncientTemple","z":"古代神庙"},{"e":"Mountain","z":"山脉"},{"e":"Ancientruins","z":"古代遗迹"},{"e":"Skyisland","z":"天空岛屿"},{"e":"River","z":"河流"},{"e":"Apocalypticcity","z":"世界末日城市"},{"e":"AuroraBorealis","z":"极光北极"},{"e":"Spaceship","z":"宇宙飞船"},{"e":"Cliff","z":"悬崖峭壁"},{"e":"Dreamland","z":"梦境"},{"e":"Spacestation","z":"太空站"},{"e":"Crystalpalace","z":"水晶宫殿"},{"e":"Starrynightsky","z":"星空夜景"},{"e":"SteampunkFactory","z":"蒸汽朋克工厂"},{"e":"CyberpunkALLey","z":"暴走机甲小巷"},{"e":"Cyberpunkstreet","z":"赛博克街道"},{"e":"SunkenShipwreck","z":"沉船遗迹"},{"e":"Lake","z":"湖泊"},{"e":"DarkForest","z":"黑暗森林"},{"e":"Desertoasis","z":"沙漠绿洲"},{"e":"SurrealDreamland","z":"超现实梦境"},{"e":"DesolateDesert","z":"荒漠孤烟"},{"e":"Technological City","z":"科技城市"},{"e":"Black hole","z":"黑洞"},{"e":"DigitalUniverse","z":"数字宇宙"},{"e":"Timetravelcityscape","z":"时光穿越城市"},{"e":"Digitalcityscape","z":"数字城市"},{"e":"Tropicalparadise","z":"热带天堂"},{"e":"Dreamyclouds","z":"梦幻云彩"},{"e":"Dystopianfuture","z":"反乌托邦未来"},{"e":"Underwater world","z":"水下世界"},{"e":"EnchantedForest","z":"魔法森林"},{"e":"EnchantedGarden","z":"迷人花园"},{"e":"Underworld","z":"冥界"},{"e":"Extraterrestrial Landscape","z":"外星地貌"},{"e":"Universe","z":"数字宇宙"},{"e":"Otherworld","z":"灵异空间"},{"e":"Fantasyvillage","z":"奇幻村庄"},{"e":"VolcanicEruption","z":"火山喷发"},{"e":"FuturisticRobots","z":"未来机器人"},{"e":"dungeon","z":"黑暗地牢"},{"e":"Futuristic Laboratory","z":"未来实验室"},{"e":"Coral reef","z":"珊瑚礁"},{"e":"fullofsunLight","z":"充满阳光"},{"e":"Enchanted forest","z":"奇幻森林"},{"e":"galaxy","z":"黑暗地牢"},{"e":"Futuristic transportatio","z":"未来交通工具"},{"e":"madmax","z":"疯狂麦斯沙地风格"},{"e":"Fantasy","z":"幻想"},{"e":"Glacier","z":"冰川"},{"e":"nebula","z":"星云"},{"e":"overgrownnature","z":"杂草丛生的"},{"e":"Classroom","z":"教室"},{"e":"StarWars","z":"星球大战"},{"e":"Snowy mountain","z":"浪漫小镇"}],"细节":[{"e":"Flat","z":"平整的"},{"e":"Bold","z":"线条明显而突出的"},{"e":"Embossed","z":"具有浮雕感的"},{"e":"Precise","z":"精密的"},{"e":"Carved","z":"具有雕刻感的"},{"e":"Streamlined","z":"流线型的"},{"e":"Realistic Details","z":"逼真细节"},{"e":"Exquisite Restoration","z":"精致还原"},{"e":"Soft","z":"柔和的"},{"e":"Texture Details","z":"纹理细节"},{"e":"Curved","z":"弯曲的"},{"e":"Rich Details","z":"细节丰富"},{"e":"Fine Model","z":"精细模型"},{"e":"Graceful","z":"线条优美的"},{"e":"Perfect Details","z":"细节完美"},{"e":"Rough","z":"粗糙的"},{"e":"Complex Scenes","z":"复杂场景"},{"e":"Irregular","z":"不规则的"},{"e":"Realistic Restoration","z":"真实还原"},{"e":"Bulky","z":"粗大的"},{"e":"Sharp","z":"锋利的"},{"e":"Elaborate Depiction","z":"细节描绘"},{"e":"Angular","z":"多棱角的"},{"e":"Clear Presentation","z":"清晰呈现"},{"e":"Dynamic","z":"充满动感的"},{"e":"Minute Details","z":"细节纤毫"},{"e":"Beauty of Details","z":"细节之美"},{"e":"HD Details","z":"高清细节"},{"e":"Meticulous Details","z":"细节严谨"},{"e":"Uniform","z":"统一的"},{"e":"Detail Expression","z":"细节表现"},{"e":"Varied","z":"多样化的"},{"e":"Organic","z":"有机的"},{"e":"Polished","z":"光洁的"},{"e":"Subtle","z":"细微的"},{"e":"Slender","z":"纤细的"},{"e":"Thin","z":"细长的"},{"e":"Intricate","z":"线条细致的"},{"e":"Gentle","z":"线条流畅且柔和的"},{"e":"Elegant","z":"线条优美且流畅的"},{"e":"Delicately curved","z":"曲线细腻的"},{"e":"Smooth","z":"光滑的"},{"e":"Sinuous","z":"线条弯曲但流畅的"},{"e":"Exquisite","z":"线条优美且精细的"},{"e":"Textured","z":"有纹理的"},{"e":"Clear","z":"清晰的"},{"e":"Layered","z":"有层次感的"},{"e":"Delicate","z":"细腻的"},{"e":"Fine","z":"精细的"},{"e":"Organic pattern","z":"纹路自然的"}],"媒介":[{"e":"Blockprint","z":"印刷版面"},{"e":"Lino cut","z":"利诺剪裁"},{"e":"illustration","z":"插画"},{"e":"Vector","z":"向量图"},{"e":"oil painting","z":"油画"},{"e":"photography","z":"摄影"},{"e":"watercolor","z":"水彩"},{"e":"sketch","z":"素描"},{"e":"sculpture","z":"雕塑"},{"e":"ink painting","z":"水墨画"}],"大自然":[{"e":"Frost","z":"霜冻"},{"e":"Downpour","z":"暴雨"},{"e":"Starry sky","z":"星空"},{"e":"Aurora","z":"极光"},{"e":"Ice and snow","z":"冰雪"},{"e":"Spray","z":"浪花"},{"e":"Fire","z":"火"},{"e":"Sky","z":"天空"},{"e":"Storm","z":"暴风雨"},{"e":"Water surface","z":"水面"},{"e":"Smoke","z":"烟雾"},{"e":"Fog","z":"雾气"},{"e":"Rain drops","z":"雨滴"},{"e":"Snowflakes","z":"雪花"},{"e":"Sunrise and sunset","z":"日出和日落"},{"e":"Thunderstorm","z":"雷暴"},{"e":"Turbulence","z":"湍流"},{"e":"Waterfall","z":"瀑布"},{"e":"Ocean waves","z":"海浪"},{"e":"Lightning","z":"雷电"},{"e":"Volcanic eruption","z":"火山喷发"},{"e":"Volcano","z":"火山"},{"e":"Earthquake","z":"地震"},{"e":"Solar eclipse","z":"日食"},{"e":"Rainbow","z":"彩虹"},{"e":"Tide","z":"潮汐"},{"e":"Gale","z":"狂风"}],"材质":[{"e":"metallic texture","z":"金属质感"},{"e":"stone-like","z":"石质"},{"e":"pearlescent texture","z":"珠光质感"},{"e":"glass-like texture","z":"玻璃质感"},{"e":"leather-like texture","z":"皮革质感"},{"e":"cotton-like","z":"棉质"},{"e":"crystal-like texture","z":"水晶质感"},{"e":"plastic-like texture","z":"塑料质感"},{"e":"sandy texture","z":"沙质"},{"e":"Aluminum_alloy","z":"铝合金材质"},{"e":"Bismuth","z":"铋材质"},{"e":"Matte texture","z":"亚光质感"},{"e":"Brass","z":"黄铜"},{"e":"Bronze","z":"青铜"},{"e":"Carbon_Fibers","z":"碳纤维"},{"e":"filigree","z":"金银丝"},{"e":"Gold","z":"金材质"},{"e":"Silk texture","z":"绸缎质感"},{"e":"Metallic_Yarn","z":"金属沙县"},{"e":"Mohair","z":"马海毛"},{"e":"Silver","z":"银"},{"e":"Wool","z":"羊毛"},{"e":"Yarn","z":"纱线"},{"e":"Furry texture","z":"毛绒质感"},{"e":"Water ripple texture","z":"水波纹质感"},{"e":"Graphite texture","z":"石墨质感"},{"e":"Bamboo texture","z":"竹子质感"},{"e":"Ceramic texture","z":"陶瓷质感"},{"e":"Antique brass texture","z":"古铜质感"},{"e":"Brick Texture","z":"砖石质感"},{"e":"Paint Texture","z":"油漆质感"},{"e":"Chiffon Texture","z":"纱绸质感"},{"e":"Clay Texture","z":"粘土质感"}],"命令":[{"e":"--quality 1","z":"质量1"},{"e":"--ar 9:16","z":"高宽比9:16"},{"e":"--chaos 0","z":"多样性0"},{"e":"--seed","z":"种子"},{"e":"--chaos 50","z":"多样性50"},{"e":"--sameseed","z":"相似种子"},{"e":"–stop","z":"停止"},{"e":"--s 0","z":"风格化0"},{"e":"--s 500","z":"风格化500"},{"e":"--s 1000","z":"风格化1000"},{"e":"--iw","z":"图像权重"},{"e":"--uplight","z":"轻量放大器"},{"e":"--upbeta","z":"测试版放大器"},{"e":"--test","z":"测试模型"},{"e":"--testp","z":"摄影测试模型"},{"e":"--repeat 1","z":"重复1"},{"e":"--repeat 3","z":"重复3"},{"e":"--tile","z":"拼贴图"},{"e":"--beta","z":"使用beta测试算法。"},{"e":"--video","z":"保存演算过程视频"},{"e":"--upanime","z":"模型的默认升频–niji器"},{"e":"--creative","z":"和--test--testp结合着使用"},{"e":"--chaos 100","z":"多样性100"},{"e":"--no xxx","z":"负面"},{"e":"--version 4","z":"版本4"},{"e":"--quality .25","z":"质量.25"},{"e":"--version 5","z":"版本5"},{"e":"--niji 5","z":"版本niji"},{"e":"--ar 2:3","z":"宽高比2:3"},{"e":"--quality .5","z":"质量.5"},{"e":"--ar 16:9","z":"高宽比16:9"}],"名胜古迹":[{"e":"Roman Colosseum, Italy","z":"意大利罗马斗兽场"},{"e":"Yungang Grottoes","z":"云冈石窟"},{"e":"Windsor Castle, UK","z":"英国温莎城堡"},{"e":"Karnak Temple, Egypt","z":"埃及卡纳克神庙"},{"e":"Jiuzhaigou Valley","z":"九寨沟"},{"e":"Arc de Triomphe, Paris, France","z":"法国巴黎凯旋门"},{"e":"Empire State Building, USA","z":"美国帝国大厦"},{"e":"Roman Baths, Bath, UK","z":"英国巴斯罗马浴场"},{"e":"Tower Bridge, London, UK","z":"英国伦敦塔桥"},{"e":"Seville Cathedral, Spain","z":"西班牙塞维利亚大教堂"},{"e":"Lijiang Ancient Town","z":"丽江古城"},{"e":"Alhambra, Spain","z":"西班牙阿尔罕布拉宫"},{"e":"Liberty Island, USA","z":"美国自由岛"},{"e":"India Gate, India","z":"印度印度门"},{"e":"Florence Basilica of Santa Croce, Italy","z":"意大利佛罗伦萨圣十字大教堂"},{"e":"Wulingyuan Scenic Area","z":"武陵源风景名胜区"},{"e":"Matterhorn, Switzerland","z":"瑞士马特洪峰"},{"e":"Amber Fort, India","z":"印度琥珀堡"},{"e":"Ubud Palace, Bali, Indonesia","z":"印尼巴厘岛乌布皇宫"},{"e":"EiffelTower - Paris France","z":"埃菲尔铁塔- 法国巴黎罗"},{"e":"Great Barrier Reef, Australia","z":"澳大利亚大堡礁"},{"e":"Tokyo Tower, Japan","z":"日本东京塔"},{"e":"Abu Simbel Temples, Egypt","z":"埃及阿布辛贝神庙"},{"e":"Santorini, Greece","z":"希腊圣托里尼岛"},{"e":"Grand Palace, Bangkok, Thailand","z":"泰国曼谷大皇宫"},{"e":"Las Vegas Strip, USA","z":"美国拉斯维加斯赌城"},{"e":"Florence Cathedral, Italy","z":"意大利佛罗伦萨大教堂"},{"e":"Kinderdijk Windmills, Netherlands","z":"荷兰风车村"},{"e":"Hagia Sophia, Istanbul, Turkey","z":"土耳其圣索菲亚大教堂"},{"e":"Iguazu Falls, Brazil/Argentina","z":"巴西伊瓜苏大瀑布"},{"e":"Black Church, Brasov, Romania","z":"罗马尼亚布拉索夫黑教堂"},{"e":"Palace of Versailles, France","z":"法国凡尔赛宫"},{"e":"Temple of Heaven, Beijing, China","z":"中国天坛"},{"e":"Angkor Wat - Siem Reap, Cambodia","z":"吴哥窟-束埔寨退粒"},{"e":"The Grand Canyon","z":"大峡谷-美国亚利桑那州"},{"e":"The Acropolis","z":"雅典卫城-希腊雅典"},{"e":"The Burj Khalifa","z":"哈利法塔- 阿联酋迪拜"},{"e":"Niagara Falls","z":"尼亚加拉大瀑布"},{"e":"Petra - Jordan","z":"佩特拉-约旦"},{"e":"The Great Barrier Reef","z":"大堡礁- 澳大利亚"},{"e":"Ancient Egypt","z":"古埃及"},{"e":"ancient babylon","z":"古巴比伦"},{"e":"AncientIndia","z":"古印度"},{"e":"ancient China","z":"古中国"},{"e":"Great Wall","z":"长城"},{"e":"The Colosseum - Rome, ltaly","z":"罗马竞技场- 意大利罗马"},{"e":"Forbidden City","z":"故宫"},{"e":"The Great Wall of China","z":"长城-中国"},{"e":"Terracotta Warriors","z":"兵马俑"},{"e":"Machu Picchu - Peru","z":"马丘比丘- 秘鲁"},{"e":"Palaces of India","z":"印度宫殿"},{"e":"The Taj Mahal","z":"泰姬陵-印度阿格拉"},{"e":"Mount Vesuvius, Italy","z":"希腊梅地特拉尼火山"},{"e":"Stonehenge, UK","z":"英国巨石阵"},{"e":"West Lake","z":"西湖"},{"e":"The Pyramids of Giza","z":"金字塔-埃及吉萨"},{"e":"St. Petersburg, Russia","z":"俄罗斯圣彼得堡彼得堡大教堂"},{"e":"Milan Cathedral, Italy","z":"意大利米兰大教堂"},{"e":"National Forest Park","z":"张家界国家森林公园"},{"e":"Mount Fuji, Japan","z":"日本富士山"},{"e":"Golden Temple, Amritsar, India","z":"印度金寺"},{"e":"Mount Huangshan","z":"黄山"},{"e":"The Statue of Liberty - New York City, USA","z":"自由女神像-美国纽约市"},{"e":"Sydney Tower, Australia","z":"澳大利亚悉尼塔"},{"e":"Big Ben, United Kingdom","z":"英国大本钟"},{"e":"Jiuzhaigou National Park","z":"九寨沟国家公园"},{"e":"The Sydney Opera House - Sydney, Australia","z":"悉尼歌剧院- 澳大利亚悉尼"},{"e":"Sagrada Familia, Spain","z":"西班牙巴塞罗那圣家堂"},{"e":"Cave of the Crystals, Mexico","z":"墨西哥图伯灵水晶洞"},{"e":"Paro Taktsang, Bhutan","z":"巴西帕努"},{"e":"The White House, USA","z":"美国白宫"},{"e":"Tokyo Imperial Palace, Japan","z":"日本日光东照宫"},{"e":"Luxor Temple, Egypt","z":"埃及卢克索神庙"},{"e":"Louvre Museum, Paris, France","z":"法国巴黎卢浮宫"},{"e":"Golden Temple, India","z":"印度金色寺"},{"e":"Potala Palace","z":"布达拉宫"},{"e":"Louvre Museum, France","z":"法国卢浮宫"},{"e":"Karabar Palace, India","z":"印度卡拉伯尔宫"},{"e":"Mount Fitz Roy, Patagonia, Argentina/Chile","z":"意大利维特魔山"},{"e":"Huangguoshu Waterfall","z":"黄果树瀑布"},{"e":"Moscow Kremlin, Russia","z":"俄罗斯克里姆林宫"},{"e":"Sydney Harbour Bridge, Australia","z":"澳大利亚悉尼海港大桥"},{"e":"Guilin Landscape","z":"桂林山水"},{"e":"Panama Canal, Panama","z":"巴拿马运河"},{"e":"Lighthouse of Alexandria, Egypt","z":"埃及亚历山大港灯塔"},{"e":"Machu Picchu, Peru","z":"秘鲁马丘比丘"},{"e":"Times Square, New York, USA","z":"美国纽约时代广场"}],"旅游&景观":[{"e":"Archipelago","z":"群岛"},{"e":"Badlands","z":"恶地"},{"e":"Cave","z":"洞穴"},{"e":"Cliff","z":"悬崖"},{"e":"Fjord","z":"峡湾"},{"e":"Karst","z":"喀斯特"},{"e":"Mountain range","z":"山脉"},{"e":"Oasis","z":"绿洲"},{"e":"Plateau","z":"高原"},{"e":"Scenic view","z":"风景秀丽"},{"e":"Panoramic view","z":"全景"},{"e":"Oceanview","z":"海景"},{"e":"Mountainview","z":"山景"},{"e":"Cityscape","z":"城市景观"},{"e":"Countryside","z":"乡村风光"},{"e":"Waterfall","z":"瀑布"},{"e":"Beach","z":"沙滩"},{"e":"Forest","z":"森林"},{"e":"Lake","z":"湖泊"},{"e":"Canyon","z":"峡谷"},{"e":"Glacier","z":"冰川"},{"e":"Volcano","z":"火山"},{"e":"Desert","z":"沙漠"},{"e":"Cruise","z":"游轮"},{"e":"Motorcycle","z":"摩托车"},{"e":"RV","z":"房车"},{"e":"Helicopter","z":"直升机"},{"e":"Hotair balloon","z":"热气球"},{"e":"Airplane","z":"飞机"},{"e":"Bicycle","z":"自行车"},{"e":"Jeep","z":"吉普车"},{"e":"Skateboarding","z":"滑板"},{"e":"Sports car","z":"跑车"},{"e":"Subway","z":"地铁"},{"e":"Train","z":"火车"},{"e":"Cable car","z":"索道"},{"e":"Ski lift","z":"滑雪缆车"},{"e":"Boat","z":"小船"},{"e":"Raft","z":"皮筏"},{"e":"Kayak","z":"皮艇"},{"e":"Jetski","z":"摩托艇"},{"e":"Scubadiving","z":"潜水"},{"e":"Snorkeling","z":"浮潜"},{"e":"Walking","z":"步行"},{"e":"Hammock","z":"吊床"},{"e":"First aid kit","z":"急救包"},{"e":"Insect repellent","z":"驱虫剂"},{"e":"Sunscreen","z":"防晒霜"},{"e":"Waterbottle","z":"水瓶"},{"e":"Multi-tool","z":"多功能工具"},{"e":"Tent","z":"帐篷"},{"e":"Sleeping bag","z":"睡袋"},{"e":"Camping stove","z":"野营炉"},{"e":"Camp chair","z":"野营椅"},{"e":"Camp table","z":"野营桌"},{"e":"Lantern","z":"灯笼"},{"e":"Flashlight","z":"手电筒"},{"e":"LasVegas","z":"拉斯维加斯"},{"e":"Hawaii","z":"夏威夷"},{"e":"Paris","z":"巴黎"},{"e":"New York City","z":"纽约市"},{"e":"LosAngeles","z":"洛杉矶"},{"e":"Tokyo","z":"东京"},{"e":"London","z":"伦敦"},{"e":"Dubai","z":"迪拜"},{"e":"Istanbul","z":"伊斯坦布尔"},{"e":"Singapore","z":"新加坡"},{"e":"Kuala Lumpur","z":"吉隆坡"},{"e":"HongKong","z":"香港"},{"e":"Macau","z":"澳门"},{"e":"Camping","z":"露营"},{"e":"Caravan","z":"旅行拖车"},{"e":"Glamping","z":"豪华露营"},{"e":"Treehouse","z":"树屋"},{"e":"Houseboat","z":"游艇民宿"},{"e":"Hotel","z":"酒店"},{"e":"Hostel","z":"青年旅社"},{"e":"Motel","z":"汽车旅馆"},{"e":"Resort","z":"度假村"},{"e":"Vacation rental","z":"度假租赁"},{"e":"Homestay","z":"民宿"},{"e":"BedandBreakfast(B&B)","z":"民宿早餐店"},{"e":"Guesthouse","z":"宾馆"},{"e":"adventure tourism","z":"冒险旅游"},{"e":"ecotourism","z":"生态旅游"},{"e":"city sightseeing","z":"城市观光"},{"e":"ancient towns and villages","z":"古镇古村"},{"e":"excursions","z":"郊游"},{"e":"religious tourism","z":"宗教旅游"},{"e":"scenic nature","z":"自然风光"},{"e":"seaside resort","z":"海滨度假"},{"e":"desert adventure","z":"沙漠探险"},{"e":"skiing","z":"高山滑雪"},{"e":"watersports","z":"水上运动"},{"e":"wellness tourism","z":"健康养生"}],"服饰&服装":[{"e":"Shirt","z":"衬衫"},{"e":"Hoodie","z":"卫衣"},{"e":"Coat","z":"外套"},{"e":"Jacket","z":"夹克"},{"e":"Overcoat","z":"大衣"},{"e":"Vest","z":"背心"},{"e":"Baseball jacket","z":"棒球夹克"},{"e":"Sportswear","z":"运动服"},{"e":"cargo pant","z":"工装裤"},{"e":"cheong-sam","z":"旗袍"},{"e":"Chinese Hanfu","z":"中国汉服"},{"e":"Denim suit","z":"牛仔套装"},{"e":"Evening dress","z":"晚礼服"},{"e":"National dress","z":"民族服装"},{"e":"Leatherjacket","z":"皮衣"},{"e":"princess dress","z":"公主裙"},{"e":"Dress","z":"连衣裙"},{"e":"Skirt","z":"裙子"},{"e":"Jeans","z":"牛仔裤"},{"e":"Casual pants","z":"休闲裤"},{"e":"T-shirt","z":"T恤衫"},{"e":"Chiffon","z":"雪纺元素"},{"e":"Fabric","z":"布料"},{"e":"Knit","z":"针织"},{"e":"Lace","z":"蕾丝元素"},{"e":"Leather","z":"皮革元素"},{"e":"Linen","z":"亚麻"},{"e":"Metallic","z":"金属元素"},{"e":"Nylon","z":"尼龙"},{"e":"Polyester","z":"聚醋纤维"},{"e":"Rayon","z":"人造丝"},{"e":"Ribbon","z":"织带"},{"e":"Satin","z":"缎面元素"},{"e":"Sequins","z":"亮片元素"},{"e":"Taffeta","z":"塔夫绸"},{"e":"Textile","z":"纺织"},{"e":"Velvet","z":"绒毛元素"},{"e":"Wool","z":"毛料"},{"e":"Yarn","z":"纱线"},{"e":"aran sweater","z":"艾尔兰毛衣"},{"e":"striped sweater","z":"条纹毛衣"},{"e":"white shirt","z":"白衬衫"},{"e":"robe","z":"长袍"},{"e":"Striped Knit Cardigan","z":"针织衫"},{"e":"hooded cloak","z":"连帽斗篷"},{"e":"cloak coat","z":"斗篷外套"},{"e":"down jacket","z":"羽绒服"},{"e":"blend robe coat","z":"混纺长袍"},{"e":"Lettering Fuzzy Sleeveless Sweater","z":"无袖毛衣"},{"e":"Line Color Scheme Knit Top","z":"针织上衣"},{"e":"dirndl","z":"巴伐利亚服饰"},{"e":"outerwear","z":"外套"},{"e":"blazer","z":"西服上衣"},{"e":"trench coat","z":"风衣"},{"e":"wrap coat","z":"系带大衣"},{"e":"Medieval armor","z":"中世纪盔甲"},{"e":"Monk's robe","z":"法师袍"},{"e":"Overcoat","z":"大衣"},{"e":"Tactical bulletproof vest","z":"防弹背心"},{"e":"hoodie","z":"卫衣"},{"e":"Crop Knit Top","z":"超短针织上衣"},{"e":"Baseball jacket","z":"棒球服"},{"e":"clothing_cutout","z":"衣服漏洞"},{"e":"tied shirt","z":"系带衬衫"},{"e":"waistcoat","z":"马甲"},{"e":"striped_shirt","z":"条纹衬衫"},{"e":"sleeveless shirt","z":"背心"},{"e":"sleeveless hoodie","z":"无袖连帽衫"},{"e":"print shirt","z":"印花T恤"},{"e":"plaid shirt","z":"格子衬衫"},{"e":"hawaiian _shirt","z":"夏威夷衬衫"},{"e":"sweatshirt","z":"长袖运动卫衣"},{"e":"frilled shirt","z":"皱边衬衫"},{"e":"cropped shirt","z":"短衬衫"},{"e":"sailor shirt","z":"水手服"},{"e":"dress shirt","z":"西服衬衫"},{"e":"suspender shorts","z":"吊带短裤"},{"e":"puffy shorts","z":"宽松短裤"},{"e":"Pocket String Jogger Pants","z":"休闲裤"},{"e":"Leather","z":"皮革元素"},{"e":"Leopard Print","z":"豹纹元素"},{"e":"Metallic","z":"金属元素"},{"e":"Mod","z":"时尚现代元素"},{"e":"Noven","z":"草编元素"},{"e":"Off-shoulder","z":"露肩元素"},{"e":"Oversized","z":"宽松设计元素"},{"e":"Patchwork","z":"拼接元素"},{"e":"Patterned","z":"刺绣图案元素"},{"e":"Pearl","z":"珍珠元素"},{"e":"Pleats & Trim","z":"褶皱和饰边元素"},{"e":"Polka Dot","z":"波点元素"},{"e":"Print","z":"印花元素"},{"e":"Two-Tone","z":"双色元素"},{"e":"Puffy Sleeves","z":"蓬松袖子元素"},{"e":"Velvet","z":"绒毛元素"},{"e":"Ruffle","z":"荷叶边元素"},{"e":"Volume","z":"蓬松元素"},{"e":"3D Flowers","z":"立体花朵元素"},{"e":"Western","z":"西式元素"},{"e":"Satin","z":"缎面元素"},{"e":"Batwing Sleeves","z":"蝙蝠袖元素"},{"e":"Bell Sleeves","z":"荷叶袖元素"},{"e":"Sequins","z":"亮片元素"},{"e":"Bow","z":"蝴蝶结元素"},{"e":"Sheer","z":"透视元素"},{"e":"Chain","z":"金属链条元素"},{"e":"Chiffon","z":"雪纺元素"},{"e":"Shoulder Design","z":"肩部设计元素"},{"e":"Classical","z":"古典元素"},{"e":"Contrast","z":"对比色元素"},{"e":"Trendy","z":"流行元素"},{"e":"Crystal","z":"水晶元素"},{"e":"Turtleneck","z":"高领元素"},{"e":"Cut-out","z":"镂空元素"},{"e":"Double-Breasted","z":"双排扣元素"},{"e":"Embroidery","z":"刺绣元素"},{"e":"Feathers","z":"羽毛元素"},{"e":"Floral Lace","z":"花朵蕾丝元素"},{"e":"Floral","z":"花朵元素"},{"e":"Flowy","z":"坠感元素"},{"e":"Folded","z":"反折元素"},{"e":"Fringe","z":"流苏元素"},{"e":"Front Slit","z":"前开叉元素"},{"e":"Hand Painted","z":"手绘元素"},{"e":"Hi-Low","z":"前短后长元素"},{"e":"High Waist","z":"高腰元素"},{"e":"High-Low Hem","z":"高低裙元素"},{"e":"Knitwear","z":"针织元素"},{"e":"Lace Paneling","z":"蕾丝拼接元素"},{"e":"Lace","z":"蕾丝元素"},{"e":"plaid_skirt","z":"格子裙"},{"e":"Belted skirt","z":"腰带裙子"},{"e":"ruffleskirt","z":"荷叶裙"},{"e":"Kilt skirt","z":"苏格兰风裙子"},{"e":"Dirndl skirt","z":"德国民族群"},{"e":"Gothic skirt","z":"哥特裙"},{"e":"Tribal skirt","z":"部落风裙子"},{"e":"Cowboy skirt","z":"牛仔裙"},{"e":"Renaissance skirt","z":"文艺复兴裙子"},{"e":"Saloon skirt","z":"西部风裙子"},{"e":"Shimmering skirt","z":"流光裙"},{"e":"Butterfly fairy dress","z":"蝴蝶仙裙"},{"e":"Hypnotic Magic dress","z":"迷幻魔法裙"},{"e":"Shiny dress","z":"闪亮连衣裙"},{"e":"Chiffon dress","z":"雪纺连衣裙"},{"e":"Illusion Star dress","z":"幻彩星辰裙"},{"e":"Cloud skirt","z":"云朵裙"},{"e":"Silk dress","z":"丝绸裙"},{"e":"Inky black gown","z":"墨黑长裙"},{"e":"Color-block dress","z":"拼色连衣裙"},{"e":"Skeleton dress","z":"骷髅连衣裙"},{"e":"Inky flared skirt","z":"墨色蓬松裙"},{"e":"Crane dress","z":"仙鹤裙"},{"e":"Jumpsuit dress","z":"连体裙"},{"e":"Slit skirt","z":"开叉裙"},{"e":"Crystal Court dress","z":"水晶宫廷裙"},{"e":"Lace dress","z":"蕾丝连衣裙"},{"e":"Snowflake dress","z":"瑞雪裙"},{"e":"Crystal dress","z":"水晶裙"},{"e":"Spaghetti strap dress","z":"细肩带裙"},{"e":"Lace panel dress","z":"拼接蕾丝裙"},{"e":"Cutout dress","z":"镂空裙"},{"e":"Sparkling Gemstone dress","z":"闪耀宝石裙"},{"e":"Lace princess dress","z":"蕾丝公主裙"},{"e":"Dance of Death dress","z":"死亡之舞裙"},{"e":"Lace trim dress","z":"花边连衣裙"},{"e":"Sparkling Meteor dress","z":"闪耀流星裙"},{"e":"Dark countess dress","z":"暗黑公爵裙"},{"e":"Layered skirt","z":"层叠裙"},{"e":"Stardust Fluffy dress","z":"星尘绒羽裙"},{"e":"Dark dress","z":"暗黑连衣裙"},{"e":"Loose dress","z":"宽松连衣裙"},{"e":"Starry Fairy dress","z":"星空仙女裙"},{"e":"Dark fairy dress","z":"黑暗仙裙"},{"e":"Loose lace dress","z":"宽松蕾丝裙"},{"e":"Starry Sparkle dress","z":"星光闪耀裙"},{"e":"Dark princess dress","z":"暗黑公主裙"},{"e":"Embroidered dress","z":"绣花连衣裙"},{"e":"Neon skirt","z":"霓虹裙"},{"e":"Wedding dress","z":"婚纱裙"},{"e":"Magical Fireworks dress","z":"魔法烟花裙"},{"e":"Dazzling Rainbow dress","z":"绚丽彩虹裙"},{"e":"Night Splendor dress","z":"夜幕璀璨裙"},{"e":"Enchanted Dream dress","z":"仙境梦幻裙"},{"e":"Wide-leg pants skirt","z":"阔腿裙"},{"e":"Starry skirt","z":"星辰裙"},{"e":"Maxi skirt","z":"长裙"},{"e":"Nightshade dress","z":"夜魅连衣裙"},{"e":"Enchanted Neon dress","z":"仙境霓虹裙"},{"e":"Dazzling dress","z":"璀璨连衣裙"},{"e":"lridescent skirt","z":"霞光裙"},{"e":"Straight skirt","z":"直筒裙"},{"e":"Off-shoulder dress","z":"露肩连衣裙"},{"e":"Enchanted dress","z":"仙境连衣裙"},{"e":"Mermaid dress","z":"水精灵裙"},{"e":"Denim skirt","z":"牛仔裙"},{"e":"Party dress","z":"派对裙"},{"e":"Enchanting maxi skirt","z":"魔法长裙"},{"e":"Strappy gothic dress","z":"吊带哥特裙"},{"e":"Mermaid skirt","z":"鱼尾裙"},{"e":"Diamond Princess dress","z":"钻石公主裙"},{"e":"Ethnic dress","z":"民族风连衣裙"},{"e":"Patchwork dress","z":"拼接连衣裙"},{"e":"Symmetrical skirt","z":"对称裙"},{"e":"Patchwork skirt","z":"拼接半身裙"},{"e":"Midi skirt","z":"中裙"},{"e":"Fairy Dance dress","z":"精灵之舞裙"},{"e":"Dreamy Fluffy dress","z":"梦幻蓬松裙"},{"e":"Pearl Crystal dress","z":"珍珠水晶裙"},{"e":"Fairy dress","z":"仙女裙"},{"e":"Tie waist dress","z":"绑带裙"},{"e":"Mini dress","z":"迷你连衣裙"},{"e":"Dreamy Sheer dress","z":"梦幻薄纱裙"},{"e":"Pearl Fringe dress","z":"珍珠流苏裙"},{"e":"Feathered dress","z":"绒羽裙"},{"e":"Mini skirt","z":"短裙"},{"e":"Train skirt","z":"带尾裙"},{"e":"Pearl dress","z":"珍珠裙"},{"e":"Ebon gown","z":"幽冥裙"},{"e":"Moonlight dress","z":"月光裙"},{"e":"Fine rain dress","z":"细雨连衣裙"},{"e":"Trendy dress","z":"流行连衣裙"},{"e":"Pencil skirt","z":"铅笔裙"},{"e":"Elfdress","z":"精灵裙"},{"e":"Fitted dress","z":"修身连衣裙"},{"e":"Tulle skirt","z":"网纱裙"},{"e":"Moonlit Crystal dress","z":"月光水晶裙"},{"e":"Phantom Feather dress","z":"幻影羽毛裙"},{"e":"Fitted pencil skirt","z":"修身半身裙"},{"e":"Vintage dress","z":"复古裙"},{"e":"Neon Night dress","z":"雪虹夜晚裙"},{"e":"Phantom maxi skirt","z":"魅影长裙"},{"e":"Vintage pencil skirt","z":"复古半身裙"},{"e":"Floral dress","z":"花卉连衣裙"},{"e":"Polka dot dress","z":"波点裙"},{"e":"Flower dress","z":"花朵裙"},{"e":"Princess dress","z":"公主裙"},{"e":"Galactic Dream dress","z":"星河梦幻裙"},{"e":"Puff sleeve dress","z":"泡泡袖裙"},{"e":"Gemstone Lace dress","z":"宝石蕾丝裙"},{"e":"Puffy skirt","z":"蓬蓬裙"},{"e":"Gemstone skirt","z":"宝石裙"},{"e":"Accordion pleat skirt","z":"褶皱裙"},{"e":"Radiant Floral dress","z":"流光花朵裙"},{"e":"Ghostly gown","z":"幽灵长裙"},{"e":"Radiant Star dress","z":"璀璨星辰裙"},{"e":"Belted dress","z":"收腰连衣裙"},{"e":"Glass skirt","z":"琉璃裙"},{"e":"Radiant dress","z":"光芒裙"},{"e":"Belted skirt","z":"腰带裙"},{"e":"Gleaming Neon dress","z":"闪光霓虹裙"},{"e":"Ribbed dress","z":"罗纹裙"},{"e":"Black lace skirt","z":"黑色蕾丝裙"},{"e":"Glimmering Starlight dress","z":"闪亮星芒裙"},{"e":"Ruffle edge dress","z":"荷叶边连衣裙"},{"e":"Blood-hued dress","z":"血色连衣裙"},{"e":"Glorious Night Sky dress","z":"璨烂夜空裙"},{"e":"Ruffle hem dress","z":"荷叶边裙"},{"e":"Blossom skirt","z":"绽放裙"},{"e":"Gothic lace skirt","z":"暗黑花边裙"},{"e":"Ruffle sleeve dress","z":"荷叶袖连衣裙"},{"e":"Blue Enchantment dress","z":"蓝色仙境裙"},{"e":"Gothic-style lace skirt","z":"哥特风蕾丝裙"},{"e":"Shadow lace skirt","z":"阴影蕾丝裙"},{"e":"Bodycon dress","z":"修身裙"},{"e":"Graceful skirt","z":"翩翩裙"},{"e":"Sheer dress","z":"半透明连衣裙"},{"e":"Bodycon skirt","z":"包臀裙"},{"e":"Graveyard gown","z":"墓地长裙"},{"e":"Sheer skirt","z":"半透明裙"},{"e":"Bow-tie dress","z":"带领结连衣裙"},{"e":"High-slit skirt","z":"高衩裙"},{"e":"Shimmering Fringe dress","z":"闪耀流苏裙"},{"e":"Bubble skirt","z":"花苞裙"},{"e":"High-waist dress","z":"高腰裙"}],"国风元素":[{"e":"Chinese New Year","z":"春节"},{"e":"Lantern Festival","z":"元宵节"},{"e":"DragonBoat Festival","z":"端午节"},{"e":"Mid-Autumn Festival","z":"中秋节"},{"e":"Chong yang Festival","z":"重阳节"},{"e":"Zhong yuan Festival","z":"中元节"},{"e":"Silk","z":"丝绸"},{"e":"Lacquerware","z":"雕漆"},{"e":"Chopsticks","z":"筷子"},{"e":"Chinese seal","z":"印章"},{"e":"Paper-cutting","z":"剪纸"},{"e":"Shadow puppetry","z":"皮影戏"},{"e":"Cloisonne","z":"景泰蓝"},{"e":"Teaset","z":"茶具"},{"e":"Chinese calligraphy brush","z":"毛笔"},{"e":"carved beams and painted rafters","z":"斗拱彩梁"},{"e":"lattice window","z":"格子窗"},{"e":"wooden doors","z":"木门"},{"e":"curved ridge","z":"转角"},{"e":"Chinese arch","z":"中华拱"},{"e":"Halal Cuisine","z":"清真菜"},{"e":"Yunnan Cuisine","z":"滇菜"},{"e":"Mongolian Cuisine","z":"蒙古菜"},{"e":"Northwestern Cuisine","z":"西北菜"},{"e":"Jiangsu Cuisine","z":"苏菜"},{"e":"Home-style Cuisine","z":"家常菜"},{"e":"Vegetarian Cuisine","z":"素菜"},{"e":"Sichuan Cuisine","z":"川菜"},{"e":"Shandong Cuisine","z":"鲁菜"},{"e":"Cantonese Cuisine","z":"粤菜"},{"e":"Hunan Cuisine","z":"湘菜"},{"e":"Fujian Cuisine","z":"闽菜"},{"e":"Anhui Cuisine","z":"徽菜"},{"e":"Northeastern Cuisine","z":"东北菜"},{"e":"Jiangsu-Zhejiang Cuisine","z":"江浙菜"},{"e":"Wu ling yuan Scenic Area","z":"武陵源风景名胜区"},{"e":"Mount Wuyi","z":"武夷山"},{"e":"Mogao Caves","z":"莫高窟"},{"e":"Hong cun Ancient Village","z":"宏村古村落"},{"e":"Huang guo shu Waterfall","z":"黄果树瀑布"},{"e":"Sanya Beach","z":"三亚海滩"},{"e":"Taishan Mountain","z":"泰山"},{"e":"Hukou Waterfall","z":"壶口瀑布"},{"e":"Yuan yang Rice Terraces","z":"元阳梯田"},{"e":"Long men Grottoes","z":"龙门石窟"},{"e":"Wu yuan Ancient Village","z":"婺源古村落"},{"e":"Stone Forest","z":"石林"},{"e":"Mount Emei","z":"峨眉山"},{"e":"Qing cheng Mountain","z":"青城山"},{"e":"Mount Huang gang","z":"黄岗山"},{"e":"Azure Dragon","z":"青龙"},{"e":"Qi Bai shi","z":"齐白石"},{"e":"Porcelain","z":"瓷"},{"e":"Gardens","z":"园林"},{"e":"Pavilion","z":"亭子"},{"e":"Temple","z":"寺庙"},{"e":"Forbidden City","z":"紫禁城"},{"e":"Summer Palace","z":"颐和园"},{"e":"Peony","z":"牡丹"},{"e":"Lotus","z":"莲花"},{"e":"Bamboo","z":"竹子"},{"e":"papercut craft","z":"剪纸"},{"e":"Chinese Paper Art","z":"中国剪纸"},{"e":"paper quilling art","z":"衍纸艺术又叫卷纸装饰工艺"},{"e":"Chinese lanterns","z":"中国灯笼"},{"e":"crane","z":"仙鹤"},{"e":"Flute","z":"笛子"},{"e":"lotus","z":"莲花"},{"e":"Paper umbrella","z":"油纸伞"},{"e":"wuxia","z":"武侠"},{"e":"WhiteTiger","z":"白虎"},{"e":"Chang'e Flies to the Moon","z":"嫦娥奔月"},{"e":"Zhou Gong Picks the Stars","z":"周公摘星"},{"e":"Three Kingdoms","z":"三国"},{"e":"Jin Dynasty","z":"晋朝"},{"e":"Northern and Southern Dynasties","z":"南北朝"},{"e":"Sui Dynasty","z":"隋朝"},{"e":"Tang Dynasty","z":"唐朝"},{"e":"Five Dynasties and Ten Kingdoms","z":"五代十国"},{"e":"Yuan Dynasty","z":"元朝"},{"e":"Ming Dynasty","z":"明朝"},{"e":"Qing Dynasty","z":"清朝"},{"e":"Xia Dynasty","z":"夏朝"},{"e":"Shang Dynasty","z":"商朝"},{"e":"Zhou Dynasty","z":"周朝"},{"e":"Qin Dynasty","z":"秦朝"},{"e":"Han Dynasty","z":"汉朝"},{"e":"Wing Tsun","z":"咏春"},{"e":"Tai Chi Chuan","z":"太极拳"},{"e":"Martial Arts","z":"武术"},{"e":"Dumplings","z":"饺子"},{"e":"Mooncakes","z":"月饼"},{"e":"Tangyuan","z":"汤圆"},{"e":"Hot pot","z":"火锅"},{"e":"Rice cakes","z":"年糕"},{"e":"Peking duck","z":"北京烤鸭"},{"e":"Dim sum","z":"点心"},{"e":"Scallion pancakes","z":"葱油饼"},{"e":"Roasted chestnuts","z":"烤栗子"},{"e":"Soy milk","z":"豆浆"},{"e":"Fried rice","z":"炒饭"},{"e":"Noodles","z":"面条"},{"e":"Tea eggs","z":"茶蛋"}],"高燃特效":[{"e":"Raindrops","z":"雨滴"},{"e":"Lightning","z":"闪电"},{"e":"Thunderstorm","z":"雷暴"},{"e":"Hurricane","z":"飓风"},{"e":"Snowflakes","z":"雪花"},{"e":"Torrential Rain","z":"暴雨"},{"e":"Fog","z":"雾气"},{"e":"Thunder and Lightning","z":"雷电"},{"e":"Rainbow","z":"彩虹"},{"e":"Tornado","z":"龙卷风"},{"e":"Thunder Shower","z":"雷雨"},{"e":"Storm","z":"暴风雨"},{"e":"Tempest","z":"风暴"},{"e":"Flying Kick","z":"空中飞踢"},{"e":"Body Spiral","z":"身体螺旋"},{"e":"Dodge","z":"闪避"},{"e":"Takedown","z":"摔倒"},{"e":"Combo Attack","z":"连击"},{"e":"Flame Kick","z":"火焰踢"},{"e":"Burst of Power","z":"劲力爆发"},{"e":"Spin Kick","z":"转身踢"},{"e":"Burrow","z":"钻地"},{"e":"Diamond Palm","z":"金刚掌"},{"e":"Sword Strike","z":"斩击"},{"e":"Repel","z":"击退"},{"e":"Pressure Point","z":"点穴"},{"e":"Holy Sword","z":"神圣之剑"},{"e":"Shadow Dagger","z":"暗影匕首"},{"e":"Explosive Lance","z":"爆裂枪"},{"e":"Flame Whip","z":"火焰鞭"},{"e":"Thunder Gauntlets","z":"雷霆拳套"},{"e":"Magic Staff","z":"魔法法杖"},{"e":"Staff of Light","z":"光明权杖"},{"e":"Sword Slash","z":"斩击"},{"e":"Ice Blade","z":"冰刃"},{"e":"Electric Sword","z":"电光剑"},{"e":"Thunder Hammer","z":"雷霆锤"},{"e":"Enhanced Arrow","z":"强化箭"},{"e":"Spatial Collapse","z":"空间崩溃"},{"e":"Time Freeze","z":"时间停滞"},{"e":"Dark Hand","z":"黑暗之手"},{"e":"Rainbow Beam","z":"彩虹束"},{"e":"Shadow Clone","z":"影分身"},{"e":"Void Slash","z":"虚空切割"},{"e":"Magic Arrow","z":"魔法箭"},{"e":"Soul Binding","z":"灵魂束缚"},{"e":"Healing Spell","z":"治愈术"},{"e":"Elemental Release","z":"元素释放"},{"e":"Summoning Beast","z":"召唤兽"},{"e":"Invisibility","z":"隐身术"},{"e":"Object Manipulation","z":"操控物体"},{"e":"Ice Encasement","z":"冰封"},{"e":"A Can Jiang","z":"阿灿酱"},{"e":"DemonS layer","z":"吾咔呼世晴"},{"e":"JiangNan","z":"汉恩"},{"e":"Ryota Yamaguchi","z":"谷口亮太"},{"e":"DragonBall","z":"鳥山明"},{"e":"Tian CanTu Dou","z":"天蚕土豆"},{"e":"Yusuke Murata","z":"村田雄介"},{"e":"Masashi Kishimoto","z":"岸本音史"},{"e":"Yasuhiro Night ow","z":"冈本启介"},{"e":"Izumi Tsubaki","z":"谷崎泉"},{"e":"Kohei Horikoshi","z":"城越耕平"},{"e":"Rapid Charge","z":"快速突进"},{"e":"Swift Lightning","z":"迅捷闪电"},{"e":"Tornado-like Spin","z":"旋风般的转动"},{"e":"Quick Dodge","z":"迅速躲避"},{"e":"Instant Acceleration","z":"瞬间加速"},{"e":"Frantic Movement","z":"狂乱乱动"},{"e":"Fierce Strike","z":"凌厉的一击"},{"e":"Lightning-fast Attack","z":"神速攻击"},{"e":"Instant Teleportation","z":"瞬间闪现"},{"e":"Mid-Air Roll Attack","z":"空中翻滚攻击"},{"e":"Graceful Flutter","z":"轻盈飘舞"},{"e":"Agile Turn","z":"灵活转身"},{"e":"Swift Pounce","z":"迅猛扑击"},{"e":"Rapid Pursuit","z":"迅捷追击"},{"e":"Endurance and Determination","z":"忍耐与坚定"},{"e":"Twisted in Pain","z":"痛苦的扭曲"},{"e":"Focused Eyes","z":"专注的眼神"},{"e":"Furious Roar","z":"愤怒的怒吼"},{"e":"Overwhelming Aura","z":"压倒性的威压感"},{"e":"Exuberant Leaping","z":"兴奋的跃动"},{"e":"Indomitable Will","z":"不屈的毅力"},{"e":"Angry Expression","z":"愤怒的表情"},{"e":"Cold Stare","z":"冷酷的目光"},{"e":"Majestic Posture","z":"威严的姿态"},{"e":"Maniacal Grin","z":"疯狂的笑容"},{"e":"Tense Body Movements","z":"紧张的肢体动作"},{"e":"Confident Stance","z":"自信的姿态"},{"e":"BattleCry in Struggle","z":"苦战之中的呐喊"},{"e":"Fearless Gaze","z":"无畏的眼神"}],"艺术家":[{"e":"paulcezanne","z":"保尔塞尚"},{"e":"Osamu Tezuka","z":"手冢治虫"},{"e":"Beatrix Potter","z":"比阿特丽克丝·波特"},{"e":"paulklee","z":"保克利"},{"e":"Peter Blake","z":"彼得·布莱克"},{"e":"Bill Watterson","z":"比尔·沃特森"},{"e":"paullehr","z":"保尔勒"},{"e":"Boris Vallejo","z":"鲍里斯·瓦列霍"},{"e":"R. Crumb","z":"R. 克朗姆"},{"e":"picasso","z":"毕加索"},{"e":"Ralph McQuarrie","z":"拉尔夫·麦夸里"},{"e":"Charles Dana Gibson","z":"查尔斯·达纳·吉布森"},{"e":"pierreaugusterenoir","z":"皮埃尔奥古斯特诺瓦"},{"e":"Charles M. Schulz","z":"查尔斯·舒尔茨"},{"e":"Richard Hamilton","z":"理查德·汉密尔顿"},{"e":"pietmondrian","z":"彼得蒙德里安"},{"e":"Chris Foss","z":"克里斯·福斯"},{"e":"pixar","z":"皮克斯"},{"e":"Robert Rauschenberg","z":"罗伯特·劳森伯格"},{"e":"rapharlite","z":"拉辉石"},{"e":"Roy Lichtenstein","z":"罗伊·利希滕斯坦"},{"e":"Claes Oldenburg","z":"克拉斯·奥登堡"},{"e":"Syd Mead","z":"希德·米德"},{"e":"David Hockney","z":"大卫·霍克尼"},{"e":"rembrandt","z":"伦勃朗"},{"e":"renemagritte","z":"雷马格利特"},{"e":"Theodor Kittelsen","z":"特奥多尔·基特尔森"},{"e":"E.H. Shepard","z":"E.H. 谢泼德"},{"e":"rosstran","z":"罗斯特兰"},{"e":"Walter Crane","z":"沃尔特·克兰"},{"e":"Edmund Dulac","z":"埃德蒙·杜拉克"},{"e":"roylichtenstein","z":"罗伊利希滕施泰因"},{"e":"Wayne Barlowe","z":"韦恩·巴洛"},{"e":"Frank Kelly Freas","z":"弗兰克·凯利·弗里斯"},{"e":"salvadordali","z":"萨尔瓦多达利"},{"e":"Will Eisner","z":"韦恩·巴洛"},{"e":"Frank Miller","z":"弗兰克·米勒"},{"e":"sandrobotticelli","z":"桑德罗波蒂切利"},{"e":"Winsor McCay","z":"温索·麦凯"},{"e":"shinkaimakoto","z":"新海真琴"},{"e":"Gustave Dore","z":"古斯塔夫多雷"},{"e":"alenaaenami","z":"阿莱纳埃纳米"},{"e":"stefankoidl","z":"斯特凡科伊德尔"},{"e":"H.J. Ford","z":"H.J. 福特"},{"e":"alphonsemucha","z":"阿尔丰塞穆查"},{"e":"suilshida","z":"苏尔什达"},{"e":"H.R. Giger","z":"H.R. 吉格尔"},{"e":"andywarhool","z":"安迪·沃胡尔"},{"e":"swoon","z":"昏厥"},{"e":"herge","z":"赫奇"},{"e":"takashimurakami","z":"高岛村上"},{"e":"anntonfadeevi","z":"安东法德耶维"},{"e":"Howard Pyle","z":"霍华德·派尔"},{"e":"tashatudor","z":"塔沙图杜尔"},{"e":"Ivan Bilibin","z":"伊万·比利宾"},{"e":"antonpieck","z":"安东皮克"},{"e":"theodorerobinson","z":"西奥多·罗宾逊"},{"e":"J.C. Leyendecker","z":"J.C. 莱恩德克尔"},{"e":"jackkirby","z":"杰克科比"},{"e":"banksy","z":"班克斯"},{"e":"tintoretto","z":"丁托列托"},{"e":"Jack Kirby","z":"杰克·柯比"},{"e":"jacksonpollock","z":"杰克逊·波洛克"},{"e":"titian","z":"提香·韦切利奥"},{"e":"beatrixpotter","z":"碧翠丝波特"},{"e":"jeanmichelbasquiat","z":"让·米歇尔·巴斯奎特"},{"e":"James Rosenquist","z":"詹姆斯·罗森奎斯特"},{"e":"vangogh","z":"梵高"},{"e":"caravaggio","z":"卡拉瓦乔"},{"e":"Jeff Koons","z":"杰夫·昆斯"},{"e":"jeffreycatherinejones","z":"杰弗里·凯瑟琳·琼斯"},{"e":"victormoscoso","z":"维克多莫斯科索"},{"e":"carlbarks","z":"停车场"},{"e":"wassilykandinsky","z":"瓦西里康定斯基"},{"e":"charliebowater","z":"查理博沃特"},{"e":"wlop","z":"沃洛普"},{"e":"coryloftis","z":"冠心病"},{"e":"jerrypinkney","z":"杰瑞平克尼"},{"e":"yaacovagam","z":"雅科瓦加姆"},{"e":"davidhockney","z":"大卫霍克尼"},{"e":"yanjuncheng","z":"燕军城"},{"e":"dennisstock","z":"丹尼斯斯托克"},{"e":"yayoikusama","z":"弥生草间"},{"e":"diegorivera","z":"迪戈里韦拉"},{"e":"jmwturner","z":"杰姆沃特纳"},{"e":"yojishinkawa","z":"洋司新川"},{"e":"edgardegas","z":"埃德加德加斯"},{"e":"zhenlongxu","z":"许正龙"},{"e":"eugenedelacroix","z":"尤金内德拉克罗瓦"},{"e":"fenghuazhong","z":"风华中"},{"e":"francisbacon","z":"法式培根"},{"e":"johannesvermeer","z":"约翰内斯·维梅尔"},{"e":"franciscodegoya","z":"弗朗西斯科德戈亚"},{"e":"fridakahlo","z":"弗里达·卡罗"},{"e":"garaldbrom","z":"加拉德布罗姆"},{"e":"gregrutkowski","z":"格雷格鲁特科夫斯基"},{"e":"gustavklimt","z":"古斯塔夫克里姆特"},{"e":"hayaomiyazaki","z":"早宫崎"},{"e":"henrimatisse","z":"亨利马蒂斯"},{"e":"jonklassen","z":"延克拉森"},{"e":"hongsoonsang","z":"洪顺桑"},{"e":"Jessie Willcox Smith","z":"杰西·威尔科克斯·史密斯"},{"e":"kaysage","z":"凯萨奇"},{"e":"Hergé","z":"埃尔热"},{"e":"John Berkey","z":"约翰·伯克"},{"e":"kyotoanime","z":"京都动画"},{"e":"John Harris","z":"约翰·哈里斯"},{"e":"lgormorski","z":"伊戈尔莫尔斯基"},{"e":"John Tenniel","z":"约翰·田尼尔"},{"e":"marcchagall","z":"马克查加尔"},{"e":"Kay Nielsen","z":"凯·尼尔森"},{"e":"marcelduchamp","z":"马塞尔杜尚"},{"e":"Keith Haring","z":"凯斯·哈林"},{"e":"markrothko","z":"马克罗斯科"},{"e":"matcollishaw","z":"马特科利肖"},{"e":"Maxfield Parrish","z":"麦克斯菲尔德·帕里什"},{"e":"Michael Whelan","z":"迈克尔·惠兰"},{"e":"michallisowski","z":"米查利夫斯基"},{"e":"Alphonse Mucha","z":"阿尔封斯·穆哈"},{"e":"Moebius (Jean Giraud)","z":"莫比乌斯 (让·吉罗)"},{"e":"michelangelo","z":"米开朗基罗"},{"e":"Andy Warhol","z":"安迪·沃霍尔"},{"e":"N.C. Wyeth","z":"N.C. 怀特"},{"e":"monet","z":"莫奈"},{"e":"Gustave Doré","z":"古斯塔夫·多雷"},{"e":"Arthur Rackham","z":"阿瑟·拉克姆"},{"e":"Norman Rockwell","z":"诺曼·洛克威尔"},{"e":"Aubrey Beardsley","z":"奥布里·比尔兹利"}],"人物":[{"e":"happy","z":"高兴"},{"e":"excited","z":"兴奋"},{"e":"angry","z":"愤怒"},{"e":"sad","z":"悲伤"},{"e":"disgusted","z":"厌恶"},{"e":"surprised","z":"感到惊讶"},{"e":"anxious","z":"焦虑"},{"e":"elated","z":"兴高采烈"},{"e":"upset","z":"难过"},{"e":"fearful","z":"感到恐惧"},{"e":"hateful","z":"憎恨"},{"e":"Firefighter","z":"消防员"},{"e":"Architect","z":"建筑师"},{"e":"Doctor","z":"医生"},{"e":"Lawyer","z":"律师"},{"e":"Teacher","z":"教师"},{"e":"Financier","z":"金融家"},{"e":"Soldier","z":"军人"},{"e":"Artist","z":"艺术家"},{"e":"IT specialist","z":"IT专家"},{"e":"Writer","z":"作家"},{"e":"Filmmaker","z":"电影制片人"},{"e":"Dancer","z":"舞者"},{"e":"Journalist","z":"记者"},{"e":"Model","z":"模特"},{"e":"Engineer","z":"工程师"},{"e":"Scientist","z":"科学家"},{"e":"Civil servant","z":"公务员"},{"e":"Religious leader","z":"宗教领袖"},{"e":"Farmer","z":"农民"},{"e":"Fisherman","z":"渔民"},{"e":"Miner","z":"矿工"},{"e":"Diver","z":"潜水员"},{"e":"Witch","z":"女巫"},{"e":"Miko","z":"巫女"},{"e":"Maid","z":"女仆"},{"e":"Cheerleader","z":"拉拉队"},{"e":"Politician","z":"政治家"},{"e":"Entrepreneur","z":"企业家"},{"e":"Chef","z":"厨师"},{"e":"Salesperson","z":"销售员"},{"e":"Police officer","z":"警察"},{"e":"long tongue","z":"长舌头"},{"e":"thinking","z":"思考"},{"e":"forehead","z":"额头"},{"e":"nervous","z":"不安的"},{"e":"evil smile","z":"坏笑"},{"e":"nervous smile","z":"不安地微笑"},{"e":"angry","z":"生气的"},{"e":"light blush","z":"淡淡的腮红"},{"e":"annoyed","z":"苦恼的"},{"e":"cheek-to-cheek","z":"脸贴脸"},{"e":"pensive","z":"沉思的"},{"e":"crazy","z":"疯狂的"},{"e":"expressions","z":"表情"},{"e":"chin grab","z":"抬下巴"},{"e":"upset","z":"气愤"},{"e":"shy","z":"害羞的"},{"e":"unconscious","z":"失神"},{"e":"covering mouth","z":"挡住嘴巴"},{"e":"embarrassed","z":"尴尬的"},{"e":"crazy smile","z":"疯狂地笑"},{"e":"bright pupils","z":"明亮的瞳孔"},{"e":"blush","z":"脸红的"},{"e":"forced smile","z":"强迫笑"},{"e":"sleepy","z":"困乏的"},{"e":"glasgow smile","z":"格拉斯哥微笑"},{"e":"sad","z":"悲伤的"},{"e":"sad smile","z":"苦笑"},{"e":"drunk","z":"喝醉的"},{"e":"ear blush","z":"耳红"},{"e":"frown","z":"皱眉"},{"e":"fangs","z":"尖牙"},{"e":"holding breath","z":"憋气"},{"e":"tongue","z":"舌头"},{"e":"horrified","z":"恐惧表情"},{"e":"seductive smile","z":"诱人的微笑"},{"e":"facial hair","z":"胡子"},{"e":"sobbing","z":"啜泣"},{"e":"face-to-face","z":"脸贴脸"},{"e":"smiley","z":"笑脸"},{"e":"food on face","z":"食物在脸上"},{"e":"smirk","z":"傻笑的笑"},{"e":"facing another","z":"二人面对面(脸贴得很近）"},{"e":"smelling","z":"闻"},{"e":"fLustered","z":"慌乱的"},{"e":"open mouth","z":"张口"},{"e":"forehead-to-forehead","z":"额头贴额头"},{"e":"full blush","z":"整张脸泛红"},{"e":"teeth","z":"牙"},{"e":"smile","z":"微笑"},{"e":"heavy breathing","z":"喘粗气"},{"e":"Iight smile","z":"浅笑"},{"e":"excited","z":"兴奋"},{"e":"moaning","z":"呻吟"},{"e":"smUg","z":"得意脸"},{"e":"spit take","z":"惊讶或无语到喷了"},{"e":"surprised","z":"惊讶"},{"e":"expressionless eves","z":"失神"},{"e":"tsundere","z":"傲娇"},{"e":"torogao","z":"诱惑的表情"},{"e":"ahegao","z":"阿嘿颜"},{"e":"naughty face","z":"下流的表情"},{"e":"endured face","z":"忍耐的表情"},{"e":"happy","z":"快乐/幸福"},{"e":"anger vein","z":"青筋"},{"e":"blush stickers","z":"表情贴纸"},{"e":"confused","z":"疑惑"},{"e":"determined","z":"有决心的"},{"e":"disappointed","z":"失望的"},{"e":"parted Lips","z":"嘴唇微张"},{"e":"grimace","z":"庆恶的怪相"},{"e":"disdain","z":"蔑视"},{"e":"screaming","z":"尖叫"},{"e":"despair","z":"绝望"},{"e":"scared","z":"害怕的"},{"e":"evil","z":"邪恶"},{"e":"facepalm","z":"以手掩直"},{"e":"scowl","z":"怒视嫌弃/不满"},{"e":"frustrated","z":"沮丧"},{"e":"kubrick stare","z":"库布里克凝视"},{"e":"Lonely","z":"孤独的"},{"e":"raised eyebrow","z":"扬起的眉毛"},{"e":"depressed","z":"压抑的/郁闷的"},{"e":"tearing up","z":"要哭的表情"},{"e":"panicking","z":"恐慌的"},{"e":"worried","z":"担忧的"},{"e":"bored","z":"无聊的"},{"e":"gloom","z":"悲观情绪"},{"e":"laughing","z":"在笑的"},{"e":"troll","z":"嚣张脸"},{"e":"jealous","z":"嫉妒的"},{"e":"saliva trail","z":"唾液拉丝"},{"e":"red lips","z":"朱唇"},{"e":"tired","z":"累"},{"e":"upper teeth","z":"露出上排牙齿"},{"e":"fang out","z":"露出虎牙/露出尖牙"},{"e":"sUlking","z":"闷网不乐"},{"e":"grin","z":"露齿而笑"},{"e":"kemonomimi mode","z":"兽耳萝莉模式"},{"e":"Lion ears","z":"狮子耳朵"},{"e":"panda ears","z":"熊猫耳朵"},{"e":"pikachu ears","z":"皮卡丘耳朵"},{"e":"pig ears","z":"猪耳朵"},{"e":"sheep ears","z":"羊"},{"e":"sqvirrel ears","z":"松鼠耳朵"},{"e":"tiger ears","z":"虎耳"},{"e":"Wolf ears","z":"狼耳朵"},{"e":"fake animal ears","z":"仿制的动物耳朵"},{"e":"animal ears","z":"动物耳朵"},{"e":"fox ears","z":"狐狸耳朵"},{"e":"cat ears","z":"猫耳"},{"e":"dog ears","z":"狗耳"},{"e":"moUse ears","z":"老鼠耳朵"},{"e":"pointy ears","z":"尖耳"},{"e":"heart earrings","z":"心形耳环"},{"e":"hoop earrings","z":"环状耳环"},{"e":"crystal earrings","z":"水晶耳环"},{"e":"earrings","z":"耳环"},{"e":"crescent earrings","z":"月牙耳环"},{"e":"cat ear headphones","z":"猫耳式耳机"},{"e":"bat ears","z":"蝙蝠耳朵"},{"e":"raccoon ears","z":"浣熊耳朵"},{"e":"long pointy ears","z":"尖尖的长耳朵"},{"e":"covering ears","z":"遮住耳朵"},{"e":"bear ears","z":"熊耳朵"},{"e":"rabbit ears","z":"免子耳朵"},{"e":"cow ears","z":"牛耳朵"},{"e":"ferret ears","z":"鼬耳朵"},{"e":"goat ears","z":"山羊耳朵"},{"e":"horse ears","z":"马耳"},{"e":"molticolored eyes","z":"多色的黑眼睛"},{"e":"emptyeyes","z":"空洞眼睛"},{"e":"star-shaped pupils","z":"星形眼睛"},{"e":"closed eyes","z":"闭上眼睛"},{"e":"eyes closed","z":"闭眼"},{"e":"eyeball","z":"盯着"},{"e":"tears","z":"眼泪"},{"e":"aqua eyes","z":"水汪汪大眼"},{"e":"crying with eyes open","z":"睁养眼落泪"},{"e":"qlowing eyes","z":"发光眼睛"},{"e":"half-closed eye","z":"半闭的眼睛(单眼）"},{"e":"glaring","z":"瞪眼"},{"e":"devil eyes","z":"恶魔眼"},{"e":"snake pupils","z":"蛇瞳"},{"e":"purple eyes","z":"紫眼"},{"e":"mole under eye","z":"眼下痣"},{"e":"crazy eyes","z":"瞪大眼睛"},{"e":"raised eyebrows","z":"挑眉"},{"e":"red eyes","z":"红眼"},{"e":"yellow eyes","z":"金眼"},{"e":"upturned eyes","z":"上翘的眼睛"},{"e":"wide-eyed","z":"睁开眼睛"},{"e":"color contact lenses","z":"美瞳"},{"e":"longeyelashes","z":"长睫毛"},{"e":"colored eyelashes","z":"彩色睫毛"},{"e":"orange eyes","z":"橙色的眼镜"},{"e":"pink eyes","z":"粉红色的眼镜"},{"e":"amber eyes","z":"琥珀色眼"},{"e":"diamond-shaped pupils","z":"钻石形睡孔"},{"e":"topknot","z":"丸子头"},{"e":"flipped hair","z":"外卷发型"},{"e":"tentacle hair","z":"触手头发"},{"e":"very short hair","z":"很短的头发"},{"e":"bangs pinned back","z":"掀起的刘海"},{"e":"side swept bangs","z":"朝一个方向的刘海"},{"e":"pink hair","z":"粉发"},{"e":"braided bangs","z":"辫子刘海"},{"e":"gradient hair","z":"渐变发色"},{"e":"side ponytail","z":"侧马尾"},{"e":"twin braids","z":"双辫子"},{"e":"rainbow hair","z":"彩庖唉敖臭 惩跋发"},{"e":"asymmetrical hair","z":"非对称发型"},{"e":"twintails","z":"双马尾"},{"e":"bangs","z":"刘海"},{"e":"very Tong hair","z":"很长的头发"},{"e":"diagonal bangs","z":"斜刘海"},{"e":"blunt bangs","z":"齐刘海"},{"e":"front ponytail","z":"前马尾"},{"e":"folded ponytail","z":"折叠马尾"},{"e":"braid","z":"辫子"},{"e":"hair ears","z":"耳状头发"},{"e":"single braid","z":"单辫"},{"e":"braided ponytail","z":"编织马尾辫"},{"e":"Tow twin braids","z":"低双辫"},{"e":"bald","z":"秃头"},{"e":"curly hair","z":"卷发"},{"e":"side braid","z":"侧辫"},{"e":"curtained hair","z":"窗帘/瀑布发型"},{"e":"bald girl","z":"秃头女孩"},{"e":"double bun","z":"双团子头"},{"e":"crown braid","z":"冠型织辨"},{"e":"dreadlocks","z":"脏辫"},{"e":"buzz cut","z":"寸头"},{"e":"hair pulled back","z":"头发后梳"},{"e":"half updo","z":"侧发后梳"},{"e":"french braid","z":"法式辫"},{"e":"chonmage","z":"丁番"},{"e":"hair one side up","z":"一侧绑发"},{"e":"hair two side up","z":"双侧绑发"},{"e":"hair spread out","z":"散发"},{"e":"flattop","z":"平顶"},{"e":"hair behind ear","z":"耳后发"},{"e":"undercut","z":"帽盔式发型"},{"e":"afro","z":"鸟窝头/爆炸头"},{"e":"hair between eyes","z":"眼间刘海"},{"e":"floating hair","z":"漂浮的头发"},{"e":"bob cut","z":"波波头"},{"e":"beehive hairdo","z":"蜂窝头"},{"e":"straight hair","z":"直发"},{"e":"crossed bangs","z":"交错刘海"},{"e":"big hair","z":"头发很多的"},{"e":"pompadour","z":"蓬帕杜发型"},{"e":"crystal hair","z":"水晶状的头发"},{"e":"quiff","z":"蓬松感油头"},{"e":"hair bun","z":"团子头"},{"e":"expressive hair","z":"富有表现力的头发"},{"e":"cornrows","z":"玉米垄发型"},{"e":"pointy hair","z":"带着尖角的发型"},{"e":"spiked hair","z":"刺刺的头发"},{"e":"comb over","z":"遮盖头发稀少部分"},{"e":"hair intakes","z":"进气口发型"},{"e":"mohawk","z":"莫霍克发型"},{"e":"hair over eyes","z":"头发遮着双眼"},{"e":"bow-shaped hair","z":"弓形头发"},{"e":"hair over shoulder","z":"披肩发"},{"e":"hair bikini","z":"头发比基尼"},{"e":"hair scarf","z":"头发围巾"},{"e":"streaked hair","z":"条染"},{"e":"multicolored hair","z":"多彩头发"},{"e":"hair strand","z":"强调一缕一缕感的发型/发丝"},{"e":"hime cut","z":"姬发式"},{"e":"colored inner hair","z":"内侧染色"},{"e":"shiny hair","z":"有光泽的头发"},{"e":"wet hair","z":"湿头发"},{"e":"front braid","z":"前辫"},{"e":"blonde hair","z":"金发"},{"e":"silver hair","z":"银发"},{"e":"multiple braids","z":"多股(麻花)辫"},{"e":"hair slicked back","z":"垂下的长暮发"},{"e":"high ponytail","z":"披在两侧的两条辫子"},{"e":"grey hair","z":"灰发"},{"e":"Long braid","z":"侧马尾"},{"e":"tri braids","z":"三股辨"},{"e":"white hair","z":"白发"},{"e":"brown hair","z":"茶发"},{"e":"Low-tied Tong hair","z":"直发"},{"e":"low ponytail","z":"低扎马尾"},{"e":"quad braids","z":"四股辫"},{"e":"Low twintails","z":"低扎双尾"},{"e":"light brown hair","z":"浅褐发"},{"e":"triple bun","z":"三发髻"},{"e":"hair rings","z":"发圈"},{"e":"black hair","z":"黑发"},{"e":"medium hair","z":"中等长发"},{"e":"tied hair","z":"扎头发"},{"e":"purple hair","z":"紫发"},{"e":"Long hair","z":"长发"},{"e":"red hair","z":"红发"},{"e":"ringlets","z":"垂下的长馨发"},{"e":"single hair ring","z":"单发圈"},{"e":"blue hair","z":"蓝发/水色发"},{"e":"side braids","z":"披在两侧的两条辫子"},{"e":"messy hair","z":"凌乱发型"},{"e":"side bun","z":"披在两侧的发髻"},{"e":"dark blue hair","z":"深蓝发"},{"e":"Low-braided Tong hair","z":"低辫长发"},{"e":"parted bangs","z":"分开的刘海"},{"e":"ponytail","z":"马尾"},{"e":"split ponytail","z":"尾部散开的单马尾发型"},{"e":"short hair","z":"短发"},{"e":"multi-tied hair","z":"多扎头发"},{"e":"Tight blue hair","z":"浅蓝发"},{"e":"short ponytail","z":"短马尾"},{"e":"absurdly Tong hair","z":"超长的头发"},{"e":"nihongami","z":"日本发"},{"e":"green hair","z":"绿发"},{"e":"cloud hair","z":"云絮状发型"},{"e":"Alprogrammers","z":"AI程序员"},{"e":"alien explorers","z":"外星探险家"},{"e":"avengers","z":"复仇者"},{"e":"biochemists","z":"生化工作者"},{"e":"cold-blooded assassins","z":"冷血刺客"},{"e":"cybernetic Warriors","z":"赛博格战士"},{"e":"cyborgs","z":"赛博格"},{"e":"explorers","z":"探险家"},{"e":"hackers","z":"黑客 "},{"e":"hackers with incredible abilities","z":"拥有不可思议能力的黑客"},{"e":"independentjournalists","z":"独立记者"},{"e":"innovativeinventors","z":"创新发明家"},{"e":"maintenance workers","z":"维护员工"},{"e":"modifiedfighting machines","z":"改装的战斗机器"},{"e":"police officers with extraordinary abilities","z":"能力超群的警察"},{"e":"private detectives","z":"私人侦探"},{"e":"resistance leaders","z":"反抗领袖"},{"e":"robotswithemotions","z":"有情感的机器人"},{"e":"special soldiers","z":"特种兵士 "},{"e":"superheroes","z":"超级英雄"},{"e":"technologyregulators","z":"科技监管官"},{"e":"thieves","z":"盗贼"},{"e":"Exquisite face","z":"精致的面容"},{"e":"Graceful","z":"优雅的"},{"e":"Elegant","z":"雅致的"},{"e":"Chic","z":"时尚的"},{"e":"Poised","z":"沉稳的"},{"e":"Sophisticated","z":"复杂的"},{"e":"Refined","z":"精致的"},{"e":"Stylish","z":"时尚的"},{"e":"Polished","z":"磨练过的"},{"e":"Classy","z":"高雅的"},{"e":"Regal","z":"庄严的"},{"e":"Charismatic","z":"魅力四溢的"},{"e":"Distinguished","z":"卓越的"},{"e":"Suave","z":"文雅的"},{"e":"Sensitive","z":"敏感的"},{"e":"Optimistic","z":"乐观的"},{"e":"Outgoing","z":"外向的"},{"e":"Intelligent","z":"聪明的"},{"e":"Introverted","z":"内向的"},{"e":"Independent","z":"独立的"},{"e":"Flexible","z":"灵活的"},{"e":"Confident","z":"自信的"},{"e":"Poor","z":"贫穷的"},{"e":"Wealthy","z":"富裕的"},{"e":"Chang'e","z":"嫦娥"},{"e":"Jade Emperor","z":"玉皇大帝"},{"e":"Guan Yu","z":"关羽"},{"e":"Mazu","z":"妈祖"},{"e":"Guan Yin","z":"观音菩萨"},{"e":"Skanda Bodhisattva","z":"韦驮菩萨"},{"e":"Adonis","z":"阿多尼斯"},{"e":"Ares","z":"阿瑞斯"},{"e":"Artemis","z":"阿尔忒弥斯"},{"e":"Athena","z":"雅典娜"},{"e":"Bacchus","z":"巴库斯"},{"e":"Biae","z":"比亚"},{"e":"Ceres","z":"谷物女神瑟菜斯"},{"e":"Circe","z":"西尔凯"},{"e":"Cronus","z":"克洛诺斯"},{"e":"Cupid","z":"丘比特"},{"e":"Cybele","z":"赛伯勒。弗里吉亚母亲女神"},{"e":"Demeter","z":"狄蜜特"},{"e":"Dionysus","z":"狄俄尼索斯"},{"e":"Erato","z":"艾拉托"},{"e":"Eros","z":"爱神艾洛斯"},{"e":"Faunus","z":"法乌努斯"},{"e":"Fortuna","z":"福图娜"},{"e":"Hades","z":"冥王哈迪斯"},{"e":"Hecate","z":"黑卡忒"},{"e":"Azure Dragon","z":"青龙"},{"e":"Big-Horned Monster","z":"大角怪"},{"e":"Black Bear","z":"北美黑熊"},{"e":"Black Camel","z":"黑骆驼"},{"e":"Camel Monster","z":"骆驼怪"},{"e":"Carp Monster","z":"鲤鱼怪"},{"e":"Copper Deer","z":"铜獐"},{"e":"Crab Monster","z":"螃蟹怪"},{"e":"Dog-Faced Monster","z":"狗面怪"},{"e":"Dragon Tortoise","z":"龙龟"},{"e":"Eastern Emperor","z":"东皇"},{"e":"Fire Lion","z":"火狻"},{"e":"Fire Rhinoceros","z":"火犀兽"},{"e":"Firebird","z":"火鸟"},{"e":"Fish Monster","z":"鱼怪"},{"e":"Fusion Beast","z":"融合兽"},{"e":"Ghost Crab Monster","z":"鬼蟹怪"},{"e":"Ghost General","z":"鬼将"},{"e":"Giant Bird","z":"巨鸟"},{"e":"Golden Lion","z":"金狮"},{"e":"Golden-Eyed Monster","z":"金睛怪"},{"e":"Green Snake Monster","z":"青蛇怪"},{"e":"Horse-Like Beast","z":"走马狻"},{"e":"Iron-Plated Lizard","z":"铁甲蜥蜴"},{"e":"Macaque","z":"猕猴"},{"e":"Man-Eating Monster","z":"噬人怪"},{"e":"Mountain Horse","z":"山马"},{"e":"Mountain Nymph","z":"山灵"},{"e":"Mountain Spirit","z":"山神"},{"e":"Mountain Tortoise","z":"山甲兽"},{"e":"Nine-Tailed Fox","z":"九尾狐"},{"e":"Ox-Headed Monster","z":"牛头怪"},{"e":"Peach Blossom Spirit","z":"桃花精"},{"e":"Phoenix","z":"凤凰"},{"e":"Phoenix","z":"凤凰"},{"e":"Purple Fiend","z":"紫煞"},{"e":"River God","z":"江神"},{"e":"White Wolf","z":"白狼"},{"e":"Unicorn","z":"独角兽"},{"e":"White-Mouthed Monster","z":"白嘴怪"},{"e":"Wind God","z":"风伯"},{"e":"Yaksha","z":"夜叉"},{"e":"Yellow Dragon","z":"黄龙"},{"e":"Rhinoceros","z":"犀兽"},{"e":"Macaque","z":"猕猴"},{"e":"Firebird","z":"火鸟"},{"e":"Yaksha","z":"夜叉"},{"e":"heart hair ornament","z":"心形发饰"},{"e":"kanzashi","z":"簪子"},{"e":"red hairband","z":"红色发带"},{"e":"animal hood","z":"兽耳头罩"},{"e":"butterfly hair ornament","z":"蝴蝶发饰"},{"e":"bespectacled","z":"戴眼镜的"},{"e":"snake hair ornament","z":"蛇发饰"},{"e":"hair bobbles","z":"头绳"},{"e":"feather hair ornament","z":"羽毛头饰"},{"e":"blue hairband","z":"蓝色发带"},{"e":"hair belt","z":"头发上系着铃销"},{"e":"anchor hair ornament","z":"锚发饰"},{"e":"heart-shaped eyewear","z":"心形眼镜"},{"e":"bunny hair ornament","z":"兔子头饰"},{"e":"skull hair ornament","z":"骼骸头饰"},{"e":"goggles","z":"护目镜"},{"e":"rimless eyewear","z":"无框眼镜"},{"e":"over-rim eyewear","z":"下半无框眼镜"},{"e":"yellow hairband","z":"黄色发带"},{"e":"kamina shades","z":"卡米纳墨镜"},{"e":"goggles on head","z":"头上别着护目镜"},{"e":"goggles on headwear","z":"帽子上别着护目镜"},{"e":"pink hairband","z":"粉色发带"},{"e":"head mounted display","z":"戴着头戴显示设备"},{"e":"bow hairband","z":"蝴蝶结发带"},{"e":"scar across eye","z":"眼睛上的疤痕"},{"e":"musical note hair ornament","z":"音符发饰"},{"e":"tiara","z":"三重冕"},{"e":"fedora","z":"软呢帽"},{"e":"crown","z":"皇冠"},{"e":"witch hat","z":"女巫帽"},{"e":"scar on cheek","z":"脸颊上的疤痕"},{"e":"hairband","z":"头箍"},{"e":"carrot hair ornament","z":"胡萝卜发饰"},{"e":"wizard hat","z":"法师帽"},{"e":"hairclip","z":"发夹"},{"e":"hair flower","z":"发花"},{"e":"winged helmet","z":"带翅膀的头盔"},{"e":"hair ornament","z":"头饰"},{"e":"purple hairband","z":"紫色发带"},{"e":"hood down","z":"放下的兜帽"},{"e":"hair bow","z":"蝴蝶结发饰"},{"e":"hood up","z":"戴起来的兜帽"},{"e":"surgical mask","z":"医用口罩"},{"e":"hair beads","z":"发珠"},{"e":"maid headdress","z":"女仆头饰"},{"e":"sailor hat","z":"水手帽"},{"e":"multiple hair bows","z":"多个蝴蝶结"},{"e":"santa hat","z":"圣诞帽"},{"e":"mouth mask","z":"口罩"},{"e":"peaked cap","z":"类似警帽的帽子"},{"e":"ribbon","z":"丝带"},{"e":"ebow pads","z":"护时"},{"e":"bat hair ornament","z":"蝙蝠发饰"},{"e":"bone hair ornament","z":"骨发饰"},{"e":"sunglasses","z":"太阳镜"},{"e":"tokin hat","z":"东金帽子"},{"e":"blindfold","z":"眼罩"},{"e":"mini top hat","z":"迷你礼帽"},{"e":"dragon horns","z":"龙角"},{"e":"orange hairband","z":"橙色发带"},{"e":"mask","z":"面具"},{"e":"mouth veil","z":"面纱"},{"e":"eyewear on head","z":"眼镜别在头上"},{"e":"snowflake hair ornament","z":"雪花发饰"},{"e":"jewelry","z":"首饰"},{"e":"beret","z":"贝雷帽"},{"e":"flower on head","z":"头上有花"},{"e":"bell","z":"铃铛"},{"e":"x hair ornament","z":"x发饰"},{"e":"tengu mask","z":"天狗面具"},{"e":"facepaint","z":"面纹"},{"e":"head wreath","z":"头上戴着花冠"},{"e":"hood","z":"兜帽"},{"e":"horns","z":"兽角"},{"e":"fox mask","z":"狐狸面具"},{"e":"nurse cap","z":"护士帽"},{"e":"mask on head","z":"掀到头上的面具"},{"e":"black hairband","z":"黑色发带"},{"e":"clover hair ornament","z":"三叶草发饰"},{"e":"hair scrunchie","z":"发箍"},{"e":"mask pull","z":"拉着口罩"},{"e":"white hairband","z":"白色发带"},{"e":"gas mask","z":"防毒面具"},{"e":"crescent hair ornament","z":"月牙发饰"},{"e":"hair tie","z":"发带"},{"e":"demon horns","z":"恶魔的角"},{"e":"frog hair ornament","z":"青蛙发饰"},{"e":"jeweled branch of hourai","z":"蓬莱玉枝"},{"e":"anchor choker","z":"锚形项圈"},{"e":"food-themed hair ornament","z":"食物发饰"},{"e":"fish hair ornament","z":"鱼形发饰"},{"e":"bead necklace","z":"珠子项链"},{"e":"forehead jewel","z":"额前有宝石"},{"e":"star hair ornament","z":"星星发饰"},{"e":"headphones","z":"耳机"},{"e":"forehead protector","z":"护额"},{"e":"behind-the-head headphones","z":"从后脑戴上的耳机"},{"e":"Running","z":"跑步"},{"e":"Swimming","z":"游泳"},{"e":"yoga","z":"瑜伽"},{"e":"Football(soccer)","z":"足球"},{"e":"Basketball","z":"篮球"},{"e":"MMA(Mixed MartialArts)","z":"综合格斗"},{"e":"Tennis","z":"网球"},{"e":"Wrestling","z":"摔跤"},{"e":"Volleyball","z":"排球"},{"e":"Judo","z":"柔道"},{"e":"Rugby","z":"橄榄球"},{"e":"Baseball","z":"棒球"},{"e":"Hockey","z":"曲棍球"},{"e":"Badminton","z":"羽毛球"},{"e":"Table tennis(ping-pong)","z":"乒乓球"},{"e":"Boxing","z":"拳击"},{"e":"Cooking","z":"烹饪动作"},{"e":"Running","z":"跑步动作"},{"e":"Jumping","z":"跳跃动作"},{"e":"Dancing","z":"跳舞动作"},{"e":"Singing","z":"唱歌动作"},{"e":"Laughing","z":"大笑动作"},{"e":"arms crossed","z":"手交叉于胸前"},{"e":"arms up","z":"双抬臂"},{"e":"Back against wall","z":"靠墙"},{"e":"crossed legs","z":"二郎腿"},{"e":"fingersmile","z":"用手指做出笑脸"},{"e":"Gently hold your glasses","z":"扶正眼镜"},{"e":"hands in hair","z":"双手拨头发"},{"e":"leg up","z":"抬起腿"},{"e":"own hands clasped","z":"双手相扣"},{"e":"Put your hands on your face","z":"手放脸上"},{"e":"Supporting cheeks with both hands","z":"双手托腮"},{"e":"Facepalm","z":"挡脸"},{"e":"Fold ones arms","z":"双手抱臂"},{"e":"Hold face with hands","z":"手撑脸"},{"e":"Open arms","z":"张开双臂"},{"e":"Pointing","z":"指向手势"},{"e":"Thumb uP","z":"竖大拇指"},{"e":"Crying","z":"哭泣动作"},{"e":"Eating","z":"吃东西动作"},{"e":"Drinking","z":"喝水动作"},{"e":"Sleeping","z":"睡觉动作"},{"e":"Reading","z":"阅读动作"},{"e":"Writing","z":"写作动作"},{"e":"Painting","z":"涂画动作"},{"e":"Venom","z":"毒液"},{"e":"Immortal Hulk","z":"无敌浩克"},{"e":"Ghost Rider","z":"幽灵骑士"},{"e":"Deadpool","z":"死侍"},{"e":"She-Hulk","z":"女绿巨人"},{"e":"Weapon X","z":"X武器"},{"e":"Nick Fury","z":"神盾局局长"},{"e":"War Machine","z":"战争机器"},{"e":"Hulkbuster","z":"反浩克装甲"},{"e":"Iron Fist (Danny Rand)","z":"快银"},{"e":"War Machine","z":"战争机器"},{"e":"Daimon Hellstrom","z":"地狱风暴"},{"e":"Hulk (Amadeus Cho)","z":"浩克（泽玛·陶隆）"},{"e":"Aqualad","z":"海少侠"},{"e":"Electro","z":"电王"},{"e":"Iron Man","z":"钢铁侠"},{"e":"Carnage","z":"屠杀"},{"e":"Captain America","z":"美国队长"},{"e":"Alien","z":"异形"},{"e":"Hulk","z":"绿巨人"},{"e":"Spider-Man","z":"蜘蛛侠"},{"e":"She-Hulk (Jennifer Walters)","z":"女浩克"},{"e":"Thor","z":"雷神"},{"e":"Black Widow","z":"黑寡妇"},{"e":"Hawkeye","z":"鹰眼"},{"e":"Ant-Man","z":"蚁人"},{"e":"Doctor Strange","z":"奇异博士"},{"e":"Black Panther","z":"黑豹"},{"e":"Captain Marvel","z":"惊奇队长"},{"e":"Star-Lord","z":"星爵"},{"e":"Groot","z":"格鲁特"},{"e":"Rocket Raccoon","z":"火箭"},{"e":"Scarlet Witch","z":"猩红女巫"},{"e":"Winter Soldier","z":"冬兵"},{"e":"Wolverine","z":"金刚狼"},{"e":"Iron Spider","z":"钢铁蜘蛛"},{"e":"Spider-Woman","z":"蜘蛛女侠"}],"物品":[{"e":"earphone","z":"耳机"},{"e":"keyboard","z":"键盘"},{"e":"camera","z":"相机"},{"e":"watch","z":"手表"},{"e":"Commodities","z":"商品"},{"e":"shoes","z":"鞋子"},{"e":"clothes","z":"衣服"},{"e":"bag","z":"包包"},{"e":"hat","z":"帽子"},{"e":"glasses","z":"眼镜"},{"e":"jewelry","z":"首饰"},{"e":"book","z":"图书"},{"e":"phone","z":"手机"},{"e":"laptop","z":"笔记本电脑"},{"e":"tablet","z":"平板电脑"},{"e":"cosmetics","z":"化妆品"},{"e":"Lipsticks","z":"口红"},{"e":"Skincare Products","z":"护肤品"},{"e":"Cosmetic Bags","z":"化妆包"},{"e":"Perfume","z":"香水"},{"e":"moisturizer","z":"保湿霜"},{"e":"holding sword","z":"拿着剑"},{"e":"tennis racket","z":"球拍"},{"e":"cane","z":"手杖"},{"e":"backpack","z":"双肩包"},{"e":"school bag","z":"书包"},{"e":"satchel","z":"肩背书包"},{"e":"smartphone","z":"手机"},{"e":"jingle bell","z":"铃铛"},{"e":"lantern/lamp","z":"灯笼"},{"e":"teacup","z":"茶杯"},{"e":"cigarette","z":"香烟"},{"e":"cake","z":"蛋糕"},{"e":"taiyaki","z":"鲷鱼烧"},{"e":"ice cream","z":"冰激凌"},{"e":"sake","z":"日本酒"},{"e":"guitar","z":"吉他"},{"e":"piano","z":"钢琴"},{"e":"obento","z":"便当"},{"e":"camera","z":"相机"},{"e":"microphone","z":"麦克风"},{"e":"with glasses","z":"眼镜"},{"e":"Shampoo","z":"洗发水"},{"e":"Body Wash","z":"沐浴乳"},{"e":"holding book","z":"拿着书"},{"e":"Air Fryer","z":"空气炸锅"},{"e":"Air Purifier","z":"空气净化器"},{"e":"Electric fan","z":"电风扇"},{"e":"Juice Extractor","z":"榨汁机"},{"e":"Microwave Oven","z":"微波炉"},{"e":"Vacuum cleaner","z":"吸尘器"},{"e":"hairdryer","z":"吹风机"},{"e":"Rice cooker","z":"电饭锅"},{"e":"lamp","z":"灯具"},{"e":"pillow","z":"抱枕"},{"e":"sofa","z":"沙发"},{"e":"table and chair","z":"桌椅"},{"e":"Bed","z":"床"},{"e":"food","z":"食品"},{"e":"drink","z":"饮"},{"e":"emonade","z":"柠檬汽水"},{"e":"Alcoholic beverage","z":"酒精饮料"},{"e":"wine","z":"酒"},{"e":"cake","z":"蛋糕"},{"e":"Coffee","z":"咖啡"},{"e":"Bread","z":"面包"},{"e":"Candy","z":"糖果"},{"e":"Chocolate","z":"巧克力"},{"e":"Tea","z":"茶"},{"e":"Cheese","z":"乳酪"},{"e":"ice cubes","z":"冰块"},{"e":"mint leaves","z":"薄荷叶"},{"e":"Limestone","z":"石灰岩"},{"e":"Sandstone","z":"沙岩"},{"e":"Andesite","z":"安山岩"},{"e":"Basalt","z":"玄武岩"},{"e":"Quartzite","z":"石英岩"},{"e":"Travertine","z":"洞岩 / 石灰华"},{"e":"Amethyst","z":"紫水晶"},{"e":"Quartz","z":"石英"},{"e":"Diamond","z":"钻石"},{"e":"Alexandrite","z":"亚历山大石/变色石"},{"e":"Chrysoberyl","z":"金绿玉"},{"e":"Tourmaline","z":"电气石（碧玺）"},{"e":"Olivine/Peridot","z":"橄榄石"},{"e":"Agate","z":"玛瑙"},{"e":"Tanzanite","z":"丹泉石(坦桑石)"},{"e":"Coral","z":"珊瑚"},{"e":"Azurite","z":"蓝铜矿/石青"},{"e":"Moissanite","z":"莫桑石(像钻石)"},{"e":"Fluorite","z":"萤石"},{"e":"Morganite","z":"摩根石"}],"动植物":[{"e":"Northern White-Cheeked Gibbon","z":"长鼻浣熊"},{"e":"Lizard","z":"蜥蜴"},{"e":"Owl","z":"猫头鹰"},{"e":"Otter","z":"水獭"},{"e":"Yellowfin Tuna","z":"黄鳍金枪鱼"},{"e":"Uric Acid Crocodile","z":"尿酸鳄"},{"e":"Long-tailed monkey","z":"长尾猴"},{"e":"Leopard","z":"金钱豹"},{"e":"Ostrich","z":"鸵鸟"},{"e":"Penguin","z":"企鹅"},{"e":"Grizzly bear","z":"灰熊"},{"e":"Triangle whale","z":"三角鲸"},{"e":"Needle mole","z":"针鼹鼠"},{"e":"Complex blue-green wing butterfly","z":"错综壮碧绿翅膀蝴蝶"},{"e":"Screen drum woodpecker","z":"屏风鼓啄木鸟"},{"e":"Drake","z":"公鸭"},{"e":"Mountain Yak","z":"山地牦牛"},{"e":"Red Anteater","z":"红色食蚁兽"},{"e":"Reindeer","z":"梅花鹿"},{"e":"Sea lion","z":"海狮"},{"e":"Gray ant","z":"灰蚂蚁"},{"e":"Spotted Wild Boar","z":"斑点野猪"},{"e":"Animal","z":"动物"},{"e":"dog","z":"狗"},{"e":"cat","z":"猫"},{"e":"bird","z":"鸟"},{"e":"fish","z":"鱼"},{"e":"panda","z":"熊猫"},{"e":"tiger","z":"老虎"},{"e":"Turtle","z":"乌龟"},{"e":"Lion","z":"狮子"},{"e":"Deer","z":"鹿"},{"e":"Giant Panda","z":"大熊猫"},{"e":"Leopard","z":"豹"},{"e":"Giraffe","z":"长颈鹿"},{"e":"Kangaroo","z":"袋鼠"},{"e":"Tiger","z":"老虎"},{"e":"Sandworm","z":"沙蚕"},{"e":"Chimpanzee","z":"黑猩猩"},{"e":"Nightmare spider","z":"梦魇蛛"},{"e":"Rhinoceros","z":"犀牛"},{"e":"Crocodile hatchling","z":"鳄鱼幼崽"},{"e":"Racoon dog","z":"犀浣熊"},{"e":"Crocodile","z":"鳄鱼"},{"e":"Panda","z":"熊猫"},{"e":"Orangutan","z":"猩猩"},{"e":"Spotted frog","z":"斑点青蛙"},{"e":"Zebra","z":"斑马"},{"e":"Dragon","z":"龙"},{"e":"Gorilla","z":"大猩猩"},{"e":"Siberian Lynx","z":"猞猁"},{"e":"Polar Bear","z":"北极熊"},{"e":"American Bison","z":"美洲野牛"},{"e":"Elephant","z":"大象"},{"e":"American Black Bear","z":"北美黑熊"},{"e":"Leopard Shark","z":"豹纹鲨"},{"e":"Arctic dog","z":"北极狗"},{"e":"Arctic Fox","z":"北极狐"},{"e":"Flatfish","z":"比目鱼"},{"e":"Arctic rabbit","z":"北极兔"},{"e":"Kangaroo","z":"袋鼠"},{"e":"Arctic sable","z":"北极貂"},{"e":"Aves","z":"像鸟类"},{"e":"Ostrich","z":"辣妹鸵鸟"},{"e":"Marsupial","z":"负鼠"},{"e":"Hippopotamus","z":"河马"},{"e":"V-shaped neuromodulator fish","z":"V字神经鱼"},{"e":"River Otter","z":"斑点水獭"},{"e":"Jaguar","z":"花豹"},{"e":"lion","z":"狮子"},{"e":"Mountain Lion","z":"美洲狮"},{"e":"Mountain antelope","z":"山地斑羚"},{"e":"elephant","z":"大象"},{"e":"Leopard","z":"豹子"},{"e":"giraffe","z":"长颈鹿"},{"e":"Sloth","z":"树懒"},{"e":"Squirrel","z":"松鼠"},{"e":"zebra","z":"斑马"},{"e":"Eagle","z":"老鹰"},{"e":"monkey","z":"猴子"},{"e":"rabbit","z":"兔子"},{"e":"Mountain Lizard","z":"山岭巨蜥"},{"e":"mouse","z":"鼠"},{"e":"Gray Wolf","z":"北美狼"},{"e":"COW","z":"牛"},{"e":"Ptarmigan","z":"麻鸡"},{"e":"sheep","z":"羊"},{"e":"Leopard cat","z":"虎斑猫"},{"e":"horse","z":"马"},{"e":"Raccoon","z":"普通浣熊"},{"e":"duck","z":"鸭子"},{"e":"Mollusk","z":"腹足类"},{"e":"goose","z":"鹅"},{"e":"Stunning Chimpanzee","z":"辣妹猩猩"},{"e":"pig","z":"猪"},{"e":"Impatient Aardwolf","z":"急性子鬣狗"},{"e":"flower","z":"花"},{"e":"grass","z":"草"},{"e":"tree","z":"树"},{"e":"leaf","z":"叶子"},{"e":"fruit","z":"果子"},{"e":"Iris","z":"鸢尾花"},{"e":"Celosia","z":"鸡冠花"},{"e":"vegetable","z":"菜"},{"e":"Lilac","z":"丁香"},{"e":"mushroom","z":"蘑菇"},{"e":"Iris","z":"唐菖蒲"},{"e":"Wildflower","z":"野花"},{"e":"vine","z":"藤"},{"e":"Blossom","z":"花卉"},{"e":"Shiso","z":"紫苏花"},{"e":"bamboo","z":"竹子"},{"e":"Gentian","z":"龙胆花"},{"e":"reed","z":"芦苇"},{"e":"Honeysuckle","z":"铜铃花"},{"e":"Fuchsia","z":"垂丝海棠"},{"e":"palm","z":"棕榈"},{"e":"Honeysuckle","z":"金银花"},{"e":"Pine","z":"松树"},{"e":"pine","z":"松"},{"e":"Fir","z":"冷杉"},{"e":"Spruce","z":"云杉"},{"e":"Arborvitae","z":"侧柏"},{"e":"plum","z":"梅"},{"e":"Larch","z":"落叶松"},{"e":"Cypress","z":"柏树"},{"e":"orchid","z":"兰"},{"e":"Sequoia","z":"红杉"},{"e":"Teak","z":"柚木"},{"e":"Beech","z":"榉木"},{"e":"Fagaceae","z":"山毛榉"},{"e":"lotus","z":"莲"},{"e":"Oak","z":"橡木 / 栎树"},{"e":"Sandalwood","z":"檀木"},{"e":"rose","z":"玫瑰"},{"e":"peony","z":"牡丹"},{"e":"African_Violet","z":"非洲紫罗兰"},{"e":"Alpine_Plant","z":"高山植物"},{"e":"Babys_Breath","z":"满天星"},{"e":"Balloon_Flower","z":"气球花"},{"e":"Bee_Balm","z":"蜜蜂膏"},{"e":"Bird of Paradise Flower","z":"天堂鸟花"},{"e":"Blossom","z":"开花"},{"e":"Celosia","z":"鸡冠花"},{"e":"Chrysanthemum Tea","z":"菊花茶"},{"e":"Flower Tea","z":"花茶"},{"e":"Flowering Plant","z":"开花植物"},{"e":"Fuchsia","z":"紫红色花"},{"e":"Gentian","z":"龙胆"},{"e":"Honeysuckle","z":"金银花"},{"e":"Iris","z":"鸢尾花"},{"e":"Lily of the Valley","z":"山谷里的百合"},{"e":"Night-Blooming Jasmine","z":"夜花-茉莉花"},{"e":"Oolong Tea Flower","z":"乌龙茶花"},{"e":"Shiso","z":"紫苏"},{"e":"Torch Lily","z":"火炬莉莉"},{"e":"Plant","z":"植物"}],"二次元":[{"e":"Shinigami","z":"死神"},{"e":"Ninja","z":"忍者"},{"e":"Energetic","z":"元气的"},{"e":"corky","z":"天然呆的"},{"e":"tsundere","z":"傲娇的"},{"e":"yandere","z":"病娇的"},{"e":"shy","z":"腼腆的"},{"e":"lively","z":"活泼的"},{"e":"mischievous","z":"调皮的"},{"e":"gentle","z":"温柔的"},{"e":"solitary","z":"孤僻的"},{"e":"crazy","z":"疯狂的"},{"e":"wicked","z":"邪恶的"},{"e":"anime character","z":"动漫角色"},{"e":"Uzumaki Naruto","z":"漩涡鸣人"},{"e":"Kakashi Hatake","z":"卡卡西"},{"e":"Sasuke Uchiha","z":"宇智波佐助"},{"e":"Luffy","z":"路飞"},{"e":"Roronoa Zoro","z":"罗罗诺亚·索隆"},{"e":"Asuka Langley Soryu","z":"明日香"},{"e":"Rei Ayanami","z":"绫波丽"},{"e":"Mikasa Ackerman","z":"三笠"},{"e":"Levi Ackerman","z":"利威尔"},{"e":"Charcoal Jirou","z":"炭治郎"},{"e":"Nezuko Kamado","z":"称豆子"},{"e":"Pikachu","z":"皮卡丘"},{"e":"Gintoki Sakata","z":"坂田银时"},{"e":"Kyoto Anmation","z":"京阿尼动画"},{"e":"Ghibli Studio","z":"吉卜力"},{"e":"DreamWorks Animation","z":"梦工厂"},{"e":"Violet Evergarden","z":"紫罗兰永恒花园"},{"e":"Pokemon","z":"宠物小精灵"},{"e":"Neon Genesis Evangelion","z":"新世纪福音战士"},{"e":"Sailor Moon","z":"美少女战士"},{"e":"Cardcaptor Sakura","z":"魔卡少女樱"},{"e":"One Piece","z":"海贼王"},{"e":"SLAM DUNK","z":"灌篮高手"},{"e":"Gundam","z":"高达"},{"e":"Gintama","z":"银魂"},{"e":"Naruto","z":"火影忍者"},{"e":"Demon Slayer","z":"鬼灭之刃"},{"e":"Digimon","z":"数码宝贝"},{"e":"Detective Conan","z":"名侦探柯南"},{"e":"Bleach","z":"死神"},{"e":"The Legend of Zelda","z":"塞尔达传说"},{"e":"Genshin Impact","z":"原神"}],"科技感":[{"e":"aser glasses","z":"镭射眼镜"},{"e":"reflective vests","z":"反光背心"},{"e":"robotic arms","z":"机械手臂"},{"e":"masks and respirators","z":"口罩和呼吸器"},{"e":"laser glasses with bulletproof glass lenses","z":"防弹玻璃镜片的镭射眼镜"},{"e":"unique suede jackets with armour","z":"独特的带有装甲的魔皮外套"},{"e":"reflective night suits","z":"反光材质的夜行衣"},{"e":"complex robotic arms","z":"复杂的机械手臂"},{"e":"body-hugging bandage suits","z":"贴身的绷带防护服"},{"e":"anti-gravity shoes for extreme sports","z":"用于极限运动的反重力鞋"},{"e":"clothing that can be stealthy for short periods of time","z":"能短暂隐身的服装"},{"e":"intelligent combat suits","z":"智能化的战斗服"},{"e":"modified fashionable mechs","z":"改装后的时尚机甲"},{"e":"frosted black jackets","z":"磨砂黑夹克"},{"e":"steel plate battle armour","z":"钢板战甲"},{"e":"futuristic glowing shoes","z":"来感友光鞋"},{"e":"ankle mechanical parts","z":"脚踝机械零件"},{"e":"translucent helmets","z":"半透明头盔"},{"e":"radiation masks","z":"防辐射面罩"},{"e":"smart watches","z":"智能手表"},{"e":"biochemical communication devices","z":"生化通讯设备"},{"e":"optical goggles","z":"光学护目镜"},{"e":"bionic armour","z":"仿生装甲"},{"e":"intelligent glasses","z":"智能眼镜"},{"e":"mechanical backpacks","z":"机械背包"},{"e":"bulletproof jackets","z":"防弹夹克"},{"e":"bionic artificial hands","z":"仿生人造手"},{"e":"digital masks","z":"数码面罩"},{"e":"high-tech necklaces","z":"高科技项链"},{"e":"optical scopes","z":"光学瞄准镜"},{"e":"halo","z":"光环"},{"e":"cuffs/shackles","z":"手链/手铐"},{"e":"handcuffs","z":"手铐"},{"e":"silver metallic surfaces","z":"银色的金属表面"},{"e":"fluorescent neon colours","z":"荧光色的霓虹灯"},{"e":"metallic textured robotic arms","z":"金属纹理的机械臂"},{"e":"frosted black plastic casings","z":"磨砂黑的塑料外壳"},{"e":"metallic silver sheen","z":"金属的银色光泽"},{"e":"fluorescent neon effects","z":"荧光色的霓虹灯效果"},{"e":"cold metallic textured robotic arms","z":"冰冷金属纹理的机械臂"},{"e":"dark frosted black plastic casings","z":"暗黑磨砂黑的塑料外壳"},{"e":"metallic textures and rigidity","z":"金属般的质感和刚性感"},{"e":"transparent textures of translucent glass","z":"通透玻璃的透明质感"},{"e":"soft textures of bionic materials","z":"仿生材料的柔软质感"},{"e":"magical textures of red sparkles","z":"红色火花的魔法质感"},{"e":"muscle fibre-like flexible textures","z":"肌肉纤维般的柔韧质感"},{"e":"fiery flames","z":"炽热的火焰质感"},{"e":"cold metallic textures","z":"冰冷的金属感"},{"e":"chrome textures","z":"铭合金的质感"},{"e":"smooth fibre textures","z":"光滑的纤维质感"},{"e":"futuristic polished surfaces","z":"未来主义抛光面"},{"e":"black ballistic materials","z":"黑色防弹材料"},{"e":"metallic accessories","z":"金属材质的饰品"},{"e":"futuristic mechatronic sensations","z":"未来主义机甲感"},{"e":"reflective coatings in frosted black","z":"磨砂黑的反光涂层"},{"e":"glass textures","z":"玻璃质感"},{"e":"transparent polymers","z":"透明的高分子材料"},{"e":"high-tech gas-absorbing materials","z":"高科技气体吸附材料"},{"e":"futuristic textiles","z":"未来主义纺织品"},{"e":"micro and nano materials","z":"微纳米材料"},{"e":"artificial leather","z":"人造皮革"},{"e":"composite materials Glossy surfaces","z":"复合材料表面的光泽感"},{"e":"transparency of high-tech materials","z":"高科技材料的透明度"},{"e":"futuristic plastic cases","z":"未来主义塑料外壳"},{"e":"textured metal alloys","z":"金属合金的纹理感"},{"e":"non-slip textures for charging devices","z":"充电设备的防滑质感"},{"e":"protective cases for high-tech devices","z":"高科技设备的保护套"},{"e":"Alien Planet","z":"外星球"},{"e":"Galaxy","z":"星系"},{"e":"Universe","z":"宇宙"},{"e":"Mars Landscape","z":"火星景观"},{"e":"Outer Space","z":"外太空"},{"e":"Red Planet","z":"红色星球"},{"e":"Space Station","z":"空间站"},{"e":"Abandoned Spaceship","z":"废弃的太空船"},{"e":"Lunar Landscape","z":"月球景观"},{"e":"nebula","z":"星云"},{"e":"cosmos","z":"宇宙"},{"e":"virtual reality space","z":"虚拟现实空间"},{"e":"the dislocated real world","z":"错乱的现实世界"},{"e":"the exploration of unknown planets","z":"未知星球的探索"},{"e":"voyages of exploration through ancient ruins","z":"远古遗迹的探索之旅"},{"e":"the unpredictability of technological research","z":"科技研究的不可预知性"},{"e":"the magnetic disturbance of cosmic space","z":"宇宙空间的磁场扰动"},{"e":"the adventure of time trave","z":"时空穿越的冒险之旅"},{"e":"the realisation ofvirtual worlds","z":"虚拟世界的实现"},{"e":"the exploration of alien worlds","z":"异形世界的探索"},{"e":"the virtual personality of Presence","z":"虚拟人格的存在感"},{"e":"the stormy behaviour of high-tech devices","z":"高科技设备的暴走行为"},{"e":"the mutant evolution of the space-time tunnel","z":"时空隧道的变异演化"},{"e":"the mutant evolution of the space-time tunne","z":"黑暗维度的恐怖体验"},{"e":"horrific experiences in dark dimensions","z":"末知星球的探险旅程"},{"e":"expeditions to unknown planetswarping of space-time tunnels","z":"时空隧道的扭曲"},{"e":"illusions of virtual worlds","z":"虚拟世界的幻觉"},{"e":"mysterious portals","z":"神秘的传送门"},{"e":"illusions in virtual reality space","z":"虚拟现实空间的幻境"}]};
+
+// ═══ DEFAULT PROMPTS (editable via settings) ═══
+const DEF_PROMPTS={
+recognize:`What is the main color of this product? Reply with ONLY the color name(s), like "red" or "pink and gold". Under 5 words. English only.`,
+
+concept:`你是电商视觉总监/AI作图专家，拥有百万级爆款操盘经验。根据产品信息和目标市场，为电商黄金9图生成高质量设计理念。
+
+你必须输出一个JSON对象，严格遵循结构：
+{"styles":["风格1","风格2","风格3","风格4","风格5"],"slots":[9个图片类型],"concepts":[9个设计理念]}
+
+styles字段：推荐5个最适合该产品+目标市场的视觉风格方向，中文，第一个最推荐。
+
+slots数组（恰好9个）：根据产品推荐最合适的9张图类型，格式：
+{"t":"中文名称","s":"English name","d":"一句话说明","i":"emoji图标"}
+主图/封面图必须是第一张，其余根据产品特性选择最有转化力的组合。
+
+concepts数组（恰好9个），每个对应slots中的一张图，格式：
+{"concept":"中文理念（必须详尽，见要求）"}
+
+【concept字段 - 中文理念，必须包含以下所有维度，总字数不少于150字】：
+• 【转化目标】这张图要打动谁？解决什么购买疑虑或激发什么购买欲望？
+• 【核心场景】具体场景描述：在哪里？什么时间？什么人物/氛围？
+• 【光影情绪】光线方向、色温、整体情绪基调（如：晨光侧逆光/暖黄氛围/高级感）
+• 【视觉构图】构图方式（如：三分法/对角线/居中对称）、主体占比、前后景关系
+• 【色彩方案】主色+辅色+点缀色，色调风格（如：莫兰迪/高饱和/低纯度奶油色）
+• 【文案位置】标题/卖点/角标的位置、字体风格、文案内容方向
+• 【设计风格】具体风格参考（如：ins风极简/K-beauty/Shopee爆款风）
+结尾标注应用概念。
+
+图片风格、色彩、排版、文案调性必须严格符合目标市场审美。
+产品外观约束（仅防止AI画错产品）：用"颜色+product"指代产品，不要描述产品细节形状。
+只输出JSON对象，不加markdown代码块。`,
+
+prompt:`你是一名引领行业潮流、拥有百万级爆款经验的电商美妆类目视觉总监/AI作图专家。用户已确认9张电商图的设计理念，你现在需要根据每张确认的理念，高质量创作可直接使用的AI作图提示词。
+
+输出JSON数组(9个对象)：{"en":"English prompt","zh":"中文提示词"}
+
+语言规则：en纯英文禁止中文字符，zh纯中文（品牌名除外），图片文案/slogan在en和zh中都用{lang}。
+产品外观约束：用"颜色+product"指代产品，产品图会作为reference传入，不要描述产品细节。
+风格/色彩/排版/文案调性必须符合目标市场审美。
+每个提示词必须包含：画面内容、设计风格、光影氛围、产品/模特姿态、色彩方案、构图方式、材质质感、分辨率/画幅。
+图片文案只用{lang}，明确内容和位置。具体可执行，不笼统。
+只输出JSON。`,
+
+imggen:`# Image Reference Instructions
+- The first image is the product photo (white/transparent background). You MUST preserve this product's exact appearance (shape, color, label, packaging, texture) in the generated image. Do not alter, redesign, or reimagine the product.
+- {refNote}
+- {prodAppearance}
+- Generate the final image based on the prompt below, keeping the product faithful to the original photo.`,
+
+aesthetic:JSON.stringify({
+  MX:'Mexican e-commerce: bold vibrant colors, expressive typography, aspirational but approachable, prominent pricing and trust badges',
+  BR:'Brazilian e-commerce: tropical warm colors, diverse models, sensual yet natural beauty, bold discounts, social proof, fun energetic vibe',
+  ID:'Indonesian e-commerce: clean pastel backgrounds, hijab-friendly options, Shopee/Tokopedia style, flash sale banners, halal certification, soft feminine colors',
+  PH:'Philippine e-commerce: bright cheerful colors, approachable everyday beauty, warm and energetic vibe, diverse and real-looking models, clean layouts with vibrant accents, clear product focus',
+  VN:'Vietnamese e-commerce: clean soft pink/white, K-beauty influenced, before/after popular, VND pricing with strikethrough, youthful cute style',
+  TH:'Thai e-commerce: bright colorful playful, gold/white premium for beauty, celebrity endorsement style, cute kawaii elements, strong promo emphasis',
+  MY:'Malaysian e-commerce: multicultural inclusive, halal-conscious, clean modern, bilingual Malay/English, modest fashion awareness, soft neutral palettes',
+  SG:'Singaporean e-commerce: premium minimalist clean, high-end positioning, sophisticated typography, quality-over-price, clinical/scientific beauty trend'
+},null,2)
+};
+
+// Current prompts (loaded from localStorage or defaults)
+let CUR_PROMPTS={...DEF_PROMPTS};
+
+function openSettings(){
+  document.getElementById('sp_recognize').value=CUR_PROMPTS.recognize;
+  document.getElementById('sp_concept').value=CUR_PROMPTS.concept;
+  document.getElementById('sp_prompt').value=CUR_PROMPTS.prompt;
+  document.getElementById('sp_imggen').value=CUR_PROMPTS.imggen;
+  document.getElementById('sp_aesthetic').value=CUR_PROMPTS.aesthetic;
+  document.getElementById('sp_kb').value=JSON.stringify(KB,null,2);
+  const kbTotal=Object.values(KB).reduce((a,c)=>a+c.length,0);
+  document.getElementById('kbCount').textContent=kbTotal+'';
+  document.getElementById('sBg').classList.remove('hid');
+  document.body.style.overflow='hidden';
+}
+function closeSettings(){document.getElementById('sBg').classList.add('hid');document.body.style.overflow=''}
+function savePromptSettings(){
+  CUR_PROMPTS.recognize=document.getElementById('sp_recognize').value;
+  CUR_PROMPTS.concept=document.getElementById('sp_concept').value;
+  CUR_PROMPTS.prompt=document.getElementById('sp_prompt').value;
+  CUR_PROMPTS.imggen=document.getElementById('sp_imggen').value;
+  CUR_PROMPTS.aesthetic=document.getElementById('sp_aesthetic').value;
+  // Save KB
+  try{
+    const newKB=JSON.parse(document.getElementById('sp_kb').value);
+    Object.keys(KB).forEach(k=>delete KB[k]);
+    Object.assign(KB,newKB);
+  }catch(e){alert('知识库JSON格式错误：'+e.message);return}
+  // Update MARKETS aesthetic from JSON
+  try{
+    const aesMap=JSON.parse(CUR_PROMPTS.aesthetic);
+    for(const region of Object.values(MARKETS)){for(const sub of region.subs){if(aesMap[sub.v])sub.aes=aesMap[sub.v]}}
+  }catch(e){console.warn('Aesthetic JSON parse error:',e)}
+  try{localStorage.setItem('ecom_studio_prompts',JSON.stringify({...CUR_PROMPTS,kb:KB}))}catch(e){}
+    closeSettings();
+    alert('已保存！');
+  }
+  function resetAllPrompts(){
+    if(!confirm('确定重置所有内置提示词为默认值？'))return;
+    CUR_PROMPTS={...DEF_PROMPTS};
+    try{localStorage.removeItem('ecom_studio_prompts')}catch(e){}
+    openSettings();
+  }
+  function loadPromptSettings(){
+    try{
+      const r=localStorage.getItem('ecom_studio_prompts');
+      if(!r)return;
+      const s=JSON.parse(r);
+      Object.assign(CUR_PROMPTS,s);
+      if(s.kb){try{Object.keys(KB).forEach(k=>delete KB[k]);Object.assign(KB,s.kb)}catch(e){}}
+      try{
+        const aesMap=JSON.parse(CUR_PROMPTS.aesthetic);
+        for(const region of Object.values(MARKETS)){for(const sub of region.subs){if(aesMap[sub.v])sub.aes=aesMap[sub.v]}}
+      }catch(e){}
+    }catch(e){}
+  }
+  loadPromptSettings();
+
+// ═══ KB passed directly to AI, no pre-matching ═══
+
+// ═══ MARKET CONFIG ═══
+const MARKETS={
+  latam:{subs:[
+    {v:'MX',l:'🇲🇽 墨西哥',m:'Mexican model',lang:'es-MX',
+     aes:'Mexican e-commerce aesthetic: bold vibrant colors (red, gold, warm tones), expressive typography, family/community-oriented lifestyle, aspirational but approachable, Mercado Libre/Amazon MX style product listings with prominent pricing and trust badges'},
+    {v:'BR',l:'🇧🇷 巴西',m:'Brazilian model',lang:'pt-BR',
+     aes:'Brazilian e-commerce aesthetic: tropical warm colors, diverse models, sensual yet natural beauty style, Shopee/Mercado Livre style with bold discounts, social proof emphasis, fun energetic vibe'},
+  ]},
+  sea:{subs:[
+    {v:'ID',l:'🇮🇩 印度尼西亚',m:'Indonesian model',lang:'id',
+     aes:'Indonesian e-commerce aesthetic: clean pastel backgrounds, hijab-friendly model options, Shopee/Tokopedia style with flash sale banners, price-first layout, halal certification prominent, soft feminine colors'},
+    {v:'PH',l:'🇵🇭 菲律宾',m:'Filipino model',lang:'tl-en',
+     aes:'Philippine e-commerce aesthetic: bright cheerful colors, approachable everyday beauty, warm and energetic vibe, diverse and real-looking models, clean layouts with vibrant accents, clear product focus'},
+    {v:'VN',l:'🇻🇳 越南',m:'Vietnamese model',lang:'vi',
+     aes:'Vietnamese e-commerce aesthetic: clean soft pink/white tones, K-beauty influenced, Shopee VN/Tiki style, before/after comparisons popular, price in VND with strikethrough, youthful cute style, detailed ingredient callouts'},
+    {v:'TH',l:'🇹🇭 泰国',m:'Thai model',lang:'th',
+     aes:'Thai e-commerce aesthetic: bright colorful playful style, Shopee TH/Lazada style, gold/white premium tones for beauty, celebrity endorsement style, Thai script prominent, cute kawaii elements, strong promo/discount emphasis'},
+    {v:'MY',l:'🇲🇾 马来西亚',m:'Malaysian model',lang:'ms',
+     aes:'Malaysian e-commerce aesthetic: multicultural inclusive imagery, Shopee MY style, halal-conscious, clean modern layouts, bilingual Malay/English, modest fashion awareness, soft neutral color palettes'},
+    {v:'SG',l:'🇸🇬 新加坡',m:'Singaporean model',lang:'en',
+     aes:'Singaporean e-commerce aesthetic: premium minimalist clean design, high-end beauty positioning, Shopee SG/Sephora style, English-only, sophisticated typography, quality-over-price messaging, clinical/scientific beauty trend'},
+  ]},
+};
+const LANG_MAP={'es-MX':'Mexican Spanish (Español Mexicano)','pt-BR':'Brazilian Portuguese (Português Brasileiro)','id':'Indonesian (Bahasa Indonesia)','fil':'Filipino (Wikang Filipino)','tl-en':'Taglish (Filipino and English mixed, as naturally used in Philippine e-commerce)','vi':'Vietnamese (Tiếng Việt)','th':'Thai (ภาษาไทย)','ms':'Malay (Bahasa Melayu)','en':'English'};
+
+// SLOTS are now dynamic - AI recommends 9 image types per product
+let SLOTS=[];
+const ICONS=['🎯','⭐','💎','🌸','🔍','✨','🧪','🏆','🔥'];
+
+
+// Re-encode image through canvas to preserve transparency or pad to aspect ratio
+function cleanImageData(dataUrl, targetRatioStr = 'auto'){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>{
+      let originalWidth = img.width;
+      let originalHeight = img.height;
+      let newWidth = originalWidth;
+      let newHeight = originalHeight;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      if (targetRatioStr !== 'auto') {
+        const [w, h] = targetRatioStr.split(':').map(Number);
+        if (!isNaN(w) && !isNaN(h) && h !== 0) {
+          const targetRatio = w / h;
+          const originalRatio = originalWidth / originalHeight;
+          if (originalRatio > targetRatio) {
+            newHeight = Math.round(originalWidth / targetRatio);
+            offsetY = Math.round((newHeight - originalHeight) / 2);
+          } else {
+            newWidth = Math.round(originalHeight * targetRatio);
+            offsetX = Math.round((newWidth - originalWidth) / 2);
+          }
+        }
+      }
+
+      const max=1024;
+      if(newWidth>max||newHeight>max){
+         const s=max/Math.max(newWidth,newHeight);
+         newWidth=Math.round(newWidth*s);
+         newHeight=Math.round(newHeight*s);
+         originalWidth=Math.round(originalWidth*s);
+         originalHeight=Math.round(originalHeight*s);
+         offsetX=Math.round(offsetX*s);
+         offsetY=Math.round(offsetY*s);
+      }
+
+      const canvas=document.createElement('canvas');
+      canvas.width=newWidth;canvas.height=newHeight;
+      const ctx=canvas.getContext('2d');
+      
+      ctx.clearRect(0,0,newWidth,newHeight);
+      
+      ctx.drawImage(img,offsetX,offsetY,originalWidth,originalHeight);
+      const b64=canvas.toDataURL('image/png').split(',')[1];
+      resolve(b64);
+    };
+    img.onerror=()=>{
+      const b64=dataUrl.split(',')[1];
+      resolve(b64||null);
+    };
+    img.src=dataUrl;
+  });
+}
+
+function gAesthetic(){
+  const sel=document.getElementById('iMkt2');
+  const r=document.getElementById('iMkt1').value;
+  const v=sel.value;
+  const sub=MARKETS[r]?.subs.find(s=>s.v===v);
+  return sub?.aes||'';
+}
+
+// ═══ STATE ═══
+let concepts=[],prompts=[],images=[],promptLangs=[];
+let prodImgData=null,refImgData=null,editIdx=-1,editResult=null;
+
+// ═══ INIT ═══
+function updateSubMarket(){const r=document.getElementById('iMkt1').value;const sel=document.getElementById('iMkt2');sel.innerHTML=MARKETS[r].subs.map(s=>`<option value="${s.v}" data-m="${s.m}" data-lang="${s.lang}">${s.l}</option>`).join('');syncLang()}
+function syncLang(){const sel=document.getElementById('iMkt2');const l=sel.options[sel.selectedIndex]?.dataset.lang;if(l)document.getElementById('iLang').value=l}
+updateSubMarket();
+
+// ═══ SCROLL NAV ═══
+function scrollToBlock(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'})}
+// Highlight active nav on scroll
+const observer=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){document.querySelectorAll('.sn-item').forEach(a=>a.classList.remove('active'));document.querySelector(`.sn-item[href="#${e.target.id}"]`)?.classList.add('active')}})},{threshold:0.3,rootMargin:'-100px 0px 0px 0px'});
+document.addEventListener('DOMContentLoaded',()=>{['step1','step2','step3','step4'].forEach(id=>{const el=document.getElementById(id);if(el)observer.observe(el)})});
+
+// ═══ UPLOAD ═══
+function setImg(type,d){if(type==='prod'){prodImgData=d;productAppearance='';document.getElementById('prodPv').src=d;document.getElementById('prodPv').classList.remove('hid');document.getElementById('prodPh').classList.add('hid');document.getElementById('upBox1').classList.add('has-img')}else{refImgData=d;document.getElementById('refPv').src=d;document.getElementById('refPv').classList.remove('hid');document.getElementById('refPh').classList.add('hid');document.getElementById('upBox2').classList.add('has-img')}try{saveSettings()}catch(e){}}
+function clearImg(type){if(type==='prod'){prodImgData=null;document.getElementById('prodPv').classList.add('hid');document.getElementById('prodPh').classList.remove('hid');document.getElementById('upBox1').classList.remove('has-img');document.getElementById('upF1').value=''}else{refImgData=null;document.getElementById('refPv').classList.add('hid');document.getElementById('refPh').classList.remove('hid');document.getElementById('upBox2').classList.remove('has-img');document.getElementById('upF2').value=''}try{saveSettings()}catch(e){}}
+function fileImg(inp,type){const f=inp.files[0];if(!f||!f.type.startsWith('image/'))return;const r=new FileReader;r.onload=e=>setImg(type,e.target.result);r.readAsDataURL(f)}
+function dropImg(e,type){const f=e.dataTransfer.files[0];if(!f||!f.type.startsWith('image/'))return;const r=new FileReader;r.onload=ev=>setImg(type,ev.target.result);r.readAsDataURL(f)}
+async function loadUrl(type){const u=document.getElementById(type==='prod'?'urlProd':'urlRef').value.trim();if(!u||!u.startsWith('http')){alert('请输入有效URL');return}try{const r=await fetch(u);const b=await r.blob();if(!b.type.startsWith('image/'))throw 0;const rd=new FileReader;rd.onload=e=>setImg(type,e.target.result);rd.readAsDataURL(b)}catch(e){alert('加载失败，可能跨域限制')}}
+function pasteImg(e,type){const items=e.clipboardData?.items;if(items){for(const it of items){if(it.type.startsWith('image/')){e.preventDefault();const f=it.getAsFile();const r=new FileReader;r.onload=ev=>setImg(type,ev.target.result);r.readAsDataURL(f);return}}}setTimeout(()=>{const v=document.getElementById(type==='prod'?'urlProd':'urlRef').value.trim();if(v.startsWith('http'))loadUrl(type)},100)}
+
+// ═══ HELPERS ═══
+function gModel(){const s=document.getElementById('iMkt2');return s.options[s.selectedIndex]?.dataset.m||'model'}
+function gMarket(){const r=document.getElementById('iMkt1'),s=document.getElementById('iMkt2');return r.options[r.selectedIndex].textContent.trim()+' '+s.options[s.selectedIndex].textContent.trim()}
+function gLang(){return LANG_MAP[document.getElementById('iLang').value]||'English'}
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}
+
+// ═══ STEP 1→2: GENERATE CONCEPTS (AI or template) ═══
+let recStyles=[]; // AI recommended styles
+let activeStyle='';
+let productAppearance=''; // AI-recognized product appearance description
+
+// Step 0: Recognize product appearance from image (for color/material constraint only)
+async function recognizeProduct(apiKey,txtModel,info){
+  if(productAppearance)return productAppearance;
+  try{
+    const cleanB64r=await cleanImageData(prodImgData);
+    if(!cleanB64r)return'';
+    const imgPart={inline_data:{mime_type:'image/png',data:cleanB64r}};
+    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${txtModel}:generateContent?key=${apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[imgPart,{text:CUR_PROMPTS.recognize}]}]})});
+    if(!resp.ok)return'';
+    const d=await resp.json();
+    productAppearance=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    return productAppearance;
+  }catch(e){console.warn('Product recognition failed:',e);return''}
+}
+
+async function genConcepts(overrideStyle){
+  const info=document.getElementById('iInfo').value.trim();
+  const miss=[];if(!prodImgData)miss.push('产品图片');if(!info)miss.push('产品信息');
+  if(miss.length){document.getElementById('vW').classList.remove('hid');document.getElementById('vM').textContent=miss.join('、');return}
+  document.getElementById('vW').classList.add('hid');
+  const sty=overrideStyle||document.getElementById('iStyle').value.trim(),ar=document.getElementById('iAR').value,arLabel=ar==='auto'?'keep original':ar;
+  const model=gModel(),market=gMarket(),lang=gLang(),apiKey=document.getElementById('aKey').value.trim(),txtModel=document.getElementById('txtMdl').value;
+  activeStyle=sty;
+
+  if(apiKey){
+    const btn=document.getElementById('genConBtn');btn.disabled=true;btn.textContent='⏳ AI识别产品中...';
+    clearStep3();clearStep4();
+    // Step 0: recognize product
+    const prodDesc=await recognizeProduct(apiKey,txtModel,info);
+    btn.textContent='⏳ AI生成理念中...';
+    try{
+      const aesthetic=gAesthetic();
+      let sys=CUR_PROMPTS.concept
+        .replace(/\{lang\}/g,lang)
+        .replace(/\{market\}/g,market)
+        .replace(/\{model\}/g,model);
+      // Append dynamic context
+      sys+=`\n${sty?'\n用户指定风格：'+sty+'，以此为主导方向':''}
+
+══ 目标市场审美（必须遵循）══
+${aesthetic||'请根据市场推断'}
+图片风格、色彩、排版、文案调性必须符合上述市场审美。
+
+产品颜色约束（产品图会作为reference传入，AI必须保留产品原样）：
+产品颜色：${prodDesc||'请参考产品图片'}。在提示词中用"${prodDesc||''} product"指代产品，不要描述产品的材质、形状、包装等细节。
+
+知识库（AI根据产品特性从中选择合适的关键词）：${JSON.stringify(KB)}`;
+      const usr=`产品信息：${info}\n市场：${market}\n模特：${model}\n语言：${lang}\n比例：${arLabel}`;
+      const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${txtModel}:generateContent?key=${apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:usr}]}],systemInstruction:{parts:[{text:sys}]},generationConfig:{temperature:0.8,responseMimeType:'application/json'}})});
+      if(!resp.ok)throw new Error('API '+resp.status);
+      const d=await resp.json(),txtr=d.candidates?.[0]?.content?.parts?.[0]?.text||'',parsed=JSON.parse(txtr);
+      const cs=parsed.concepts||parsed;
+      const ss=parsed.styles||[];
+      const sl=parsed.slots||[];
+      // Build dynamic SLOTS from AI response
+      if(Array.isArray(sl)&&sl.length===9){
+        SLOTS=sl.map((s,i)=>({id:i+1,t:s.t||'',s:s.s||'',d:s.d||'',i:s.i||ICONS[i]}));
+      }
+      if(Array.isArray(cs)&&cs.length===9){
+        concepts=cs.map((t,i)=>({...SLOTS[i],concept:t.concept||'',en:t.en||'',zh:t.zh||'',ok:false}));
+        if(ss.length>0){recStyles=ss;renderStyleRec()}
+        renderCC();btn.disabled=false;btn.textContent='🎨 生成9图设计理念';scrollToBlock('step2');
+        if(document.getElementById('autoMode').checked){okAll();await genPrompts();if(prompts.length===9)await startGen()}
+        return;
+      }else throw new Error('格式错误');
+    }catch(err){
+      console.error(err);
+      document.getElementById('genConBtn').disabled=false;
+      document.getElementById('genConBtn').textContent='🎨 生成9图设计理念';
+      // Show error inline instead of alert
+      const vw=document.getElementById('vW');vw.classList.remove('hid');
+      document.getElementById('vM').textContent='AI生成失败('+err.message+')';
+    }
+  }
+  // No API key - show message
+  if(!apiKey){
+    const vw=document.getElementById('vW');vw.classList.remove('hid');
+    document.getElementById('vM').textContent='请先在顶部填写 Gemini API Key';
+  }
+}
+
+// ═══ STEP 2: CONCEPT CARDS ═══
+function renderStyleRec(){
+  const el=document.getElementById('styleRec');el.classList.remove('hid');
+  document.getElementById('styleRecItems').innerHTML=recStyles.map((s,i)=>
+    `<button class="sty-tag ${s===activeStyle?'sel':''}" onclick="selectStyle('${s.replace(/'/g,"\\'")}')">${s}${i===0?' ⭐':''}</button>`
+  ).join('');
+  document.getElementById('customStyle').value=activeStyle;
+}
+function selectStyle(s){
+  activeStyle=s;document.getElementById('customStyle').value=s;
+  document.querySelectorAll('.sty-tag').forEach(t=>t.classList.toggle('sel',t.textContent.replace(' ⭐','')===s));
+}
+function regenWithStyle(){
+  const s=document.getElementById('customStyle').value.trim();
+  if(!s){alert('请选择或输入风格');return}
+  // Clear downstream steps
+  prompts=[];images=[];promptLangs=[];
+  document.getElementById('pC').innerHTML='<div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">正在重新生成...</div>';
+  document.getElementById('iG').innerHTML='<div style="color:var(--t3);text-align:center;padding:40px;font-size:13px;grid-column:1/-1">等待第③步完成</div>';
+  document.getElementById('gBtn').disabled=true;
+  genConcepts(s);
+}
+
+function renderCC(){
+  // Save any existing textarea edits before re-rendering
+  saveConcepts();
+  document.getElementById('cG').innerHTML=concepts.map((c,i)=>`<div class="cc ${c.ok?'ap':''}"><button class="cc-ok ${c.ok?'dn':'pn'}" onclick="saveConcepts();concepts[${i}].ok=!concepts[${i}].ok;renderCC()">${c.ok?'✓ 确认':'确认'}</button><div class="cc-top"><div class="cc-ico">${c.i}</div><div><div class="cc-n">图${c.id}</div><div class="cc-nm">${c.t}</div><div class="cc-sub">${c.s}</div></div></div><textarea class="cc-edit" id="ccE${i}" rows="6">${c.concept}</textarea></div>`).join('');
+  const rem=concepts.filter(c=>!c.ok).length;const b=document.getElementById('tpBtn');b.disabled=rem>0;
+  b.textContent=rem>0?`⚡ 生成提示词（还需确认${rem}张）`:'⚡ 生成提示词';
+}
+function okAll(){saveConcepts();concepts.forEach(c=>c.ok=true);renderCC()}
+function saveConcepts(){concepts.forEach((c,i)=>{const el=document.getElementById('ccE'+i);if(el)c.concept=el.value})}
+
+// ═══ STEP 2→3: GENERATE PROMPTS (AI call #2) ═══
+async function genPrompts(){
+  saveConcepts();
+  const info=document.getElementById('iInfo').value.trim(),lang=gLang(),model=gModel(),market=gMarket(),ar=document.getElementById('iAR').value,arLabel=ar==='auto'?'keep original':ar;
+  const apiKey=document.getElementById('aKey').value.trim(),txtModel=document.getElementById('txtMdl').value,sty=document.getElementById('iStyle').value.trim();
+  const conceptsText=concepts.map(c=>`图${c.id} ${c.t}：${c.concept}`).join('\n\n');
+
+  if(apiKey){
+    clearStep4();
+    const btn=document.getElementById('tpBtn');btn.disabled=true;btn.textContent='⏳ AI生成提示词...';
+    try{
+      const aesthetic=gAesthetic();
+      let sys=CUR_PROMPTS.prompt.replace(/\{lang\}/g,lang);
+      sys+=`\n\n══ 目标市场审美 ══\n${aesthetic||'请根据市场推断'}
+\n══ 产品颜色约束 ══\n产品颜色：${productAppearance||'请参考产品图片'}。用"${productAppearance||''} product"指代产品，不要描述产品的材质、形状等细节，产品图会作为reference传入。`;
+      const usr=`产品：${info}\n市场：${market}\n模特：${model}\n语言：${lang}\n比例：${arLabel}${sty?'\n风格：'+sty:''}\n\n确认的理念：\n${conceptsText}`;
+      const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${txtModel}:generateContent?key=${apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:usr}]}],systemInstruction:{parts:[{text:sys}]},generationConfig:{temperature:0.7,responseMimeType:'application/json'}})});
+      if(!resp.ok)throw new Error('API '+resp.status);
+      const d=await resp.json(),txt=d.candidates?.[0]?.content?.parts?.[0]?.text||'',parsed=JSON.parse(txt);
+      if(Array.isArray(parsed)&&parsed.length===9){prompts=concepts.map((c,i)=>({...c,enFull:parsed[i].en||'',zhFull:parsed[i].zh||''}));images=prompts.map(()=>({status:'pending',url:null,error:null}));renderPrompts();ckApi();btn.disabled=false;btn.textContent='⚡ 生成提示词';scrollToBlock('step3');return}else throw new Error('格式错误');
+    }catch(err){console.error(err);document.getElementById('tpBtn').disabled=false;document.getElementById('tpBtn').textContent='⚡ 生成提示词';
+      const vw=document.getElementById('vW');vw.classList.remove('hid');document.getElementById('vM').textContent='提示词生成失败: '+err.message;
+    }
+  }
+  if(!apiKey){const vw=document.getElementById('vW');vw.classList.remove('hid');document.getElementById('vM').textContent='请先在顶部填写 Gemini API Key'}
+}
+
+// ═══ STEP 3: PROMPT CARDS ═══
+function renderPrompts(){
+  promptLangs=prompts.map(()=>'en');
+  document.getElementById('pC').innerHTML=prompts.map((p,i)=>`<div class="pc" id="pc${i}"><div class="pc-h"><div class="pc-ico">${p.i}</div><div style="flex:1"><div class="pc-t">图${p.id}：${p.t}</div><div class="pc-s">${p.s}·${p.d}</div></div><div class="pc-lang-toggle"><button class="pc-lang-btn active" id="lbE${i}" onclick="setPromptLang(${i},'en')">🇺🇸 英文</button><button class="pc-lang-btn" id="lbZ${i}" onclick="setPromptLang(${i},'zh')">🇨🇳 中文</button></div></div><div class="pc-b"><div class="pc-sec" id="psE${i}"><div class="pc-ll"><span style="color:var(--blue)">英文提示词</span><button class="btn-cp" onclick="cpOne('en',${i})" id="cpE${i}">📋</button></div><textarea class="pc-edit" id="enP${i}" rows="5" onfocus="setPromptLang(${i},'en')">${p.enFull}</textarea></div><div class="pc-sec inactive" id="psZ${i}"><div class="pc-ll"><span style="color:var(--pink)">中文提示词</span><button class="btn-cp" onclick="cpOne('zh',${i})" id="cpZ${i}">📋</button></div><textarea class="pc-edit" id="zhP${i}" rows="5" onfocus="setPromptLang(${i},'zh')">${p.zhFull}</textarea></div></div></div>`).join('');
+}
+function setPromptLang(i,lang){promptLangs[i]=lang;document.getElementById('lbE'+i).classList.toggle('active',lang==='en');document.getElementById('lbZ'+i).classList.toggle('active',lang==='zh');document.getElementById('psE'+i).classList.toggle('inactive',lang!=='en');document.getElementById('psZ'+i).classList.toggle('inactive',lang!=='zh');const allEn=promptLangs.every(l=>l==='en'),allZh=promptLangs.every(l=>l==='zh');document.getElementById('glbE').classList.toggle('active',allEn);document.getElementById('glbZ').classList.toggle('active',allZh)}
+function setAllLang(lang){prompts.forEach((_,i)=>setPromptLang(i,lang))}
+function getActivePrompt(i){return promptLangs[i]==='zh'?document.getElementById('zhP'+i).value:document.getElementById('enP'+i).value}
+function cpOne(t,i){const el=document.getElementById(t==='en'?'enP'+i:'zhP'+i);navigator.clipboard.writeText(el.value);const b=document.getElementById(t==='en'?'cpE'+i:'cpZ'+i);b.textContent='✓';b.classList.add('ok');setTimeout(()=>{b.textContent='📋';b.classList.remove('ok')},1500)}
+function cpAll(){const all=prompts.map((p,i)=>`═══ 图${p.id}：${p.t} ═══\n${getActivePrompt(i)}`).join('\n\n\n');navigator.clipboard.writeText(all)}
+
+// ═══ PERSIST SETTINGS ═══
+// 共享设置 key（API Key、模型、市场等）— 所有标签页同步
+const LS_SHARED='ecom_studio_shared';
+// 产品专属 key（产品信息、产品图、参考图）— 每个标签页独立
+if(!sessionStorage.getItem('_tab_key')){
+  sessionStorage.setItem('_tab_key','ecom_studio_prod_'+Date.now());
+}
+const LS_PROD=sessionStorage.getItem('_tab_key');
+function prependInfo(tag){
+  const el=document.getElementById('iInfo');
+  const cur=el.value;
+  if(cur.includes(tag)){
+    // 已存在则移除（切换关闭）
+    let v=cur;
+    if(v.startsWith(tag+'\n'))v=v.slice(tag.length+1);
+    else if(v.includes('\n'+tag+'\n'))v=v.replace('\n'+tag+'\n','\n');
+    else v=v.replace('\n'+tag,'').replace(tag,'');
+    el.value=v.trimStart();
+  }else{
+    el.value=tag+'\n'+(cur||'');
+  }
+  el.dispatchEvent(new Event('input'));
+  // 更新按钮高亮
+  document.querySelectorAll('.quick-tag-btn').forEach(btn=>{
+    const t=btn.dataset.tag;
+    const on=el.value.includes(t);
+    btn.style.background=on?'var(--blue-l)':'';
+    btn.style.color=on?'var(--blue-d)':'';
+    btn.style.borderColor=on?'var(--blue)':'';
+    btn.style.fontWeight=on?'700':'';
+  });
+}
+
+function ckApi(){const k=document.getElementById('aKey').value.trim();document.getElementById('aDot').classList.toggle('on',!!k);document.getElementById('gBtn').disabled=!k}
+function saveSettings(){
+  if(window._loadingSettings)return;
+  try{
+    // 共享设置：API Key、模型、市场、语言、比例、风格、全自动
+    localStorage.setItem(LS_SHARED,JSON.stringify({
+      apiKey:document.getElementById('aKey').value,
+      txtMdl:document.getElementById('txtMdl').value,
+      imgMdl:document.getElementById('aMdl').value,
+      mkt1:document.getElementById('iMkt1').value,
+      mkt2:document.getElementById('iMkt2').value,
+      lang:document.getElementById('iLang').value,
+      ar:document.getElementById('iAR').value,
+      style:document.getElementById('iStyle').value,
+      autoMode:document.getElementById('autoMode').checked
+    }));
+    // 产品专属：产品信息文本、产品图、参考图
+    localStorage.setItem(LS_PROD,JSON.stringify({
+      info:document.getElementById('iInfo').value,
+      prodImg:prodImgData||'',
+      refImg:refImgData||''
+    }));
+  }catch(e){}
+  ckApi();
+}
+function loadSettings(){
+  window._loadingSettings=true;
+  try{
+    // 加载共享设置
+    const rs=localStorage.getItem(LS_SHARED);
+    if(rs){
+      const s=JSON.parse(rs);
+      if(s.apiKey)document.getElementById('aKey').value=s.apiKey;
+      if(s.txtMdl)document.getElementById('txtMdl').value=s.txtMdl;
+      if(s.imgMdl)document.getElementById('aMdl').value=s.imgMdl;
+      if(s.mkt1){document.getElementById('iMkt1').value=s.mkt1;updateSubMarket()}
+      if(s.mkt2){document.getElementById('iMkt2').value=s.mkt2;syncLang()}
+      if(s.lang)document.getElementById('iLang').value=s.lang;
+      if(s.ar)document.getElementById('iAR').value=s.ar;
+      if(s.style)document.getElementById('iStyle').value=s.style;
+      if(s.autoMode!=null)document.getElementById('autoMode').checked=s.autoMode;
+    }
+    // 加载产品专属数据（当前标签页独立）
+    const rp=localStorage.getItem(LS_PROD);
+    if(rp){
+      const p=JSON.parse(rp);
+      if(p.info)document.getElementById('iInfo').value=p.info;
+      if(p.prodImg)setImg('prod',p.prodImg);
+      if(p.refImg)setImg('ref',p.refImg);
+    }
+  }catch(e){}
+  window._loadingSettings=false;
+  ckApi();
+}
+loadSettings();
+
+// ═══ CLEAR DOWNSTREAM STEPS ═══
+function clearStep3(){
+  prompts=[];promptLangs=[];
+  document.getElementById('pC').innerHTML='<div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">请先完成第②步，确认设计理念后生成提示词</div>';
+  document.getElementById('gBtn').disabled=true;
+}
+function clearStep4(){
+  images=[];
+  document.getElementById('iG').innerHTML='<div style="color:var(--t3);text-align:center;padding:40px;font-size:13px;grid-column:1/-1">请先完成第③步，点击一键生成图片</div>';
+}
+
+// ═══ STEP 4: IMAGE GENERATION ═══
+async function startGen(){
+  clearStep4();renderIG();scrollToBlock('step4');
+  const key=document.getElementById('aKey').value.trim(),mdl=document.getElementById('aMdl').value;
+  for(let i=0;i<prompts.length;i++){images[i]={status:'loading'};renderIG();try{images[i]={status:'done',url:await callGemini(key,mdl,getActivePrompt(i))}}catch(err){images[i]={status:'error',url:null,error:err.message||'失败'}}renderIG()}
+}
+async function callGemini(apiKey,model,prompt){
+  if(model.startsWith('imagen')){
+    const ar=document.getElementById('iAR').value;
+    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({instances:[{prompt}],parameters:{sampleCount:1,aspectRatio:ar==='auto'?'1:1':ar}})});
+    if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,200));
+    const d=await resp.json(),b=d.predictions?.[0]?.bytesBase64Encoded;if(!b)throw new Error('No image');return'data:image/png;base64,'+b;
+  }else{
+      const parts=[];
+      let imgInstructions='';
+      const arEl=document.getElementById('iAR');
+      const ar=arEl? arEl.value : 'auto';
+      let padded = false;
+      // Clean and add product image
+      if(prodImgData){
+        const cleanB64=await cleanImageData(prodImgData, ar);
+        if(cleanB64)parts.push({inline_data:{mime_type:'image/png',data:cleanB64}});
+        if(ar !== 'auto') padded = true;
+      }
+      if(refImgData){
+        const cleanB64=await cleanImageData(refImgData, ar);
+        if(cleanB64)parts.push({inline_data:{mime_type:'image/png',data:cleanB64}});
+      }
+      if(prodImgData&&parts.length>0){
+      const refNote=refImgData?'The second image is a reference (style, background, or model/person).':'';
+      const prodApp=productAppearance?`Product color: ${productAppearance}. Refer to it as "${productAppearance} product". Do NOT change its color.`:'';
+      const padNote = padded ? "\n[High Fidelity Preserve]\nThe first image has been padded with white or transparent bars to match a specific aspect ratio. Your task is to generate a natural and seamless background that fills these padded areas perfectly, while keeping the original product EXACTLY as it is in the center. DO NOT alter the product's shape, color, or details. Just extend the environment." : "";
+        const arNote = (ar==='auto') ? "ASPECT RATIO: You MUST generate the output image with the EXACT SAME aspect ratio as the first input image. DO NOT generate wide or tall images unless the input is wide/tall." : "ASPECT RATIO: You MUST generate the output image with an aspect ratio of exactly " + ar + ".";
+        imgInstructions=CUR_PROMPTS.imggen.replace('{refNote}',refNote).replace('{prodAppearance}',prodApp).replace('{arNote}',arNote)+'\n\n'+padNote+'\n\n';
+    }
+    parts.push({text:imgInstructions+'# Prompt\n'+prompt});
+    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts}],generationConfig:{responseModalities:["TEXT","IMAGE"]}})});
+    if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,200));
+    const d=await resp.json();for(const p of(d.candidates?.[0]?.content?.parts||[])){if(p.inlineData)return`data:${p.inlineData.mimeType};base64,${p.inlineData.data}`}throw new Error('No image');
+  }
+}
+
+
+function renderIG(){
+  document.getElementById('iG').innerHTML=prompts.map((p,i)=>{const img=images[i];let slot='';
+    if(!img||img.status==='pending')slot=`<div class="ld"><span style="font-size:20px">${p.i}</span><span>等待中</span></div>`;
+    else if(img.status==='loading')slot=`<div class="ld"><div class="sp"></div><span>生成 图${p.id}...</span></div>`;
+    else if(img.status==='error')slot=`<div class="er">❌ ${img.error}<br><button class="btn btn-sm btn-x" style="margin-top:8px" onclick="retry(${i})">🔄 重试</button></div>`;
+    else slot=`<img src="${img.url}" onclick="openEdit(${i})" title="点击编辑">`;
+    return`<div class="ic"><div class="is">${slot}</div><div class="ii"><div class="il">${p.i} 图${p.id}：${p.t}</div><div class="isu">${p.s}</div>${img?.status==='done'?`<div class="ia"><button class="btn btn-sm btn-x" onclick="openEdit(${i})">✏️ 编辑</button><button class="btn btn-sm btn-x" onclick="retry(${i})">🎲 重抽</button><button class="btn btn-sm btn-x" onclick="dlIdx(${i})">⬇</button></div>`:''}</div></div>`}).join('');
+}
+async function retry(i){const key=document.getElementById('aKey').value.trim(),mdl=document.getElementById('aMdl').value;images[i]={status:'loading'};renderIG();try{images[i]={status:'done',url:await callGemini(key,mdl,getActivePrompt(i))}}catch(err){images[i]={status:'error',error:err.message}}renderIG()}
+
+// ═══ DOWNLOAD ═══
+function dlIdx(i){if(!images[i]?.url)return;const a=document.createElement('a');a.href=images[i].url;a.download=`图${i+1}_${SLOTS[i].t}.png`;a.click()}
+function dlAll(){images.forEach((_,i)=>{if(images[i]?.url)dlIdx(i)})}
+
+// ═══ EDIT MODAL ═══
+// ═══ MINI EDITOR ═══
+let miniProdImg=null; // editor-local product image override
+let miniRefImg=null;  // editor-local reference image override
+
+function openEdit(i){
+  editIdx=i;editResult=null;
+  document.getElementById('mTi').textContent=`编辑 图${i+1}：${SLOTS[i]?.t||''}`;
+  document.getElementById('mImg').src=images[i].url;
+  // Show product image
+  miniProdImg=prodImgData;
+  miniRefImg=refImgData;
+  document.getElementById('mProdImg').src=prodImgData||'';
+  document.getElementById('mProdImg').style.display=prodImgData?'block':'none';
+  document.getElementById('mRefImg').src=refImgData||'';
+  document.getElementById('mRefImg').style.display=refImgData?'block':'none';
+  // Pre-fill prompt with the active prompt for this image
+  document.getElementById('mPmt').value=getActivePrompt?.(i)||'';
+  // Reset result
+  document.getElementById('mRes').innerHTML='<span style="color:var(--t3);font-size:12px">编辑后显示在这里</span>';
+  document.getElementById('mABtn').classList.add('hid');
+  document.getElementById('mUseBtn').classList.add('hid');
+  document.getElementById('mDlResBtn').classList.add('hid');
+  document.getElementById('mBg').classList.remove('hid');
+  document.body.style.overflow='hidden';
+}
+
+function hMo(){document.getElementById('mBg').classList.add('hid');document.body.style.overflow=''}
+
+const MERGE_TEMPLATES = {
+  combine: `Creatively combine the elements and styles of the first and second images. \n\n# My Request\n[Describe any additional changes here]`,
+  replace_person: `Replace the person in the first image with the person from the second image. \n\n# Instructions for AI\n- The first image is the scene.\n- The second image contains the new person.\n- Extract the person from the second image.\n- Remove the original person from the first image.\n- Place the new person into the scene, matching lighting, shadows, and perspective.\n- Then, apply my specific request below.\n\n# My Request\n[Describe any additional changes here]`,
+  add_logo: `Add the second image as a logo or watermark onto the first image.\n  \n# Instructions for AI\n- The first image is the main picture.\n- The second image is the logo.\n- Preserve the transparency of the logo.\n- Then, apply my specific request below.\n\n# My Request\n[Describe placement, size, or other effects here]`,
+  replace_background: `Use the second image as a new background for the main subject in the first image.\n\n# Instructions for AI\n- The first image contains the main subject.\n- The second image is the new background.\n- Extract the subject and place it on the new background realistically.\n- Then, apply my specific request below.\n\n# My Request\n[Describe any additional changes here]`,
+  replace_product: `Replace the main product in the first image with the product from the second image.\n\n# Instructions for AI\n- The first image is the scene.\n- The second image contains the new product.\n- Swap the products, maintaining the scene's lighting and style.\n- Then, apply my specific request below.\n\n# My Request\n[Describe any additional changes here]`
+};
+
+function changeMergeMode() {
+  const mode = document.getElementById('mMergeMode').value;
+  document.getElementById('mPmt').value = MERGE_TEMPLATES[mode] || '';
+}
+
+function miniEditorChangeImg(input,type){
+  const f=input.files[0];if(!f||!f.type.startsWith('image/'))return;
+  const r=new FileReader;
+  r.onload=e=>{
+    if(type==='prod'){miniProdImg=e.target.result;document.getElementById('mProdImg').src=e.target.result;document.getElementById('mProdImg').style.display='block'}
+    else{
+      miniRefImg=e.target.result;document.getElementById('mRefImg').src=e.target.result;document.getElementById('mRefImg').style.display='block';
+      const hint = document.getElementById('mRefHint');
+      if(hint) hint.style.display='none';
+      const mm = document.getElementById('mMergeMode');
+      if(mm) mm.style.display='inline-block';
+      const mPmt = document.getElementById('mPmt');
+      if(mPmt && !mPmt.value.trim()) {
+         if(mm) mm.value = 'combine';
+         changeMergeMode();
+      }
+    }
+  };
+  r.readAsDataURL(f);
+}
+
+function clearMiniRef(){
+  miniRefImg=null;document.getElementById('mRefImg').src='';document.getElementById('mRefImg').style.display='none';
+  const hint = document.getElementById('mRefHint');
+  if(hint) hint.style.display='inline-block';
+  const mm = document.getElementById('mMergeMode');
+  if(mm) mm.style.display='none';
+}
+
+// "Use as current" - move edit result to the current image slot for iterative editing
+function useEditResult(){
+  if(!editResult)return;
+  document.getElementById('mImg').src=editResult;
+  images[editIdx].url=editResult;
+  editResult=null;
+  document.getElementById('mRes').innerHTML='<span style="color:var(--t3);font-size:12px">已移到当前图，可继续编辑</span>';
+  document.getElementById('mUseBtn').classList.add('hid');
+  document.getElementById('mDlResBtn').classList.add('hid');
+  renderIG();
+}
+
+async function runEdit(){
+  const key=document.getElementById('aKey').value.trim();
+  if(!key){document.getElementById('mRes').innerHTML='<div class="er">❌ 请先填写API Key</div>';return}
+  const prompt=document.getElementById('mPmt').value.trim();
+  if(!prompt){document.getElementById('mRes').innerHTML='<div class="er">❌ 请输入提示词/编辑指令</div>';return}
+  const btn=document.getElementById('mEBtn');btn.disabled=true;btn.textContent='⏳ 生成中...';
+  document.getElementById('mRes').innerHTML='<div class="ld"><div class="sp"></div><span>AI编辑中...</span></div>';
+  const mdl=document.getElementById('aMdl').value;
+  try{
+    // Build parts: product image (main ref) + current image + optional ref image + prompt
+    const parts=[];
+    // Product image as first reference (preserve product)
+    if(miniProdImg){
+      const cleanB64=await cleanImageData(miniProdImg);
+      if(cleanB64)parts.push({inline_data:{mime_type:'image/png',data:cleanB64}});
+    }
+    // Current generated image as second reference
+    const curSrc=document.getElementById('mImg').src;
+    if(curSrc&&curSrc.startsWith('data:')){
+      const cleanB64=await cleanImageData(curSrc);
+      if(cleanB64)parts.push({inline_data:{mime_type:'image/png',data:cleanB64}});
+    }
+    // Optional ref image (model/scene)
+    if(miniRefImg){
+      const cleanB64=await cleanImageData(miniRefImg);
+      if(cleanB64)parts.push({inline_data:{mime_type:'image/png',data:cleanB64}});
+    }
+    // Build instruction
+    let instr='# CRITICAL EDIT INSTRUCTIONS\n';
+    if(miniProdImg)instr+='1. STRICT PRODUCT FIDELITY: The first image is the product photo. You MUST preserve its exact appearance, shape, color, openings, and edges perfectly.\n';
+    instr+='2. Edit the current image based on the prompt below.\n';
+    const arEl2 = document.getElementById('iAR');
+    const curAr2 = arEl2 ? arEl2.value : 'auto';
+    if(curAr2 === 'auto') instr += '3. ASPECT RATIO: You MUST generate the output image with the EXACT SAME aspect ratio as the input image.\n';
+    else instr += '3. ASPECT RATIO: You MUST generate the output image with an aspect ratio of exactly ' + curAr2 + '.\n';
+
+    if(miniRefImg)instr+='- Use the reference image for style/composition guidance.\n';
+    if(productAppearance)instr+=`- Product color: ${productAppearance}. Do NOT change it.\n`;
+    instr+='\n# Prompt\n'+prompt;
+    parts.push({text:instr});
+
+    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mdl.startsWith('imagen')?'gemini-2.5-flash-image':mdl}:generateContent?key=${key}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[{parts}],generationConfig:{responseModalities:["TEXT","IMAGE"]}})
+    });
+    if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,200));
+    const d=await resp.json();
+    let url=null;
+    for(const p of(d.candidates?.[0]?.content?.parts||[])){if(p.inlineData){url=`data:${p.inlineData.mimeType};base64,${p.inlineData.data}`;break}}
+    if(!url)throw new Error('No image in response');
+    editResult=url;
+    document.getElementById('mRes').innerHTML=`<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain">`;
+    document.getElementById('mABtn').classList.remove('hid');
+    document.getElementById('mUseBtn').classList.remove('hid');
+    document.getElementById('mDlResBtn').classList.remove('hid');
+  }catch(err){
+    document.getElementById('mRes').innerHTML=`<div class="er">❌ ${err.message}</div>`;
+  }
+  btn.disabled=false;btn.textContent='✨ AI编辑';
+}
+
+function applyEdit(){if(editResult&&editIdx>=0){images[editIdx].url=editResult;renderIG();hMo()}}
+
+function dlEditResult(){
+  if(!editResult)return;
+  const a=document.createElement('a');a.href=editResult;a.download=`图${editIdx+1}_edited.png`;a.click();
+}
+
+// ═══ HOVER ZOOM ═══
+let zoomEl=null;
+document.addEventListener('mouseover',e=>{
+  const img=e.target.closest('.is img');
+  if(!img)return;
+  if(zoomEl)zoomEl.remove();
+  zoomEl=document.createElement('img');
+  zoomEl.className='zoom-overlay';
+  zoomEl.src=img.src;
+  document.body.appendChild(zoomEl);
+  positionZoom(e);
+});
+document.addEventListener('mousemove',e=>{if(zoomEl)positionZoom(e)});
+document.addEventListener('mouseout',e=>{
+  const img=e.target.closest('.is img');
+  if(img&&zoomEl){zoomEl.remove();zoomEl=null}
+});
+function positionZoom(e){
+  if(!zoomEl)return;
+  const pad=20;
+  let x=e.clientX+pad,y=e.clientY-200;
+  const w=Math.min(window.innerWidth*0.45,500);
+  zoomEl.style.width=w+'px';
+  if(x+w>window.innerWidth)x=e.clientX-w-pad;
+  if(y<10)y=10;
+  if(y+w>window.innerHeight-10)y=window.innerHeight-w-10;
+  zoomEl.style.left=x+'px';
+  zoomEl.style.top=y+'px';
+}
+// ── iframe 兼容桥接：通过 postMessage 与父页面通信 ──
+const _inIframe=(function(){try{return window.self!==window.top}catch(e){return true}})();
+const _erpCbs={};
+if(_inIframe){window.addEventListener('message',function(e){if(e.data&&e.data._erp){var c=_erpCbs[e.data._erp];if(c)c.slice().forEach(function(fn){fn({detail:e.data.detail})})}});}
+function _erpOn(n,fn){if(_inIframe){(_erpCbs[n]=_erpCbs[n]||[]).push(fn)}else document.addEventListener(n,fn)}
+function _erpOff(n,fn){if(_inIframe){var a=_erpCbs[n];if(a){var i=a.indexOf(fn);if(i>=0)a.splice(i,1)}}else document.removeEventListener(n,fn)}
+function _erpEmit(n,d){if(_inIframe)window.parent.postMessage({_erp:n,detail:d},'*');else document.dispatchEvent(new CustomEvent(n,{detail:d}))}
+
+// ═══ SPU 数据专属自愈引擎 V24 (静默无打扰版) ═══
+function fetchSPUData() {
+    const spu = document.getElementById('pSku').value.trim();
+    if (!spu) return alert('请输入 SPU 编号');
+
+    const btn = document.getElementById('fetchErpBtn');
+
+    // 1. 立即清空 UI，防止脏数据干扰
+    const infoEl = document.getElementById('iInfo');
+    if (infoEl) {
+        window._loadingSettings=true;
+        infoEl.value = '⏳ 正在同步 ERP 数据，请稍候...';
+        infoEl.dispatchEvent(new Event('input'));
+        window._loadingSettings=false;
+    }
+    if (typeof clearImg === 'function') clearImg('prod'); 
+
+    // 按钮进入加载状态
+    btn.textContent = '⏳ 抓取中...'; 
+    btn.disabled = true;
+
+    const handler = function(e) {
+        _erpOff('RESPONSE_SPU_FETCH', handler);
+        const res = e.detail;
+        console.log('【V24 响应】', res);
+
+
+        let title = '', desc = '', targetImgUrl = null;
+
+        // --- 1. 提取文本 (API 优先) ---
+        const apiObj = res.infoData?.obj;
+        if (apiObj && (Array.isArray(apiObj) ? apiObj.length > 0 : apiObj)) {
+            const data = Array.isArray(apiObj) ? apiObj[0] : apiObj;
+            title = data.name_cn || ''; desc = data.description_en || '';
+        }
+
+        // --- 2. HTML 备份解析 ---
+        if ((!title || !desc) && res.htmlData) {
+            const h = res.htmlData;
+            const tM = h.match(/chinaname["'][^>]*?value=["']([^"']*)["']/i);
+            title = title || (tM ? tM[1] : '');
+            const dM = h.match(/describeenglish["'][^>]*?>([\s\S]*?)<\//i);
+            if (dM) desc = desc || dM[1].replace(/<[^>]+>/g, '').trim();
+        }
+
+        // --- 3. 图片提取 (过滤 null) ---
+        const rawImgs = res.imgData?.obj;
+        const imgArray = Array.isArray(rawImgs) ? (Array.isArray(rawImgs[0]) ? rawImgs[0] : rawImgs) : [];
+        const validImgs = imgArray.filter(i => i && (i.pictureUrl || i.picture_url));
+        const wImg = validImgs.find(img => (img.pictureUrl || img.picture_url || '').includes('_W'));
+        targetImgUrl = wImg ? (wImg.pictureUrl || wImg.picture_url) : (validImgs[0]?.pictureUrl || validImgs[0]?.picture_url);
+
+        // --- 4. 渲染 UI ---
+        if (infoEl) {
+            if (title || desc) {
+                infoEl.value = `【产品标题】\n${title.trim()}\n\n【详细描述】\n${desc.trim()}`;
+            } else {
+                infoEl.value = ''; // 没抓到就清空
+            }
+            infoEl.dispatchEvent(new Event('input')); 
+            infoEl.dispatchEvent(new Event('change'));
+        }
+
+        if (targetImgUrl && typeof setImg === 'function') {
+            setImg('prod', targetImgUrl); 
+        }
+
+        // --- 5. 状态反馈 (核心 UX 优化：静默动效) ---
+        if (title || targetImgUrl) {
+            // 成功时不弹窗，按钮变字，1.5秒后恢复
+            btn.textContent = '✓ 抓取成功';
+            setTimeout(() => {
+                btn.textContent = '↓ 抓取 ERP';
+                btn.disabled = false;
+            }, 1500);
+        } else {
+            // 彻底失败时恢复按钮并弹窗报错
+            btn.textContent = '↓ 抓取 ERP';
+            btn.disabled = false;
+            alert("❌ 未能获取有效数据。如果该 SPU 存在，请确认您已在新标签页登录了 ERP。");
+        }
+    };
+
+    _erpOn('RESPONSE_SPU_FETCH', handler);
+    _erpEmit('REQUEST_SPU_FETCH', { spu: spu });
+}
+</script>
+</body>
+</html>

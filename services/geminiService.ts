@@ -138,7 +138,7 @@ const optimizeImageForUpload = (file: File, maxDimension = 1600): Promise<File> 
  * The server handles interaction with Gemini using its secure environment variables.
  */
 export const editImage = async (
-  imageFile: File,
+  imageInput: File | File[],
   secondaryImageFile: File | null,
   prompt: string,
   aspectRatio: string,
@@ -148,34 +148,58 @@ export const editImage = async (
   mergeMode: string = 'combine'
 ): Promise<string> => {
   try {
-    let finalImage = await optimizeImageForUpload(imageFile);
-    let finalSecondaryImage = secondaryImageFile ? await optimizeImageForUpload(secondaryImageFile) : null;
+    const isWatermarkRemoval = mergeMode === 'remove_watermark';
+    const allInputFiles = Array.isArray(imageInput) ? imageInput : [imageInput];
+    // Watermark removal intentionally reproduces the original AI Studio flow:
+    // exactly one image plus one short instruction, with no fusion framework.
+    const inputFiles = isWatermarkRemoval ? allInputFiles.slice(0, 1) : allInputFiles;
+    const requestAspectRatio = isWatermarkRemoval ? 'auto' : aspectRatio;
+    const requestHighFidelityPreserve = isWatermarkRemoval ? false : highFidelityPreserve;
+    const requestPrompt = isWatermarkRemoval ? '去除右下角的gemini图标' : prompt;
+    const requestModel = model;
 
-    // Run client-side padding if highFidelityPreserve is selected
-    if (aspectRatio !== 'auto' && highFidelityPreserve) {
-      console.log('Client: Padding main image to aspect ratio...', aspectRatio);
-      finalImage = await padImageToAspectRatio(finalImage, aspectRatio);
-
-      if (finalSecondaryImage) {
-        console.log('Client: Padding secondary image to aspect ratio...', aspectRatio);
-        finalSecondaryImage = await padImageToAspectRatio(finalSecondaryImage, aspectRatio);
+    const optimizedImages: File[] = [];
+    for (const f of inputFiles) {
+      let opt = await optimizeImageForUpload(f);
+      if (requestAspectRatio !== 'auto' && requestHighFidelityPreserve) {
+        opt = await padImageToAspectRatio(opt, requestAspectRatio);
       }
+      optimizedImages.push(opt);
+    }
+
+    let finalSecondaryImage =
+      !isWatermarkRemoval && secondaryImageFile
+        ? await optimizeImageForUpload(secondaryImageFile)
+        : null;
+    if (
+      requestAspectRatio !== 'auto' &&
+      requestHighFidelityPreserve &&
+      finalSecondaryImage
+    ) {
+      finalSecondaryImage = await padImageToAspectRatio(finalSecondaryImage, requestAspectRatio);
     }
 
     // Construct FormData to send files and parameters to the server
     const formData = new FormData();
-    formData.append('image', finalImage);
+    if (optimizedImages.length > 0) {
+      formData.append('image', optimizedImages[0]);
+    }
+    if (!isWatermarkRemoval) {
+      for (const img of optimizedImages) {
+        formData.append('images', img);
+      }
+    }
     if (finalSecondaryImage) {
       formData.append('secondaryImage', finalSecondaryImage);
     }
-    formData.append('prompt', prompt);
-    formData.append('aspectRatio', aspectRatio);
-    formData.append('highFidelityPreserve', highFidelityPreserve ? 'true' : 'false');
-    if (mergeMode) {
+    formData.append('prompt', requestPrompt);
+    formData.append('aspectRatio', requestAspectRatio);
+    formData.append('highFidelityPreserve', requestHighFidelityPreserve ? 'true' : 'false');
+    if (mergeMode && !isWatermarkRemoval) {
       formData.append('mergeMode', mergeMode);
     }
-    if (model) {
-      formData.append('model', model);
+    if (requestModel) {
+      formData.append('model', requestModel);
     }
 
     console.log('Client: Sending request to /api/edit-image...');

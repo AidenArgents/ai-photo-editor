@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+.ai-photo-editor.pid
+port3000.tmp
 
 # Editor directories and files
 .vscode/*
@@ -24,3 +29,8 @@ dist-ssr
 *.sw?
 
 backup_original
+
+# Local maintainer-only release tools
+/发布更新.bat
+/GitHub发布与更新指南.md
+/services/publish-update.ps1

@@ -1,59 +1,57 @@
 @echo off
-chcp 936 > nul
-title AI Photo Editor - 一键启动脚本
+setlocal
+title AI Photo Editor - Start Server
+cd /d "%~dp0"
 
 echo ===================================================
-echo           AI Photo Editor - 一键启动
+echo        AI Photo Editor - Background Service
 echo ===================================================
 echo.
 
-rem 1. 检查 Node.js 环境
+echo [1/3] Checking environment dependencies...
 where node >nul 2>nul
-if %errorlevel% neq 0 (
-    echo 【错误】未检测到 Node.js！
-    echo 请先前往 https://nodejs.org/ 下载并安装 Node.js [推荐 LTS 版本]。
-    echo 安装完成后，重新双击此脚本即可。
-    echo.
-    pause
-    exit /b 1
+if errorlevel 1 (
+    echo [ERROR] Node.js is not installed or is not available in PATH.
+    echo Please install Node.js first, then run this file again.
+    goto failed
+)
+where npm >nul 2>nul
+if errorlevel 1 (
+    echo [ERROR] npm is not available in PATH.
+    goto failed
+)
+if not exist "node_modules" (
+    echo [INFO] First run: installing project dependencies...
+    call "%~dp0install.bat" /quiet
+    if errorlevel 1 goto failed
 )
 
-rem 2. 检查依赖项 node_modules
-if not exist "node_modules\" (
-    echo [1/3] 正在安装项目依赖，首次运行可能需要 1-2 分钟，请稍候...
-    call npm install
-    if %errorlevel% neq 0 (
-        echo 【错误】依赖安装失败，请检查网络连接或 NPM 配置。
-        pause
-        exit /b 1
-    )
-    echo [OK] 依赖安装完成！
-) else (
-    echo [1/3] 项目依赖已存在，跳过安装。
-)
+echo [2/3] API Key configuration...
+echo [INFO] Each user enters their own Gemini API Key in the web page.
 
-rem 3. 检查 .env 配置文件
-if not exist ".env" (
-    if exist ".env.example" (
-        copy .env.example .env >nul
-    ) else (
-        echo GEMINI_API_KEY=> .env
-    )
-    echo [2/3] 已初始化 .env 配置文件。
-    echo [注意：您可以在网页右上角直接输入 Gemini API Key，或在 .env 文件中填入 GEMINI_API_KEY]
-) else (
-    echo [2/3] 配置文件 .env 已就绪。
-)
+echo [3/3] Launching this project's background service...
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0services\server-control.ps1" start
+if errorlevel 1 goto failed
+start "" "http://localhost:3000"
 
-rem 4. 启动服务并自动打开浏览器
-echo [3/3] 正在启动服务...
-echo 项目网址: http://localhost:3000
 echo.
+echo ===================================================
+echo [OK] Background service launched successfully!
+echo.
+echo 1. Browser is opened at http://localhost:3000
+echo 2. Service runs silently in the background.
+echo 3. To stop service, run stop.bat in this folder.
+echo ===================================================
+echo.
+if /i "%~1"=="/quiet" exit /b 0
+echo Press any key to close this window...
+pause > nul
+exit /b 0
 
-rem 延时 3 秒后自动打开浏览器
-start "" cmd /c "timeout /t 3 >nul && start http://localhost:3000"
-
-rem 启动 Node 开发服务器
-call npm run dev
-
-pause
+:failed
+echo.
+echo [ERROR] AI Photo Editor could not be started.
+if /i "%~1"=="/quiet" exit /b 1
+echo Press any key to close this window...
+pause > nul
+exit /b 1
