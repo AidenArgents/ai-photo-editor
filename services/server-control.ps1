@@ -11,6 +11,111 @@ $pidFile = Join-Path $projectRoot ".ai-photo-editor.pid"
 $logFile = Join-Path $projectRoot "server.log"
 $port = 3000
 
+function ConvertTo-HttpProxyUrl {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+    $cleanValue = $Value.Trim()
+    if ($cleanValue -match "^(?i:https?)://") {
+        return $cleanValue
+    }
+    if ($cleanValue -match "^(?i:socks)") {
+        return $null
+    }
+    return "http://$cleanValue"
+}
+
+function Add-LocalhostToNoProxy {
+    $requiredEntries = @("localhost", "127.0.0.1", "::1")
+    $entries = @()
+    if (-not [string]::IsNullOrWhiteSpace($env:NO_PROXY)) {
+        $entries = @($env:NO_PROXY.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    }
+    foreach ($requiredEntry in $requiredEntries) {
+        if ($entries -notcontains $requiredEntry) {
+            $entries += $requiredEntry
+        }
+    }
+    $env:NO_PROXY = $entries -join ","
+}
+
+function Set-NodeNetworkEnvironment {
+    $env:NODE_USE_SYSTEM_CA = "1"
+
+    if ([string]::IsNullOrWhiteSpace($env:HTTPS_PROXY)) {
+        if (-not [string]::IsNullOrWhiteSpace($env:HTTP_PROXY)) {
+            $env:HTTPS_PROXY = $env:HTTP_PROXY
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($env:ALL_PROXY)) {
+            $allProxy = ConvertTo-HttpProxyUrl $env:ALL_PROXY
+            if ($allProxy) {
+                $env:HTTP_PROXY = $allProxy
+                $env:HTTPS_PROXY = $allProxy
+            }
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($env:HTTPS_PROXY)) {
+        try {
+            $settings = Get-ItemProperty `
+                -LiteralPath "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" `
+                -ErrorAction Stop
+            if ([int]$settings.ProxyEnable -eq 1 -and
+                -not [string]::IsNullOrWhiteSpace([string]$settings.ProxyServer)) {
+                $proxyText = ([string]$settings.ProxyServer).Trim()
+                $httpProxy = $null
+                $httpsProxy = $null
+
+                if ($proxyText -match "=") {
+                    foreach ($entry in $proxyText.Split(";")) {
+                        $pair = $entry.Split("=", 2)
+                        if ($pair.Count -ne 2) {
+                            continue
+                        }
+                        $scheme = $pair[0].Trim().ToLowerInvariant()
+                        $proxyUrl = ConvertTo-HttpProxyUrl $pair[1]
+                        if ($scheme -eq "http") {
+                            $httpProxy = $proxyUrl
+                        }
+                        elseif ($scheme -eq "https") {
+                            $httpsProxy = $proxyUrl
+                        }
+                    }
+                }
+                else {
+                    $httpProxy = ConvertTo-HttpProxyUrl $proxyText
+                    $httpsProxy = $httpProxy
+                }
+
+                if (-not $httpsProxy) {
+                    $httpsProxy = $httpProxy
+                }
+                if (-not $httpProxy) {
+                    $httpProxy = $httpsProxy
+                }
+                if ($httpsProxy) {
+                    $env:HTTP_PROXY = $httpProxy
+                    $env:HTTPS_PROXY = $httpsProxy
+                }
+            }
+        }
+        catch {
+            # Direct networking remains available when Windows proxy settings cannot be read.
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($env:HTTPS_PROXY)) {
+        $env:NODE_USE_ENV_PROXY = "1"
+        Add-LocalhostToNoProxy
+        $proxyHost = ([Uri]$env:HTTPS_PROXY).Authority
+        Write-Host "[INFO] Gemini network requests will use proxy: $proxyHost"
+    }
+    else {
+        Write-Host "[INFO] No HTTP system proxy is enabled. Gemini will use a direct connection."
+    }
+}
+
 function Remove-StalePidFile {
     if (Test-Path -LiteralPath $pidFile) {
         Remove-Item -LiteralPath $pidFile -Force
@@ -75,6 +180,8 @@ function Start-ProjectServer {
     if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "node_modules"))) {
         throw "Project dependencies are missing. Run install.bat first."
     }
+
+    Set-NodeNetworkEnvironment
 
     $escapedLogFile = $logFile.Replace('"', '""')
     $command = "npm.cmd run dev >> `"$escapedLogFile`" 2>&1"

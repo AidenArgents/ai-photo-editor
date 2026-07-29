@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { editImage } from './services/geminiService';
+import { editImage, expandPromptForImage } from './services/geminiService';
 import type { ImageFile } from './types';
 import Header from './components/Header';
 import ImageUpload from './components/ImageUpload';
@@ -38,6 +38,10 @@ export default function App(): React.JSX.Element {
   const [secondaryImage, setSecondaryImage] = useState<ImageFile | null>(null);
   const [editedImage, setEditedImage] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string>('');
+  const [promptBeforeExpansion, setPromptBeforeExpansion] = useState<string | null>(null);
+  const [isExpandingPrompt, setIsExpandingPrompt] = useState<boolean>(false);
+  const [promptExpansionMessage, setPromptExpansionMessage] = useState<string | null>(null);
+  const [promptExpansionError, setPromptExpansionError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [mergeMode, setMergeMode] = useState<string>(
@@ -127,10 +131,77 @@ export default function App(): React.JSX.Element {
     const newMode = e.target.value;
     setMergeMode(newMode);
     localStorage.setItem('fusion_merge_mode', newMode);
+    setPromptBeforeExpansion(null);
+    setPromptExpansionMessage(null);
+    setPromptExpansionError(null);
+    if (aspectRatio !== 'auto') {
+      const isRawCustomMode = newMode === 'custom';
+      setHighFidelityPreserve(!isRawCustomMode);
+      setAspectRatioWarning(
+        isRawCustomMode
+          ? 'Custom 原生 API 模式只把宽高比交给 Gemini，不会在本地补白或二次描述图片。'
+          : '注意：更改宽高比会重新生成图像。为保证产品图不失真，推荐使用“高保真保留产品”模式。'
+      );
+    }
     // custom 模式不覆盖用户已有文本
     if (newMode !== 'custom') {
       setPrompt(PROMPT_TEMPLATES[newMode] || '');
     }
+  };
+
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setPrompt(e.target.value);
+    setPromptExpansionMessage(null);
+    setPromptExpansionError(null);
+  };
+
+  const handleExpandPrompt = async () => {
+    if (!prompt.trim()) {
+      setPromptExpansionError('请先输入需要扩写的提示词。');
+      return;
+    }
+    if (!customApiKey.trim()) {
+      setPromptExpansionError('请先在页面右上角填写 Gemini API Key。');
+      return;
+    }
+
+    setIsExpandingPrompt(true);
+    setPromptExpansionMessage(null);
+    setPromptExpansionError(null);
+
+    try {
+      const result = await expandPromptForImage({
+        prompt: prompt.trim(),
+        imageModel: selectedModel,
+        mainImageCount: Math.max(1, originalImages.length),
+        hasReferenceImage: secondaryImage !== null,
+        mergeMode,
+        aspectRatio,
+        customApiKey,
+      });
+
+      setPromptBeforeExpansion((current) => current ?? prompt);
+      setPrompt(result.expandedPrompt);
+      const warningText =
+        result.warnings.length > 0 ? ` ${result.warnings.join(' ')}` : '';
+      setPromptExpansionMessage(
+        `已按 ${result.imageModelName || '当前模型'} 受控优化，结果已写入输入框。${warningText}`
+      );
+    } catch (e: unknown) {
+      setPromptExpansionError(
+        e instanceof Error ? e.message : '提示词扩写失败，请重试。'
+      );
+    } finally {
+      setIsExpandingPrompt(false);
+    }
+  };
+
+  const handleRestorePrompt = () => {
+    if (promptBeforeExpansion === null) return;
+    setPrompt(promptBeforeExpansion);
+    setPromptBeforeExpansion(null);
+    setPromptExpansionError(null);
+    setPromptExpansionMessage('已恢复扩写前的原文。');
   };
 
   const handleAspectRatioChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -138,8 +209,12 @@ export default function App(): React.JSX.Element {
     setAspectRatio(newAspectRatio);
     
     if (newAspectRatio !== 'auto') {
-      setHighFidelityPreserve(true); // Default to checked for new ratios
-      setAspectRatioWarning("注意：更改宽高比会重新生成图像。为保证产品图不失真，推荐使用“高保真保留产品”模式。");
+      setHighFidelityPreserve(mergeMode !== 'custom');
+      setAspectRatioWarning(
+        mergeMode === 'custom'
+          ? 'Custom 原生 API 模式只把宽高比交给 Gemini，不会在本地补白或二次描述图片。'
+          : '注意：更改宽高比会重新生成图像。为保证产品图不失真，推荐使用“高保真保留产品”模式。'
+      );
     } else {
       setHighFidelityPreserve(false); // Crucially, reset to false for 'auto'
       setAspectRatioWarning(null); // And clear the warning
@@ -396,7 +471,7 @@ export default function App(): React.JSX.Element {
                       onChange={handleMergeModeChange}
                       className="block w-full p-2 bg-white border-2 border-pink-300 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-400"
                     >
-                      <option value="custom">Custom (自定义修图·自由重绘单图/双图)</option>
+                      <option value="custom">Custom（原生 API · 不加隐藏提示词）</option>
                       <option value="remove_watermark">Remove Watermark (去除右下角水印或AI图标)</option>
                       <option value="replace_background" disabled={!secondaryImage}>
                         Background Fusion (场景融合·主图融进参考图背景{secondaryImage ? '' : ' · 需参考图'})
@@ -422,7 +497,44 @@ export default function App(): React.JSX.Element {
               <div className="lg:col-span-3 bg-white/80 rounded-2xl p-4 shadow-lg border border-pink-200 flex flex-col gap-3 h-full min-h-0 overflow-hidden">
                 <h2 className="text-xl font-bold text-pink-600 shrink-0">2. 描述修图指令</h2>
                 <div className="flex-1 flex flex-col min-h-0">
-                  <PromptInput value={prompt} onChange={(e) => setPrompt(e.target.value)} />
+                  <PromptInput value={prompt} onChange={handlePromptChange} />
+                  {mergeMode === 'custom' && (
+                    <div className="mt-2 shrink-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleExpandPrompt}
+                          disabled={isExpandingPrompt || isLoading || !prompt.trim()}
+                          className="px-3 py-1.5 rounded-lg border border-pink-300 bg-pink-50 text-pink-700 text-xs font-bold hover:bg-pink-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isExpandingPrompt ? '正在优化…' : '✨ AI 优化提示词'}
+                        </button>
+                        {promptBeforeExpansion !== null && (
+                          <button
+                            type="button"
+                            onClick={handleRestorePrompt}
+                            disabled={isExpandingPrompt || isLoading}
+                            className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            恢复原文
+                          </button>
+                        )}
+                        <span className="text-[11px] text-gray-400">
+                          只细化你明确提出的要求，不改变作用对象，结果可见、可修改
+                        </span>
+                      </div>
+                      {promptExpansionMessage && (
+                        <p className="mt-1.5 text-[11px] text-emerald-700">
+                          {promptExpansionMessage}
+                        </p>
+                      )}
+                      {promptExpansionError && (
+                        <p className="mt-1.5 text-[11px] text-red-500">
+                          {promptExpansionError}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="shrink-0">
                   <label htmlFor="aspect-ratio" className="block text-sm font-medium text-gray-700 mb-1">图片宽高比</label>
@@ -448,7 +560,7 @@ export default function App(): React.JSX.Element {
                       {aspectRatioWarning}
                     </p>
                   )}
-                  {aspectRatio !== 'auto' && (
+                  {aspectRatio !== 'auto' && mergeMode !== 'custom' && (
                     <div className="mt-3 p-3 bg-pink-100/50 rounded-lg border border-pink-200">
                         <label htmlFor="high-fidelity-preserve" className="flex items-center gap-2 cursor-pointer">
                             <input

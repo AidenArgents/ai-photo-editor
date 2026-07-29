@@ -78,6 +78,77 @@ function iSNaN(val: number) {
   return Number.isNaN(val);
 }
 
+export interface PromptExpansionRequest {
+  prompt: string;
+  imageModel: string;
+  mainImageCount: number;
+  hasReferenceImage: boolean;
+  mergeMode: string;
+  aspectRatio: string;
+  customApiKey: string;
+}
+
+export interface PromptExpansionResult {
+  expandedPrompt: string;
+  expansionModel: string;
+  imageModelName: string;
+  modeDescription: string;
+  warnings: string[];
+}
+
+export const expandPromptForImage = async ({
+  prompt,
+  imageModel,
+  mainImageCount,
+  hasReferenceImage,
+  mergeMode,
+  aspectRatio,
+  customApiKey,
+}: PromptExpansionRequest): Promise<PromptExpansionResult> => {
+  const response = await fetch('/api/expand-prompt', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(customApiKey ? { 'x-gemini-api-key': customApiKey } : {}),
+    },
+    body: JSON.stringify({
+      prompt,
+      imageModel,
+      mainImageCount,
+      hasReferenceImage,
+      mergeMode,
+      aspectRatio,
+    }),
+  });
+
+  const rawText = await response.text();
+  let data: any;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    throw new Error('提示词扩写服务返回了无法识别的内容，请重试。');
+  }
+
+  if (data.error) {
+    throw new Error(
+      typeof data.error === 'string' ? data.error : JSON.stringify(data.error)
+    );
+  }
+  if (!data.expandedPrompt) {
+    throw new Error('提示词扩写服务没有返回扩写结果，请重试。');
+  }
+
+  return {
+    expandedPrompt: String(data.expandedPrompt),
+    expansionModel: String(data.expansionModel || ''),
+    imageModelName: String(data.imageModelName || ''),
+    modeDescription: String(data.modeDescription || ''),
+    warnings: Array.isArray(data.warnings)
+      ? data.warnings.map((warning: unknown) => String(warning))
+      : [],
+  };
+};
+
 /**
  * Optimizes image size before uploading to avoid huge payloads and gateway timeouts.
  */
@@ -149,18 +220,22 @@ export const editImage = async (
 ): Promise<string> => {
   try {
     const isWatermarkRemoval = mergeMode === 'remove_watermark';
+    const isRawCustomMode = mergeMode === 'custom';
     const allInputFiles = Array.isArray(imageInput) ? imageInput : [imageInput];
     // Watermark removal intentionally reproduces the original AI Studio flow:
     // exactly one image plus one short instruction, with no fusion framework.
     const inputFiles = isWatermarkRemoval ? allInputFiles.slice(0, 1) : allInputFiles;
     const requestAspectRatio = isWatermarkRemoval ? 'auto' : aspectRatio;
-    const requestHighFidelityPreserve = isWatermarkRemoval ? false : highFidelityPreserve;
+    // Custom mode is the direct Gemini API experiment: send the original image
+    // bytes without client-side resizing, JPEG conversion, or white padding.
+    const requestHighFidelityPreserve =
+      isWatermarkRemoval || isRawCustomMode ? false : highFidelityPreserve;
     const requestPrompt = isWatermarkRemoval ? '去除右下角的gemini图标' : prompt;
     const requestModel = model;
 
     const optimizedImages: File[] = [];
     for (const f of inputFiles) {
-      let opt = await optimizeImageForUpload(f);
+      let opt = isRawCustomMode ? f : await optimizeImageForUpload(f);
       if (requestAspectRatio !== 'auto' && requestHighFidelityPreserve) {
         opt = await padImageToAspectRatio(opt, requestAspectRatio);
       }
@@ -169,7 +244,9 @@ export const editImage = async (
 
     let finalSecondaryImage =
       !isWatermarkRemoval && secondaryImageFile
-        ? await optimizeImageForUpload(secondaryImageFile)
+        ? isRawCustomMode
+          ? secondaryImageFile
+          : await optimizeImageForUpload(secondaryImageFile)
         : null;
     if (
       requestAspectRatio !== 'auto' &&

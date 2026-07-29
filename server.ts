@@ -18,6 +18,35 @@ try {
 const app = express();
 const PORT = 3000;
 
+app.use(express.json({ limit: "1mb" }));
+
+function getPublicErrorMessage(error: any): string {
+  const cause = error?.cause;
+  const code = cause?.code || error?.code || "";
+  const causeMessage = cause?.message || "";
+
+  if (code === "UND_ERR_CONNECT_TIMEOUT" || code === "ETIMEDOUT") {
+    return "无法连接 Gemini API：连接 Google 服务器超时。请确认这台电脑能够访问 Google；如果使用代理，请开启系统代理或 TUN 模式，然后运行 restart.bat。仅浏览器代理扩展不会被本地服务使用。";
+  }
+  if (code === "ENOTFOUND" || code === "EAI_AGAIN") {
+    return "无法解析 Gemini API 域名。请检查电脑的 DNS 和网络连接，然后运行 restart.bat 重试。";
+  }
+  if (code === "ECONNRESET" || code === "ECONNREFUSED") {
+    return "连接 Gemini API 时被网络或代理中断。请检查防火墙、代理设置，并运行 restart.bat 后重试。";
+  }
+  if (
+    code === "CERT_HAS_EXPIRED" ||
+    code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE" ||
+    code === "SELF_SIGNED_CERT_IN_CHAIN"
+  ) {
+    return "连接 Gemini API 时证书验证失败。请检查系统时间、代理软件及其证书设置，然后运行 restart.bat。";
+  }
+  if (error?.message === "fetch failed" && causeMessage) {
+    return `连接 Gemini API 失败：${causeMessage}`;
+  }
+  return error?.message || "An error occurred during image processing.";
+}
+
 // Configure multer to store files in memory
 const upload = multer({
   limits: {
@@ -129,10 +158,6 @@ function buildDualImageSynchronizedPrompt(userPrompt: string, mergeMode: string,
   const img2Ref = `IMAGE ${refImageIndex}`;
 
   const modeInstructions: Record<string, string> = {
-    custom: `**PRIMARY TASK (Custom User-Driven Multi-Asset Synthesis)**:
-- ${img1Ref} represent our complete product kit and features.
-- ${img2Ref} serves as our reference blueprint (for layout, packaging instructions, or scene style).
-- **CRITICAL ASSET INCLUSION RULE (MANDATORY)**: You MUST NOT drop, ignore, or omit any of the uploaded product photos! You must actively analyze, combine, and synthesize ALL product items shown across ${img1Ref} (e.g. storage box, screws, hand actions, accessories) into the final picture exactly as instructed by the user below!`,
     remove_watermark: `**PRIMARY TASK (Corner Retouching & Restoration)**:
 - Cleanly retouch and restore the bottom-right corner area of ${img1Ref} to remove any small overlay graphics, symbols, or text labels.
 - Seamlessly reconstruct the underlying background color, texture, and lighting in that corner so it blends invisibly with zero trace left.`,
@@ -156,7 +181,7 @@ function buildDualImageSynchronizedPrompt(userPrompt: string, mergeMode: string,
 - Swap the person identity into ${img1Ref} while matching facial features, skin tone reflections, lighting angles, and neck/body boundary shadows smoothly.`
   };
 
-  const selectedInstruction = modeInstructions[mergeMode] || modeInstructions.custom || modeInstructions.combine;
+  const selectedInstruction = modeInstructions[mergeMode] || modeInstructions.combine;
   const paddingNote = isPadded 
     ? `\n**NOTE ON CANVAS PADDING**: The input image(s) have been pre-padded with solid white border bars to fit the target aspect ratio. You must seamlessly outpaint and fill these padded white border regions with coherent background textures and natural lighting extensions!` 
     : "";
@@ -174,26 +199,6 @@ ${selectedInstruction}${paddingNote}
 
 # FINAL MASTER INSTRUCTION:
 Generate a single, flawless, commercial-grade photograph that executes the Primary Task and Custom Request. Ensure zero sticker effect ("贴纸感") by strictly enforcing physical contact shadows and environmental light harmonization while including all uploaded product assets!`;
-}
-
-/**
- * Multi-Product Only Synthesis Engine (when uploading multiple product images without reference scene)
- */
-function buildMultiProductOnlyPrompt(userPrompt: string, imageCount: number): string {
-  return `You are an elite commercial photography AI master. You are provided with ${imageCount} reference images showing our complete commercial product series and kit.
-
-# IMAGE ROLES:
-- **IMAGES 1–${imageCount} (Complete Product Series & Kit)**: The ${imageCount} images provided show our complete product kit from different angles, including packaging storage boxes, individual items, hands/tools, and usage details. Treat them ALL as authoritative product assets.
-
-# CRITICAL ASSET INCLUSION RULE (MANDATORY):
-- DO NOT drop, ignore, or omit any of the uploaded product photos!
-- You must actively analyze, combine, and synthesize ALL key product components shown across IMAGES 1–${imageCount} (e.g. storage box, screws, hand actions, accessories) into a single cohesive commercial design according to the user's instructions.
-
-# USER'S SPECIFIC CUSTOM REQUEST:
-"${userPrompt}"
-
-# FINAL MASTER INSTRUCTION:
-Generate a single, high-impact commercial advertisement photo that faithfully incorporates all product items from the uploaded photos without missing any key assets!`;
 }
 
 /**
@@ -217,10 +222,16 @@ Execute the outpainting and specific request to produce a cohesive, studio-quali
 }
 
 // Helper to get image as base64
-async function getImageAsBase64(ai: GoogleGenAI, model: string, parts: any[]): Promise<string> {
+async function getImageAsBase64(
+  ai: GoogleGenAI,
+  model: string,
+  parts: any[],
+  config?: Record<string, unknown>
+): Promise<string> {
   const response = await ai.models.generateContent({
     model,
     contents: [{ parts }],
+    ...(config ? { config } : {}),
   });
 
   const candidate = response.candidates?.[0];
@@ -245,6 +256,181 @@ async function getImageAsBase64(ai: GoogleGenAI, model: string, parts: any[]): P
   }
   throw new Error(errorMsg);
 }
+
+const PROMPT_EXPANSION_MODEL = "gemini-3.5-flash-lite";
+
+const IMAGE_MODEL_PROMPT_PROFILES: Record<
+  string,
+  { displayName: string; guidance: string }
+> = {
+  "gemini-2.5-flash-image": {
+    displayName: "Nano Banana",
+    guidance:
+      "使用短而直接的自然语言，不增加原文没有提出的多阶段任务。",
+  },
+  "gemini-3.1-flash-image": {
+    displayName: "Nano Banana 2",
+    guidance:
+      "使用简洁、明确的自然语言，准确保留用户要求的对象、范围和限定关系。",
+  },
+  "gemini-3.1-flash-lite-image": {
+    displayName: "Nano Banana 2 Lite",
+    guidance:
+      "保持单一、明确的任务表达，不增加复杂要求，不把原句扩展成多阶段任务。",
+  },
+  "gemini-3-pro-image": {
+    displayName: "Nano Banana Pro",
+    guidance:
+      "可以准确表达复杂要求，但除非原文明确提出，否则不要增加构图、风格、材质、文字或光影要求。",
+  },
+};
+
+const FUSION_MODE_DESCRIPTIONS: Record<string, string> = {
+  custom: "自由编辑：不使用预设场景，用户原句是唯一任务目标。",
+  remove_watermark: "局部清理：只处理用户指定的小区域，其余画面保持不变。",
+  replace_background: "背景融合：主图提供必须保留的产品，参考图提供目标背景场景。",
+  combine: "风格与光影参考：主图提供主体，参考图只提供氛围、风格和光线。",
+  replace_product: "产品替换：用主图产品替换参考场景中的原有产品。",
+  add_logo: "标志叠加：主图是基础画面，参考图是需要加入的标志。",
+  replace_person: "人物替换：主图是基础画面，参考图提供目标人物特征。",
+};
+
+function getRequestApiKey(req: any): string {
+  const header = req.headers["x-gemini-api-key"];
+  return (Array.isArray(header) ? header[0] : header)?.trim() || "";
+}
+
+function getPromptExpansionWarnings(
+  imageModel: string,
+  mainImageCount: number,
+  hasReferenceImage: boolean
+): string[] {
+  const totalImages = mainImageCount + (hasReferenceImage ? 1 : 0);
+  const warnings: string[] = [];
+
+  if (imageModel === "gemini-3.1-flash-lite-image" && totalImages > 1) {
+    warnings.push("当前是 Nano Banana 2 Lite；复杂多图任务建议改用 Nano Banana 2。");
+  }
+  if (imageModel === "gemini-2.5-flash-image" && totalImages > 3) {
+    warnings.push("Nano Banana 输入超过3张图片时稳定性会下降，建议改用 Nano Banana 2。");
+  }
+
+  return warnings;
+}
+
+app.post("/api/expand-prompt", async (req: any, res: any) => {
+  try {
+    const apiKey = getRequestApiKey(req);
+    if (!apiKey) {
+      return res.status(200).json({
+        error: "请先在页面右上角填写您自己的 Gemini API Key。",
+      });
+    }
+
+    const originalPrompt =
+      typeof req.body?.prompt === "string" ? req.body.prompt.trim() : "";
+    if (!originalPrompt) {
+      return res.status(200).json({ error: "请先输入需要扩写的提示词。" });
+    }
+    if (originalPrompt.length > 3000) {
+      return res.status(200).json({
+        error: "提示词过长；AI优化最多支持3000个字符。",
+      });
+    }
+
+    const requestedImageModel =
+      typeof req.body?.imageModel === "string" ? req.body.imageModel : "";
+    const imageModelProfile =
+      IMAGE_MODEL_PROMPT_PROFILES[requestedImageModel] ||
+      IMAGE_MODEL_PROMPT_PROFILES["gemini-3.1-flash-image"];
+    const mergeMode =
+      typeof req.body?.mergeMode === "string" ? req.body.mergeMode : "custom";
+    const modeDescription =
+      FUSION_MODE_DESCRIPTIONS[mergeMode] || FUSION_MODE_DESCRIPTIONS.custom;
+    const parsedMainImageCount = Number(req.body?.mainImageCount);
+    const mainImageCount = Number.isFinite(parsedMainImageCount)
+      ? Math.max(1, Math.min(10, Math.trunc(parsedMainImageCount)))
+      : 1;
+    const hasReferenceImage = req.body?.hasReferenceImage === true;
+
+    const expansionContext = {
+      原始提示词: originalPrompt,
+      目标生图模型: imageModelProfile.displayName,
+      模型适配原则: imageModelProfile.guidance,
+      任务模式说明: modeDescription,
+    };
+
+    const systemInstruction = `你是一个忠实、受控的电商图片提示词编辑器。你的任务是在绝不改变原意的前提下，整理用户原句，并且只对用户明确提出的要求维度做必要的执行性细化，使所选图像模型更容易准确执行。
+
+必须遵守：
+1. 用户原句是唯一事实来源。先识别用户明确提出了哪些维度，例如：任务目标、产品、文字内容、文字语言、文字排版、位置、颜色、数量、比例、场景、构图、风格、光线或需要保持不变的内容。
+2. 只能整理或细化用户已经明确提出的维度；没有提出的维度不得主动补充。原句已经明确时允许原样返回，绝不能为了体现“优化”而增加长度。
+3. 对用户已经提出但表达较笼统的维度，可以补充少量、不改变方向的执行性描述。例如“文字使用广告排版”可以细化为“主标题醒目、正文简短、字号层级清楚、对齐整齐、留白合理”，但这些描述只能约束文字排版。
+4. 必须逐项保留原句中每个要求的作用对象、主语、修饰对象、范围和限定关系，不得扩大、缩小、转移或偷换。
+5. 严格区分“文字内容”“文字语言”“文字排版”和“整体画面风格”：
+   - 文字内容：用户提供的具体文字必须原样保留；除非用户明确要求，否则不得改写或翻译。
+   - 文字语言：只规定最终图片中文字使用的语言，不得改成界面语言或画面风格。
+   - 文字排版：只能细化标题层级、字号、字重、对齐、行距、位置、颜色、留白和可读性，不得扩大为整张画面的构图或风格。
+   - 整体画面风格：只有用户明确要求广告图、海报、极简、奢华等画面风格时，才能细化场景、构图、光线和视觉氛围。
+6. 涉及数量、位置、颜色、比例，以及“只修改”“不要”“保持不变”等硬性要求时，必须保留原来的对象和约束。
+7. 不擅自增加商品、数量、品牌、具体文案、道具、人物、场景、风格、构图、教程、步骤、规格、价格、卖点或使用方法。用户要求文字排版但没有提供具体文案时，可以要求文字简短、层级清楚，并防止虚构价格、规格、品牌和卖点，但不得代写这些内容。
+8. 不主动提及上传图片的数量，不推断多张图片之间的关系，不要求所有图片内容全部出现；除非用户原句明确提出。
+9. 产品编辑时，可以在不冲突的情况下补充一句“保持产品外观和细节准确”。如果用户明确要求修改产品的某项属性，不得用保真要求阻止该修改。
+10. 不添加“世界顶级、杰作、8K、商业摄影大师”等空洞词语，不堆砌负面提示词。
+11. 输出应尽可能短，通常为1至3句，不设最低字数。只输出优化后的提示词正文，不要标题、解释、引号、Markdown或JSON。
+
+语义边界示例：
+原句：做一张产品使用示意图，用英文，文字使用广告排版
+正确：制作一张产品使用示意图。所有文字使用英文；文字采用广告式排版，主标题醒目，正文简短，字号层级清楚，对齐整齐，留白合理。不要虚构未提供的价格、规格、品牌或卖点；保持产品外观和细节准确。
+错误：画面采用英文界面与专业的广告排版设计，通过视觉引导展示产品的实际使用方法。
+错误原因：把“文字使用广告排版”扩大成了“整个画面采用广告排版”，并擅自增加了视觉引导和使用方法。`;
+
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: PROMPT_EXPANSION_MODEL,
+      contents: [
+        {
+          parts: [
+            {
+              text: `请严格按照保守优化规则处理以下内容：\n${JSON.stringify(expansionContext, null, 2)}`,
+            },
+          ],
+        },
+      ],
+      config: {
+        systemInstruction,
+      },
+    });
+
+    const expandedPrompt = (response.text || "")
+      .trim()
+      .replace(/^```(?:text)?\s*/i, "")
+      .replace(/\s*```$/, "")
+      .replace(/^["“]|["”]$/g, "")
+      .trim();
+
+    if (!expandedPrompt) {
+      throw new Error("提示词扩写模型没有返回文字，请重试。");
+    }
+
+    return res.json({
+      expandedPrompt,
+      expansionModel: PROMPT_EXPANSION_MODEL,
+      imageModelName: imageModelProfile.displayName,
+      modeDescription,
+      warnings: getPromptExpansionWarnings(
+        requestedImageModel,
+        mainImageCount,
+        hasReferenceImage
+      ),
+    });
+  } catch (error: any) {
+    console.error("Error in expand-prompt API:", error);
+    return res.status(200).json({
+      error: getPublicErrorMessage(error),
+    });
+  }
+});
 
 // API endpoint for editing image
 app.post(
@@ -274,12 +460,7 @@ app.post(
       }
 
       // Every user supplies their own API key from the page.
-      const customApiKeyHeader = req.headers["x-gemini-api-key"];
-      const apiKey = (
-        Array.isArray(customApiKeyHeader)
-          ? customApiKeyHeader[0]
-          : customApiKeyHeader
-      )?.trim();
+      const apiKey = getRequestApiKey(req);
       if (!apiKey) {
         return res.status(200).json({
           error: "Gemini API 密钥未配置。请在页面右上角填写您自己的 Gemini API Key。",
@@ -298,6 +479,42 @@ app.post(
       // Model for image-to-image editing tasks
       const editModel = req.body.model || "gemini-2.5-flash-image";
 
+      // Direct Gemini API path for Custom mode:
+      // original image bytes, optional reference image, and the user's exact prompt.
+      // No hidden prompt wrapper, forced image roles, asset-inclusion rules, client
+      // compression, white padding, image description, or intermediate generation.
+      if (mergeMode === "custom") {
+        console.log(
+          `Server: Direct Gemini API mode (${imageFiles.length} main image(s)` +
+          `${secondaryImageFile ? " + 1 reference image" : ""}, model: ${editModel}).`
+        );
+
+        const parts: any[] = [];
+        for (const f of imageFiles) {
+          parts.push(bufferToGenerativePart(f.buffer, f.mimetype));
+        }
+        if (secondaryImageFile) {
+          parts.push(bufferToGenerativePart(secondaryImageFile.buffer, secondaryImageFile.mimetype));
+        }
+        parts.push({ text: prompt.trim() });
+
+        let directAspectRatio = aspectRatio;
+        if (directAspectRatio === "prompt") {
+          directAspectRatio = await extractAspectRatioFromPrompt(ai, prompt);
+        }
+        const directConfig =
+          directAspectRatio !== "auto"
+            ? {
+                imageConfig: {
+                  aspectRatio: directAspectRatio,
+                },
+              }
+            : undefined;
+
+        const resultBase64 = await getImageAsBase64(ai, editModel, parts, directConfig);
+        return res.json({ imageUrl: resultBase64 });
+      }
+
       // Path 1: Auto / Original Aspect Ratio
       if (aspectRatio === "auto") {
         console.log("Server: Processing auto aspect-ratio image edit with", imageFiles.length, "main image(s)...");
@@ -311,10 +528,6 @@ app.post(
           parts.push(bufferToGenerativePart(secondaryImageFile.buffer, secondaryImageFile.mimetype));
           const dualPrompt = buildDualImageSynchronizedPrompt(prompt, mergeMode, false, imageFiles.length);
           parts.push({ text: optimizePromptForEditing(dualPrompt) });
-        } else if (imageFiles.length > 1) {
-          console.log(`Server: Applying Multi-Product Synthesis Engine (${imageFiles.length} images)...`);
-          const multiPrompt = buildMultiProductOnlyPrompt(prompt, imageFiles.length);
-          parts.push({ text: optimizePromptForEditing(multiPrompt) });
         } else {
           parts.push({ text: optimizePromptForEditing(prompt) });
         }
@@ -342,10 +555,6 @@ app.post(
           parts.push(bufferToGenerativePart(secondaryImageFile.buffer, secondaryImageFile.mimetype));
           const dualPrompt = buildDualImageSynchronizedPrompt(prompt, mergeMode, true, imageFiles.length);
           parts.push({ text: optimizePromptForEditing(dualPrompt) });
-        } else if (imageFiles.length > 1) {
-          console.log(`Server: Applying Multi-Product Synthesis Engine with Padding (${imageFiles.length} images)...`);
-          const multiPrompt = buildMultiProductOnlyPrompt(prompt, imageFiles.length);
-          parts.push({ text: optimizePromptForEditing(multiPrompt) });
         } else {
           console.log("Server: Applying Single-Image Outpainting & Relighting Engine...");
           const singlePrompt = buildSingleImageOutpaintingPrompt(prompt);
@@ -438,7 +647,7 @@ Description: "${image2Description}"
       // We return 200 instead of 500 so that upstream cloud proxies do not intercept
       // the error and replace it with a generic HTML page. The client parses the JSON 'error' field.
       res.status(200).json({
-        error: error.message || "An error occurred during image processing.",
+        error: getPublicErrorMessage(error),
       });
     }
   }
@@ -537,7 +746,7 @@ app.use((err: any, req: any, res: any, next: any) => {
   console.error("Uncaught error:", err);
   if (req.path.startsWith("/api/")) {
     return res.status(200).json({
-      error: err.message || "A server error occurred. Please check your inputs and try again.",
+      error: getPublicErrorMessage(err),
     });
   }
   next(err);

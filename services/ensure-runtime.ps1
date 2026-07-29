@@ -57,9 +57,8 @@ function Test-NodeExecutable {
     }
     try {
         $versionText = (& $Executable --version 2>$null).TrimStart("v")
-        $major = 0
-        [void][int]::TryParse(($versionText -split "\.")[0], [ref]$major)
-        return $major -ge 20
+        $version = [Version]$versionText
+        return $version -ge [Version]"24.6.0"
     }
     catch {
         return $false
@@ -183,7 +182,7 @@ if ($EnsureNode) {
     $localNode = Join-Path $RuntimeRoot "node\node.exe"
     $systemNode = Get-Command node.exe -ErrorAction SilentlyContinue
     if ((-not $ForcePortable) -and $systemNode -and (Test-NodeExecutable $systemNode.Source)) {
-        Write-Host "[OK] Node.js 20 or newer is already installed."
+        Write-Host "[OK] Node.js 24.6 or newer is already installed."
     }
     elseif (Test-NodeExecutable $localNode) {
         Write-Host "[OK] Portable Node.js is already ready."
