@@ -47,6 +47,92 @@ function getPublicErrorMessage(error: any): string {
   return error?.message || "An error occurred during image processing.";
 }
 
+type OpenAiImageQuality = "auto" | "low" | "medium" | "high";
+
+const OPENAI_IMAGE_SELECTIONS: Record<string, OpenAiImageQuality> = {
+  "gpt-image-2:auto": "auto",
+  "gpt-image-2:low": "low",
+  "gpt-image-2:medium": "medium",
+  "gpt-image-2:high": "high",
+};
+
+function getRequestOpenAiApiKey(req: any): string {
+  const header = req.headers["x-openai-api-key"];
+  return (Array.isArray(header) ? header[0] : header)?.trim() || "";
+}
+
+function getOpenAiImageSize(aspectRatio: string): string {
+  const sizes: Record<string, string> = {
+    "1:1": "1024x1024",
+    "3:4": "1152x1536",
+    "4:3": "1536x1152",
+    "3:2": "1536x1024",
+    "4:5": "1024x1280",
+    "16:9": "1536x864",
+    "9:16": "864x1536",
+  };
+  return sizes[aspectRatio] || "auto";
+}
+
+async function editImageWithOpenAi(options: {
+  apiKey: string;
+  imageFiles: any[];
+  secondaryImageFile?: any;
+  prompt: string;
+  quality: OpenAiImageQuality;
+  aspectRatio: string;
+}): Promise<string> {
+  const form = new FormData();
+  form.append("model", "gpt-image-2");
+  form.append("prompt", options.prompt);
+  form.append("quality", options.quality);
+  form.append("size", getOpenAiImageSize(options.aspectRatio));
+
+  const allImages = options.secondaryImageFile
+    ? [...options.imageFiles, options.secondaryImageFile]
+    : options.imageFiles;
+
+  for (const imageFile of allImages) {
+    const bytes = new Uint8Array(imageFile.buffer);
+    const blob = new Blob([bytes], { type: imageFile.mimetype || "image/png" });
+    form.append("image[]", blob, imageFile.originalname || "image.png");
+  }
+
+  let response: Response;
+  try {
+    response = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${options.apiKey}`,
+      },
+      body: form,
+    });
+  } catch (error: any) {
+    const reason = error?.cause?.message || error?.message || "网络连接失败";
+    throw new Error(`无法连接 OpenAI API：${reason}`);
+  }
+
+  const rawText = await response.text();
+  let data: any;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    throw new Error(`OpenAI API 返回了无法识别的内容（HTTP ${response.status}）。`);
+  }
+
+  if (!response.ok || data?.error) {
+    const message = data?.error?.message || data?.error || `HTTP ${response.status}`;
+    throw new Error(`OpenAI 图片生成失败：${String(message)}`);
+  }
+
+  const imageBase64 = data?.data?.[0]?.b64_json;
+  if (!imageBase64) {
+    throw new Error("OpenAI API 没有返回图片，请重试。");
+  }
+
+  return `data:image/png;base64,${imageBase64}`;
+}
+
 // Configure multer to store files in memory
 const upload = multer({
   limits: {
@@ -283,6 +369,26 @@ const IMAGE_MODEL_PROMPT_PROFILES: Record<
     guidance:
       "可以准确表达复杂要求，但除非原文明确提出，否则不要增加构图、风格、材质、文字或光影要求。",
   },
+  "gpt-image-2:auto": {
+    displayName: "GPT Image 2（自动质量）",
+    guidance:
+      "使用清晰、直接的编辑指令，严格保留用户要求的对象、范围、文字和限定关系。",
+  },
+  "gpt-image-2:low": {
+    displayName: "GPT Image 2（低质量）",
+    guidance:
+      "使用清晰、直接的编辑指令，严格保留用户要求的对象、范围、文字和限定关系。",
+  },
+  "gpt-image-2:medium": {
+    displayName: "GPT Image 2（中等质量）",
+    guidance:
+      "使用清晰、直接的编辑指令，严格保留用户要求的对象、范围、文字和限定关系。",
+  },
+  "gpt-image-2:high": {
+    displayName: "GPT Image 2（高质量）",
+    guidance:
+      "使用清晰、直接的编辑指令，严格保留用户要求的对象、范围、文字和限定关系。",
+  },
 };
 
 const FUSION_MODE_DESCRIPTIONS: Record<string, string> = {
@@ -437,7 +543,7 @@ app.post(
   "/api/edit-image",
   upload.fields([
     { name: "image", maxCount: 1 },
-    { name: "images", maxCount: 10 },
+    { name: "images", maxCount: 16 },
     { name: "secondaryImage", maxCount: 1 },
   ]),
   async (req: any, res: any) => {
@@ -459,6 +565,53 @@ app.post(
         return res.status(400).json({ error: "Prompt is required." });
       }
 
+      const requestedModel = req.body.model || "gemini-2.5-flash-image";
+      const openAiQuality = OPENAI_IMAGE_SELECTIONS[requestedModel];
+
+      if (openAiQuality) {
+        const openAiApiKey = getRequestOpenAiApiKey(req);
+        if (!openAiApiKey) {
+          return res.status(200).json({
+            error: "OpenAI API 密钥未配置。请在页面右上角填写您自己的 OpenAI API Key。",
+          });
+        }
+
+        let openAiPrompt = prompt.trim();
+        if (mergeMode !== "custom") {
+          if (secondaryImageFile) {
+            openAiPrompt = optimizePromptForEditing(
+              buildDualImageSynchronizedPrompt(
+                prompt,
+                mergeMode,
+                highFidelityPreserve,
+                imageFiles.length
+              )
+            );
+          } else if (highFidelityPreserve && aspectRatio !== "auto") {
+            openAiPrompt = optimizePromptForEditing(
+              buildSingleImageOutpaintingPrompt(prompt)
+            );
+          } else {
+            openAiPrompt = optimizePromptForEditing(prompt);
+          }
+        }
+
+        console.log(
+          `Server: OpenAI image edit (${imageFiles.length} main image(s)` +
+          `${secondaryImageFile ? " + 1 reference image" : ""}, quality: ${openAiQuality}).`
+        );
+
+        const resultBase64 = await editImageWithOpenAi({
+          apiKey: openAiApiKey,
+          imageFiles,
+          secondaryImageFile,
+          prompt: openAiPrompt,
+          quality: openAiQuality,
+          aspectRatio,
+        });
+        return res.json({ imageUrl: resultBase64 });
+      }
+
       // Every user supplies their own API key from the page.
       const apiKey = getRequestApiKey(req);
       if (!apiKey) {
@@ -477,7 +630,7 @@ app.post(
       });
 
       // Model for image-to-image editing tasks
-      const editModel = req.body.model || "gemini-2.5-flash-image";
+      const editModel = requestedModel;
 
       // Direct Gemini API path for Custom mode:
       // original image bytes, optional reference image, and the user's exact prompt.

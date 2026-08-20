@@ -13,6 +13,10 @@ const EDITOR_MODEL_IDS = [
   'gemini-3.1-flash-image',
   'gemini-3.1-flash-lite-image',
   'gemini-3-pro-image',
+  'gpt-image-2:auto',
+  'gpt-image-2:low',
+  'gpt-image-2:medium',
+  'gpt-image-2:high',
 ] as const;
 
 const DEFAULT_EDITOR_MODEL = 'gemini-2.5-flash-image';
@@ -68,6 +72,9 @@ export default function App(): React.JSX.Element {
   const [customApiKey, setCustomApiKey] = useState<string>(
     () => localStorage.getItem('gemini_custom_api_key') || ''
   );
+  const [openAiApiKey, setOpenAiApiKey] = useState<string>(
+    () => localStorage.getItem('openai_custom_api_key') || ''
+  );
 
   const handleModelChange = (model: string) => {
     if (!EDITOR_MODEL_IDS.includes(model as (typeof EDITOR_MODEL_IDS)[number])) {
@@ -83,6 +90,15 @@ export default function App(): React.JSX.Element {
       localStorage.setItem('gemini_custom_api_key', key);
     } else {
       localStorage.removeItem('gemini_custom_api_key');
+    }
+  };
+
+  const handleOpenAiApiKeyChange = (key: string) => {
+    setOpenAiApiKey(key);
+    if (key) {
+      localStorage.setItem('openai_custom_api_key', key);
+    } else {
+      localStorage.removeItem('openai_custom_api_key');
     }
   };
 
@@ -226,6 +242,10 @@ export default function App(): React.JSX.Element {
       setError('Please upload a main image and provide an editing prompt.');
       return;
     }
+    if (selectedModel.startsWith('gpt-image-2:') && !openAiApiKey.trim()) {
+      setError('请先在页面右上角填写 OpenAI API Key。');
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -240,7 +260,8 @@ export default function App(): React.JSX.Element {
         highFidelityPreserve,
         selectedModel,
         customApiKey,
-        mergeMode
+        mergeMode,
+        openAiApiKey
       );
       setEditedImage(result);
     } catch (e: unknown)      {
@@ -250,7 +271,7 @@ export default function App(): React.JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  }, [originalImages, secondaryImage, prompt, aspectRatio, highFidelityPreserve, selectedModel, customApiKey, mergeMode]);
+  }, [originalImages, secondaryImage, prompt, aspectRatio, highFidelityPreserve, selectedModel, customApiKey, mergeMode, openAiApiKey]);
 
   const handleDownloadClick = () => {
     if (!editedImage) return;
@@ -277,7 +298,10 @@ export default function App(): React.JSX.Element {
         onModelChange={handleModelChange}
         customApiKey={customApiKey}
         onApiKeyChange={handleApiKeyChange}
+        openAiApiKey={openAiApiKey}
+        onOpenAiApiKeyChange={handleOpenAiApiKeyChange}
         showModelSelector={activeTab === 'editor'}
+        showOpenAiKeyField={activeTab !== 'editor'}
       />
       <main className="w-full px-4 md:px-8 py-6 flex flex-col md:flex-row gap-6 items-stretch min-h-[calc(100vh-76px)]">
         {/* Left Side Glassmorphism Bookmark Navigation (Hover Collapsible & Pinnable) */}

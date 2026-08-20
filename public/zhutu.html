@@ -210,6 +210,10 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 	  <option value="gemini-3.1-flash-image">Nano Banana 2 · 1K $0.067/¥0.48（推荐·最高支持4K）</option>
 	  <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite · 1K $0.0336/¥0.24（快速省钱）</option>
 	  <option value="gemini-3-pro-image">Nano Banana Pro · 1K/2K $0.134/¥0.96 · 4K $0.24/¥1.73</option>
+	  <option value="gpt-image-2:auto">GPT Image 2 自动（OpenAI·模型判断质量）</option>
+	  <option value="gpt-image-2:low">GPT Image 2 低 · $0.005–0.006/¥0.04（快速省钱）</option>
+	  <option value="gpt-image-2:medium">GPT Image 2 中 · $0.041–0.053/¥0.30–0.38（推荐）</option>
+	  <option value="gpt-image-2:high">GPT Image 2 高 · $0.165–0.211/¥1.19–1.52（高质量）</option>
 	</select>
     <span class="hint"><a href="https://aistudio.google.com/apikey" target="_blank">获取Key →</a> · Key存于浏览器本地</span>
     <label style="display:flex;align-items:center;gap:4px;margin-left:auto;cursor:pointer;user-select:none"><input type="checkbox" id="autoMode" onchange="saveSettings()" style="cursor:pointer"><span style="font-size:11px;font-weight:600;color:var(--t2)">全自动</span><span style="font-size:10px;color:var(--t3)">（不保证最终质量）</span></label>
@@ -1282,12 +1286,55 @@ function loadSettings(){
 loadSettings();
 
 // ═══ STEP 4: IMAGE GENERATION ═══
+function isOpenAiImageModel(model){return /^gpt-image-2:(auto|low|medium|high)$/.test(String(model||''))}
+function base64PngBlob(value){
+  const base64=String(value||'').replace(/^data:[^;]+;base64,/, '');
+  if(!base64)return null;
+  const binary=atob(base64),bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return new Blob([bytes],{type:'image/png'});
+}
+async function callOpenAiImageApi(model,prompt,aspectRatio,mainBase64Images,referenceBase64){
+  const openAiKey=(localStorage.getItem('openai_custom_api_key')||'').trim();
+  if(!openAiKey)throw new Error('请先在页面右上角填写 OpenAI API Key');
+  const mainImages=(mainBase64Images||[]).filter(Boolean);
+  if(!mainImages.length)throw new Error('GPT Image 2 出图至少需要一张产品图');
+  const form=new FormData();
+  mainImages.forEach((base64,index)=>{const blob=base64PngBlob(base64);if(blob)form.append('images',blob,`product-${index+1}.png`)});
+  if(referenceBase64){const blob=base64PngBlob(referenceBase64);if(blob)form.append('secondaryImage',blob,'reference.png')}
+  form.append('prompt',prompt);
+  form.append('aspectRatio',aspectRatio||'auto');
+  form.append('highFidelityPreserve','false');
+  form.append('mergeMode','custom');
+  form.append('model',model);
+  const resp=await fetch('/api/edit-image',{method:'POST',headers:{'x-openai-api-key':openAiKey},body:form});
+  const raw=await resp.text();let data;
+  try{data=JSON.parse(raw)}catch(e){throw new Error(`OpenAI 请求返回异常（HTTP ${resp.status}）`)}
+  if(!resp.ok||data.error)throw new Error(typeof data.error==='string'?data.error:(data.error?.message||`OpenAI API ${resp.status}`));
+  if(!data.imageUrl)throw new Error('OpenAI API 没有返回图片');
+  return data.imageUrl;
+}
+
 async function startGen(){
   clearStep4();renderIG();scrollToBlock('step4');
   const key=document.getElementById('aKey').value.trim(),mdl=document.getElementById('aMdl').value;
   for(let i=0;i<prompts.length;i++){images[i]={status:'loading'};renderIG();try{images[i]={status:'done',url:await callGemini(key,mdl,getActivePrompt(i))}}catch(err){images[i]={status:'error',url:null,error:err.message||'失败'}}renderIG()}
 }
 async function callGemini(apiKey,model,prompt){
+  if(isOpenAiImageModel(model)){
+    const ar=document.getElementById('iAR')?.value||'auto';
+    const [productB64,referenceB64]=await Promise.all([
+      prodImgData?cleanImageData(prodImgData,ar):Promise.resolve(null),
+      refImgData?cleanImageData(refImgData,ar):Promise.resolve(null)
+    ]);
+    if(!productB64)throw new Error('产品图片读取失败，请重新上传');
+    const refNote=referenceB64?'The second image is a reference (style, background, or model/person).':'';
+    const prodApp=productAppearance?`Product color: ${productAppearance}. Refer to it as "${productAppearance} product". Do NOT change its color.`:'';
+    const padNote=ar!=='auto'?"\n[High Fidelity Preserve]\nThe first image has been padded with white or transparent bars to match a specific aspect ratio. Generate a natural and seamless background that fills these padded areas while keeping the original product accurate.":'';
+    const arNote=ar==='auto'?"ASPECT RATIO: Generate the output with the same aspect ratio as the first input image.":`ASPECT RATIO: Generate the output with an aspect ratio of exactly ${ar}.`;
+    const instruction=CUR_PROMPTS.imggen.replace('{refNote}',refNote).replace('{prodAppearance}',prodApp).replace('{arNote}',arNote)+'\n\n'+padNote+'\n\n# Prompt\n'+prompt;
+    return callOpenAiImageApi(model,instruction,ar,[productB64],referenceB64);
+  }
   if(model.startsWith('imagen')){
     const ar=document.getElementById('iAR').value;
     const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({instances:[{prompt}],parameters:{sampleCount:1,aspectRatio:ar==='auto'?'1:1':ar}})});
@@ -1424,27 +1471,29 @@ function useEditResult(){
 
 async function runEdit(){
   const key=document.getElementById('aKey').value.trim();
-  if(!key){document.getElementById('mRes').innerHTML='<div class="er">❌ 请先填写API Key</div>';return}
+  const mdl=document.getElementById('aMdl').value;
+  if(isOpenAiImageModel(mdl)?!(localStorage.getItem('openai_custom_api_key')||'').trim():!key){document.getElementById('mRes').innerHTML=`<div class="er">❌ 请先填写${isOpenAiImageModel(mdl)?' OpenAI':' Gemini'} API Key</div>`;return}
   const prompt=document.getElementById('mPmt').value.trim();
   if(!prompt){document.getElementById('mRes').innerHTML='<div class="er">❌ 请输入提示词/编辑指令</div>';return}
   const btn=document.getElementById('mEBtn');btn.disabled=true;btn.textContent='⏳ 生成中...';
   document.getElementById('mRes').innerHTML='<div class="ld"><div class="sp"></div><span>AI编辑中...</span></div>';
-  const mdl=document.getElementById('aMdl').value;
   try{
     // All images go through cleanImageData() to convert to JPEG (avoids WebP/AVIF 400 errors)
     const parts=[];
+    const openAiMain=[];
+    let openAiReference=null;
     if(miniProdImg){
       const b=await cleanImageData(miniProdImg);
-      if(b)parts.push({inline_data:{mime_type:'image/png',data:b}});
+      if(b){parts.push({inline_data:{mime_type:'image/png',data:b}});openAiMain.push(b)}
     }
     const curSrc=document.getElementById('mImg').src;
     if(curSrc&&curSrc.startsWith('data:')){
       const b=await cleanImageData(curSrc);
-      if(b)parts.push({inline_data:{mime_type:'image/png',data:b}});
+      if(b){parts.push({inline_data:{mime_type:'image/png',data:b}});openAiMain.push(b)}
     }
     if(miniRefImg){
       const b=await cleanImageData(miniRefImg);
-      if(b)parts.push({inline_data:{mime_type:'image/png',data:b}});
+      if(b){parts.push({inline_data:{mime_type:'image/png',data:b}});openAiReference=b}
     }
     // Build instruction
     let instr='# CRITICAL EDIT INSTRUCTIONS\n';
@@ -1460,14 +1509,18 @@ async function runEdit(){
     instr+='\n# Prompt\n'+prompt;
     parts.push({text:instr});
 
-    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mdl.startsWith('imagen')?'gemini-2.5-flash-image':mdl}:generateContent?key=${key}`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({contents:[{parts}],generationConfig:{responseModalities:["TEXT","IMAGE"]}})
-    });
-    if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,200));
-    const d=await resp.json();
     let url=null;
-    for(const p of(d.candidates?.[0]?.content?.parts||[])){if(p.inlineData){url=`data:${p.inlineData.mimeType};base64,${p.inlineData.data}`;break}}
+    if(isOpenAiImageModel(mdl)){
+      url=await callOpenAiImageApi(mdl,instr,curAr2,openAiMain,openAiReference);
+    }else{
+      const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mdl.startsWith('imagen')?'gemini-2.5-flash-image':mdl}:generateContent?key=${key}`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({contents:[{parts}],generationConfig:{responseModalities:["TEXT","IMAGE"]}})
+      });
+      if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,200));
+      const d=await resp.json();
+      for(const p of(d.candidates?.[0]?.content?.parts||[])){if(p.inlineData){url=`data:${p.inlineData.mimeType};base64,${p.inlineData.data}`;break}}
+    }
     if(!url)throw new Error('No image in response');
     editResult=url;
     document.getElementById('mRes').innerHTML=`<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain">`;

@@ -234,6 +234,10 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 	  <option value="gemini-3.1-flash-image">Nano Banana 2 · 1K $0.067/¥0.48（推荐·最高支持4K）</option>
 	  <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite · 1K $0.0336/¥0.24（快速省钱）</option>
 	  <option value="gemini-3-pro-image">Nano Banana Pro · 1K/2K $0.134/¥0.96 · 4K $0.24/¥1.73</option>
+	  <option value="gpt-image-2:auto">GPT Image 2 自动（OpenAI·模型判断质量）</option>
+	  <option value="gpt-image-2:low">GPT Image 2 低 · $0.005–0.006/¥0.04（快速省钱）</option>
+	  <option value="gpt-image-2:medium">GPT Image 2 中 · $0.041–0.053/¥0.30–0.38（推荐）</option>
+	  <option value="gpt-image-2:high">GPT Image 2 高 · $0.165–0.211/¥1.19–1.52（高质量）</option>
 	</select>
     <span class="hint"><a href="https://aistudio.google.com/apikey" target="_blank">获取Key →</a> · Key存于浏览器本地</span>
     <label style="display:flex;align-items:center;gap:4px;margin-left:auto;cursor:pointer;user-select:none"><input type="checkbox" id="autoMode" onchange="saveSettings()" style="cursor:pointer"><span style="font-size:11px;font-weight:600;color:var(--t2)">全自动</span><span style="font-size:10px;color:var(--t3)">（不保证最终质量）</span></label>
@@ -2457,6 +2461,35 @@ loadSettings();
 updateGenBtn();
 
 // ═══ STEP 4: IMAGE GENERATION ═══
+function isOpenAiImageModel(model){return /^gpt-image-2:(auto|low|medium|high)$/.test(String(model||''))}
+function base64PngBlob(value){
+  const base64=String(value||'').replace(/^data:[^;]+;base64,/, '');
+  if(!base64)return null;
+  const binary=atob(base64),bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  return new Blob([bytes],{type:'image/png'});
+}
+async function callOpenAiImageApi(model,prompt,aspectRatio,mainBase64Images,referenceBase64){
+  const openAiKey=(localStorage.getItem('openai_custom_api_key')||'').trim();
+  if(!openAiKey)throw new Error('请先在页面右上角填写 OpenAI API Key');
+  const mainImages=(mainBase64Images||[]).filter(Boolean);
+  if(!mainImages.length)throw new Error('GPT Image 2 出图至少需要一张产品图');
+  const form=new FormData();
+  mainImages.forEach((base64,index)=>{const blob=base64PngBlob(base64);if(blob)form.append('images',blob,`product-${index+1}.png`)});
+  if(referenceBase64){const blob=base64PngBlob(referenceBase64);if(blob)form.append('secondaryImage',blob,'reference.png')}
+  form.append('prompt',prompt);
+  form.append('aspectRatio',aspectRatio||'auto');
+  form.append('highFidelityPreserve','false');
+  form.append('mergeMode','custom');
+  form.append('model',model);
+  const resp=await fetch('/api/edit-image',{method:'POST',headers:{'x-openai-api-key':openAiKey},body:form});
+  const raw=await resp.text();let data;
+  try{data=JSON.parse(raw)}catch(e){throw new Error(`OpenAI 请求返回异常（HTTP ${resp.status}）`)}
+  if(!resp.ok||data.error)throw new Error(typeof data.error==='string'?data.error:(data.error?.message||`OpenAI API ${resp.status}`));
+  if(!data.imageUrl)throw new Error('OpenAI API 没有返回图片');
+  return data.imageUrl;
+}
+
 async function startGen(){
   clearStep4();renderIG();scrollToBlock('step4');
   const key=document.getElementById('aKey').value.trim(),mdl=document.getElementById('aMdl').value;
@@ -2470,6 +2503,23 @@ async function callGemini(apiKey,model,prompt,task={}){
   const productImages=media.productImages;
   const referenceImage=media.referenceImage;
   const ar=normalizeImageAspectRatio(media.aspectRatio);
+  if(isOpenAiImageModel(imageModel)){
+    const [productB64s,referenceB64]=await Promise.all([
+      Promise.all(productImages.map(image=>cleanImageData(image))).then(items=>items.filter(Boolean)),
+      referenceImage?cleanImageData(referenceImage):Promise.resolve(null)
+    ]);
+    if(!productB64s.length)throw new Error('当前任务缺少产品资料图，请返回第三步上传后重试');
+    const refNote=referenceB64?'The reference image is the TARGET TEMPLATE REFERENCE. It controls only the desired structure and finished look; replace all of its merchandise identity.':'No separate target template reference image is provided.';
+    const prodApp=productAppearance?`Product color: ${productAppearance}. Refer to it as "${productAppearance} product". Do NOT change its color.`:'';
+    const arNote=`ASPECT RATIO: Generate the output image with an aspect ratio of exactly ${ar}.`;
+    const sourceNote=`\n[Multiple Product Originals]\nYou received ${productB64s.length} PRODUCT SOURCE image(s). Treat them as complementary evidence of the same product family. Use the exact angle, count, color, style, and size requested by the prompt; do not place every variant into the result unless explicitly requested.\n`;
+    const imgInstructions=CUR_PROMPTS.imggen.replace('{refNote}',refNote).replace('{prodAppearance}',prodApp).replace('{arNote}',arNote)+'\n\n'+sourceNote+'\n\n';
+    const identityLock=`# NON-NEGOTIABLE PRODUCT IDENTITY LOCK
+- Product source images are the only authority for product identity, packaging, labels, colors, quantities, sizes, and parts.
+- A target template controls only structure and visual treatment; remove its original product identity.
+- Keep the user's real product unmistakably dominant and follow the requested angle, count, and variant.`;
+    return callOpenAiImageApi(imageModel,imgInstructions+'# Prompt\n'+prompt+'\n\n'+identityLock+'\n\n# Final Aspect Ratio Override\nGenerate exactly '+ar+'.',ar,productB64s,referenceB64);
+  }
   if(imageModel.startsWith('imagen')){
     if(productImages.length||referenceImage)throw new Error('Imagen 不支持产品图或参考图输入，请改用 Nano Banana 生图模型');
     const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:predict?key=${apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({instances:[{prompt}],parameters:{sampleCount:1,aspectRatio:ar}})});
@@ -2684,14 +2734,14 @@ function useEditResult(){
 
 async function runEdit(){
   const key=document.getElementById('aKey').value.trim();
-  if(!key){document.getElementById('mRes').innerHTML='<div class="er">❌ 请先填写API Key</div>';return}
+  const mdl=document.getElementById('aMdl').value;
+  if(isOpenAiImageModel(mdl)?!(localStorage.getItem('openai_custom_api_key')||'').trim():!key){document.getElementById('mRes').innerHTML=`<div class="er">❌ 请先填写${isOpenAiImageModel(mdl)?' OpenAI':' Gemini'} API Key</div>`;return}
   const prompt=document.getElementById('mPmt').value.trim();
   if(!prompt){document.getElementById('mRes').innerHTML='<div class="er">❌ 请输入提示词/编辑指令</div>';return}
   miniAspectRatio=normalizeMiniAspectRatio(document.getElementById('mAspectRatio')?.value||miniAspectRatio);
   updateMiniAspectRatio(false);
   const btn=document.getElementById('mEBtn');btn.disabled=true;btn.textContent='⏳ 单次生图中...';
   document.getElementById('mRes').innerHTML=`<div class="ld"><div class="sp"></div><span>正在生成 ${miniAspectRatio} 编辑图...</span></div>`;
-  const mdl=document.getElementById('aMdl').value;
   try{
     const curSrc=document.getElementById('mImg').src;
     const [productB64s,currentB64,referenceB64]=await Promise.all([
@@ -2727,16 +2777,20 @@ async function runEdit(){
       {inline_data:{mime_type:'image/png',data:referenceB64}}
     );
 
-    const editModel=normalizeImageModel(mdl.startsWith('imagen')?'gemini-2.5-flash-image':mdl);
-    const generationConfig=buildMiniImageGenerationConfig(editModel,miniAspectRatio);
-    const resp=await fetchWithTimeout(buildImageGenerateContentUrl(editModel,key),{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({contents:[{parts}],generationConfig})
-    },120000);
-    if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,200));
-    const d=await resp.json();
     let url=null;
-    for(const p of(d.candidates?.[0]?.content?.parts||[])){if(p.inlineData){url=`data:${p.inlineData.mimeType};base64,${p.inlineData.data}`;break}}
+    if(isOpenAiImageModel(mdl)){
+      url=await callOpenAiImageApi(mdl,instruction,miniAspectRatio,[...productB64s,currentB64],referenceB64);
+    }else{
+      const editModel=normalizeImageModel(mdl.startsWith('imagen')?'gemini-2.5-flash-image':mdl);
+      const generationConfig=buildMiniImageGenerationConfig(editModel,miniAspectRatio);
+      const resp=await fetchWithTimeout(buildImageGenerateContentUrl(editModel,key),{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({contents:[{parts}],generationConfig})
+      },120000);
+      if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,200));
+      const d=await resp.json();
+      for(const p of(d.candidates?.[0]?.content?.parts||[])){if(p.inlineData){url=`data:${p.inlineData.mimeType};base64,${p.inlineData.data}`;break}}
+    }
     if(!url)throw new Error('No image in response');
     editResult=url;
     document.getElementById('mRes').innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:contain">`;

@@ -216,7 +216,8 @@ export const editImage = async (
   highFidelityPreserve: boolean,
   model?: string,
   customApiKey?: string,
-  mergeMode: string = 'combine'
+  mergeMode: string = 'combine',
+  openAiApiKey?: string
 ): Promise<string> => {
   try {
     const isWatermarkRemoval = mergeMode === 'remove_watermark';
@@ -283,6 +284,9 @@ export const editImage = async (
     const headers: Record<string, string> = {};
     if (customApiKey) {
       headers['x-gemini-api-key'] = customApiKey;
+    }
+    if (openAiApiKey && requestModel?.startsWith('gpt-image-2:')) {
+      headers['x-openai-api-key'] = openAiApiKey;
     }
 
     const response = await fetch('/api/edit-image', {
