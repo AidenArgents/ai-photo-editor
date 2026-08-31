@@ -21,7 +21,7 @@ if not exist "node_modules" set "NEED_INSTALL=1"
 
 if defined NEED_INSTALL (
     echo [INFO] First run: preparing the local runtime and project dependencies...
-    call "%~dp0install.bat" /quiet
+    call "%~dp0°²×°.bat" /quiet
     if errorlevel 1 goto failed
 )
 
@@ -47,7 +47,7 @@ echo [OK] Background service launched successfully!
 echo.
 echo 1. Browser is opened at http://localhost:3000
 echo 2. Service runs silently in the background.
-echo 3. To stop service, run stop.bat in this folder.
+echo 3. To stop service, run Í£Ö¹.bat in this folder.
 echo ===================================================
 echo.
 if /i "%~1"=="/quiet" exit /b 0

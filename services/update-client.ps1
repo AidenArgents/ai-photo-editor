@@ -3,7 +3,7 @@
 # 1. 读取本地 version.txt 与 GitHub 最新 Release 版本对比
 # 2. 有新版：下载 zip（走系统代理，失败自动尝试镜像加速）→
 #    停止服务 → 解压覆盖（保留 .runtime/.git/server.log）→ 重启
-# 用法：由 update.bat 调用，也可手动执行本脚本
+# 用法：由 更新.bat 调用，也可手动执行本脚本
 # ============================================================
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
@@ -115,8 +115,8 @@ try {
     Write-Host "[OK] 下载完成。"
 
     Write-Step "停止本地服务..."
-    & cmd /c "`"$(Join-Path $projectRoot 'stop.bat')`" /quiet"
-    # stop.bat 可能因服务未运行而提示，不阻断更新
+    & cmd /c "`"$(Join-Path $projectRoot '停止.bat')`" /quiet"
+    # 停止.bat 可能因服务未运行而提示，不阻断更新
 
     Write-Step "解压并覆盖本地文件..."
     $staging = Join-Path $env:TEMP "ai-photo-editor-update-extract"
@@ -141,7 +141,7 @@ try {
     }
 
     Write-Step "启动新版本..."
-    & cmd /c "`"$(Join-Path $projectRoot 'start.bat')`" /quiet"
+    & cmd /c "`"$(Join-Path $projectRoot '启动.bat')`" /quiet"
     if ($LASTEXITCODE -ne 0) {
         throw "新版本启动失败，请查看 server.log。"
     }

@@ -44,20 +44,20 @@ function getPublicErrorMessage(error: any): string {
   const causeMessage = cause?.message || "";
 
   if (code === "UND_ERR_CONNECT_TIMEOUT" || code === "ETIMEDOUT") {
-    return "无法连接 Gemini API：连接 Google 服务器超时。请确认这台电脑能够访问 Google；如果使用代理，请开启系统代理或 TUN 模式，然后运行 restart.bat。仅浏览器代理扩展不会被本地服务使用。";
+    return "无法连接 Gemini API：连接 Google 服务器超时。请确认这台电脑能够访问 Google；如果使用代理，请开启系统代理或 TUN 模式，然后运行 重启.bat。仅浏览器代理扩展不会被本地服务使用。";
   }
   if (code === "ENOTFOUND" || code === "EAI_AGAIN") {
-    return "无法解析 Gemini API 域名。请检查电脑的 DNS 和网络连接，然后运行 restart.bat 重试。";
+    return "无法解析 Gemini API 域名。请检查电脑的 DNS 和网络连接，然后运行 重启.bat 重试。";
   }
   if (code === "ECONNRESET" || code === "ECONNREFUSED") {
-    return "连接 Gemini API 时被网络或代理中断。请检查防火墙、代理设置，并运行 restart.bat 后重试。";
+    return "连接 Gemini API 时被网络或代理中断。请检查防火墙、代理设置，并运行 重启.bat 后重试。";
   }
   if (
     code === "CERT_HAS_EXPIRED" ||
     code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE" ||
     code === "SELF_SIGNED_CERT_IN_CHAIN"
   ) {
-    return "连接 Gemini API 时证书验证失败。请检查系统时间、代理软件及其证书设置，然后运行 restart.bat。";
+    return "连接 Gemini API 时证书验证失败。请检查系统时间、代理软件及其证书设置，然后运行 重启.bat。";
   }
   if (error?.message === "fetch failed" && causeMessage) {
     return `连接 Gemini API 失败：${causeMessage}`;
@@ -130,7 +130,7 @@ async function editImageWithOpenAi(options: {
   } catch (error: any) {
     if (error?.name === "TimeoutError" || error?.name === "AbortError") {
       throw new Error(
-        "连接 OpenAI API 超时（60 秒）。请确认系统代理已开启并指向可用节点，然后运行 restart.bat 重新启动。"
+        "连接 OpenAI API 超时（60 秒）。请确认系统代理已开启并指向可用节点，然后运行 重启.bat 重新启动。"
       );
     }
     const reason = error?.cause?.message || error?.message || "网络连接失败";

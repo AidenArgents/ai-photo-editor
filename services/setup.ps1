@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)]
     [string]$InstallParent
 )
@@ -97,19 +97,19 @@ try {
         Invoke-GitCommand -GitExecutable $gitExecutable -Arguments @("-C", $projectRoot, "branch", "--set-upstream-to=origin/main", "main")
     }
 
-    $installBat = Join-Path $projectRoot "install.bat"
-    $startBat = Join-Path $projectRoot "start.bat"
+    $installBat = Join-Path $projectRoot "安装.bat"
+    $startBat = Join-Path $projectRoot "启动.bat"
 
     Write-Host "[INFO] Installing project dependencies..."
     & $env:ComSpec /d /c "call `"$installBat`" /quiet"
     if ($LASTEXITCODE -ne 0) {
-        throw "install.bat failed."
+        throw "安装.bat failed."
     }
 
     Write-Host "[INFO] Starting AI Photo Editor..."
     & $env:ComSpec /d /c "call `"$startBat`" /quiet"
     if ($LASTEXITCODE -ne 0) {
-        throw "start.bat failed."
+        throw "启动.bat failed."
     }
 
     Write-Host ""

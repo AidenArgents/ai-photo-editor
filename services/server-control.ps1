@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Position = 0)]
     [ValidateSet("start", "stop", "restart", "status")]
     [string]$Action = "status"
@@ -178,7 +178,7 @@ function Start-ProjectServer {
         throw "npm is not available in PATH."
     }
     if (-not (Test-Path -LiteralPath (Join-Path $projectRoot "node_modules"))) {
-        throw "Project dependencies are missing. Run install.bat first."
+        throw "Project dependencies are missing. Run 安装.bat first."
     }
 
     Set-NodeNetworkEnvironment

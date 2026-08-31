@@ -20,7 +20,7 @@ if not exist "node_modules" set "NEED_INSTALL=1"
 
 if defined NEED_INSTALL (
     echo [INFO] Preparing the local runtime and project dependencies...
-    call "%~dp0install.bat" /quiet
+    call "%~dp0°²×°.bat" /quiet
     if errorlevel 1 goto failed
 )
 
