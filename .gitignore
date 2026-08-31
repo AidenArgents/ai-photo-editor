@@ -35,3 +35,11 @@ backup_original
 /发布更新.bat
 /GitHub发布与更新指南.md
 /services/publish-update.ps1
+
+# Release packaging artifacts (local only)
+release.zip
+version.txt
+/services/publish-release.ps1
+# 发布 Token（项目文件夹内，绝不提交）
+.publish-token
+# 注意：update-client.ps1 是客户端更新脚本，必须被 git 跟踪，不要加入此文件
