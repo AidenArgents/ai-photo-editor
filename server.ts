@@ -7,12 +7,30 @@ import https from "https";
 import multer from "multer";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Modality } from "@google/genai";
+import { setGlobalDispatcher, EnvHttpProxyAgent } from "undici";
 
 // 强制优先使用 IPv4 解析，彻底解决访问马帮 instudio 及阿里云 CDN 时由于 IPv6 黑洞导致的 12000ms 超时假死问题
 try {
   dns.setDefaultResultOrder("ipv4first");
 } catch (e) {
   // 忽略不支持的环境
+}
+
+// 让 Node 的 fetch（Gemini / OpenAI / 图片代理）自动读取启动时设置的
+// HTTP_PROXY / HTTPS_PROXY / NO_PROXY 环境变量（由 services/server-control.ps1
+// 从 Windows 系统代理导入）。未设置代理环境变量时 EnvHttpProxyAgent 直接直连，
+// 不影响无代理场景。
+try {
+  const proxyAgent = new EnvHttpProxyAgent();
+  setGlobalDispatcher(proxyAgent);
+  const proxyTarget = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || "";
+  console.log(
+    proxyTarget
+      ? `Server: Node fetch will use proxy: ${proxyTarget}`
+      : "Server: No HTTP proxy detected, Node fetch uses direct connection."
+  );
+} catch (e) {
+  console.warn("Server: Failed to initialize proxy agent, using direct connection.", e);
 }
 
 const app = express();
@@ -106,8 +124,15 @@ async function editImageWithOpenAi(options: {
         Authorization: `Bearer ${options.apiKey}`,
       },
       body: form,
+      // 60 秒超时：连不上 OpenAI 时立刻报错，而不是让前端无限转圈
+      signal: AbortSignal.timeout(60_000),
     });
   } catch (error: any) {
+    if (error?.name === "TimeoutError" || error?.name === "AbortError") {
+      throw new Error(
+        "连接 OpenAI API 超时（60 秒）。请确认系统代理已开启并指向可用节点，然后运行 restart.bat 重新启动。"
+      );
+    }
     const reason = error?.cause?.message || error?.message || "网络连接失败";
     throw new Error(`无法连接 OpenAI API：${reason}`);
   }
