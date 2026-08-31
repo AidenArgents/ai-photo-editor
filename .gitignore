@@ -39,6 +39,8 @@ backup_original
 # Release packaging artifacts (local only)
 release.zip
 version.txt
+# 本地测试产物（订单汇总等），不进 git
+out/
 /services/publish-release.ps1
 # 发布 Token（项目文件夹内，绝不提交）
 .publish-token
