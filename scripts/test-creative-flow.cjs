@@ -20,7 +20,7 @@ function runtime(mode){
  };
  const document={getElementById:node,addEventListener(){},querySelector(){return null}};
  const sandbox={console,Date,Map,Set,URL,JSON,AbortController,CustomEvent:function(){},document,localStorage:{getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value)},PROMPT_MODE:mode,
-  prodImgData:'data:image/png;base64,cHJvZHVjdA==',refImgData:null,CUR_PROMPTS:{},KB:{风格:[{e:'photoreal',z:'真实'}]},SLOTS:[],concepts:[],prompts:[],images:[],promptLangs:[],recStyles:[],activeStyle:'',vcPlanA:[],vcPlanB:[],vcSelected:new Set(),vcTaskSelected:new Set(['task-1']),parsedTasks:[{task_id:'task-1',name:'任务1',concept:'当前产品要求',aspect_ratio:'1:1'}],geminiWebConversationKey:'test',
+  prodImgData:'data:image/png;base64,cHJvZHVjdA==',refImgData:null,CUR_PROMPTS:{},KB:{风格:[{e:'photoreal',z:'真实'}]},SLOTS:[],concepts:[],prompts:[],images:[],promptLangs:[],recStyles:[],activeStyle:'',vcPlanA:[],vcPlanB:[],vcSelected:new Set(),vcTaskSelected:new Set(['task-1']),parsedTasks:[{task_id:'task-1',name:'任务1',concept:'当前产品要求',aspect_ratio:'1:1'}],
   gMarket:()=>node('iMkt2').value,gLang:()=>node('iMkt2').value==='PH'?'Filipino':'Spanish',gModel:()=>node('iMkt2').value==='PH'?'Filipino model':'Mexican model',
   renderStyleRec(){},clearStep3(){sandbox.prompts=[]},clearStep4(){sandbox.images=[]},scrollToBlock(){},renderVCPlan(){},vcUpdateSelBar(){},ckApi(){},renderIG(){},
   renderPrompts(){sandbox.prompts.forEach((p,i)=>{node('enP'+i).value=p.enFull;node('zhP'+i).value=p.zhFull;});},

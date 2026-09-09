@@ -11,6 +11,9 @@
   let promptPlanSignature = '';
   let fbaPreparedSignature = '';
   let imageRun = null;
+  let geminiWebConversationKey = (typeof window !== 'undefined' && typeof window.geminiWebConversationKey === 'string' && window.geminiWebConversationKey)
+    ? window.geminiWebConversationKey
+    : mode + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
   function context() {
     return {
       mode, spu: value('pSku'), info: value('iInfo'),
@@ -109,6 +112,7 @@
           const visualDna = (results.a || results.b).dna; showDna(visualDna); flow.accept(token, visualDna);
         }
         geminiWebConversationKey = mode + '_' + token.key + '_' + token.serial;
+        try { if (typeof window !== 'undefined') window.geminiWebConversationKey = geminiWebConversationKey; } catch (_) {}
         scrollToBlock('step2'); ready = true;
       } finally { btn.disabled = false; btn.textContent = mode === 'taotu' ? '🎨 生成9图设计理念' : '✨ 生成设计方案'; }
     });
