@@ -180,7 +180,6 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 </script>
 <script src="/prompt-settings.js"></script>
 <script src="/creative-core.js"></script>
-<script src="/gemini-text-api.js"></script>
 </head>
 <body>
 
@@ -198,26 +197,21 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
     <input id="aKey" type="hidden" value="">
     <label>文本:</label>
 	<select class="hd-api select" id="txtMdl" onchange="saveSettings()">
-	  <option value="gemini-2.5-flash" selected>2.5 Flash · 入$0.30/¥2.16 M · 出$2.50/¥18 M（2026-10-16停用）</option>
-	  <option value="gemini-3.5-flash-lite">3.5 Flash-Lite · 入$0.30/¥2.16 M · 出$2.50/¥18 M（新款低成本）</option>
+	  <option value="gemini-2.5-flash">2.5 Flash · 入$0.30/¥2.16 M · 出$2.50/¥18 M（部分新Key不可用）</option>
+	  <option value="gemini-3.5-flash-lite" selected>3.5 Flash-Lite · 入$0.30/¥2.16 M · 出$2.50/¥18 M（推荐）</option>
 	  <option value="gemini-3.6-flash">3.6 Flash · 入$1.50/¥10.80 M · 出$7.50/¥54 M（新款高质量）</option>
 	  <option value="gemini-3.1-flash-lite">3.1 Flash-Lite · 入$0.25/¥1.80 M · 出$1.50/¥10.80 M</option>
 	  <option value="gemini-3.1-pro-preview">3.1 Pro · 入$2/¥14.40 M · 出$12/¥86.40 M（预览版）</option>
 	  <option value="gemini-3-flash-preview">3 Flash · 入$0.50/¥3.60 M · 出$3/¥21.60 M（预览版）</option>
-	  <option value="gemini-2.5-flash-lite">2.5 Flash-Lite · 入$0.10/¥0.72 M · 出$0.40/¥2.88 M（2026-10-16停用）</option>
-	  <option value="gemini-2.5-pro">2.5 Pro · 入$1.25/¥9 M · 出$10/¥72 M（2026-10-16停用）</option>
+	  <option value="gemini-2.5-flash-lite">2.5 Flash-Lite · 入$0.10/¥0.72 M · 出$0.40/¥2.88 M（部分新Key不可用）</option>
+	  <option value="gemini-2.5-pro">2.5 Pro · 入$1.25/¥9 M · 出$10/¥72 M（部分新Key不可用）</option>
 	</select>
 	<label>生图:</label>
 	<select class="hd-api select" id="aMdl" onchange="saveSettings()">
-	  <option value="gemini-2.5-flash-image" selected>Nano Banana · 最高1K $0.039/¥0.28（2026-10-02停用）</option>
-	  <option value="gemini-3.1-flash-image">Nano Banana 2 · 1K $0.067/¥0.48（推荐·最高支持4K）</option>
-	  <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite · 1K $0.0336/¥0.24（快速省钱）</option>
-	  <option value="gemini-3-pro-image">Nano Banana Pro · 1K/2K $0.134/¥0.96 · 4K $0.24/¥1.73</option>
-	  <option value="gpt-image-2:auto">GPT Image 2 自动（OpenAI·模型判断质量）</option>
-	  <option value="gpt-image-2:low">GPT Image 2 低 · $0.005–0.006/¥0.04（快速省钱）</option>
-	  <option value="gpt-image-2:medium">GPT Image 2 中 · $0.041–0.053/¥0.30–0.38（推荐）</option>
-	  <option value="gpt-image-2:high">GPT Image 2 高 · $0.165–0.211/¥1.19–1.52（高质量）</option>
+	  <option value="gemini-web" selected>Gemini 网页版 · 由 Ianto 自动作图并回传</option>
+	  <option value="chatgpt-web">ChatGPT 网页版 · 由 Ianto 自动作图并回传</option>
 	</select>
+    <span class="hint" id="geminiWebStatus">正在检测 Ianto...</span>
     <span class="hint"><a href="https://aistudio.google.com/apikey" target="_blank">获取Key →</a> · Key存于浏览器本地</span>
     <label style="display:flex;align-items:center;gap:4px;margin-left:auto;cursor:pointer;user-select:none"><input type="checkbox" id="autoMode" onchange="saveSettings()" style="cursor:pointer"><span style="font-size:11px;font-weight:600;color:var(--t2)">全自动</span><span style="font-size:10px;color:var(--t3)">（不保证最终质量）</span></label>
   </div>
@@ -875,6 +869,7 @@ function gAesthetic(){return window.PhotoCreative.profile(window.PhotoCreative.p
 // ═══ STATE ═══
 let concepts=[],prompts=[],images=[],promptLangs=[];
 let prodImgData=null,refImgData=null,editIdx=-1,editResult=null;
+let geminiWebConversationKey='zhutu_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
 
 // ═══ INIT ═══
 function updateSubMarket(){const r=document.getElementById('iMkt1').value;const sel=document.getElementById('iMkt2');sel.innerHTML=MARKETS[r].subs.map(s=>`<option value="${s.v}" data-m="${s.m}" data-lang="${s.lang}">${s.l}</option>`).join('');syncLang()}
@@ -888,7 +883,7 @@ const observer=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isInt
 document.addEventListener('DOMContentLoaded',()=>{['step1','step2','step3','step4'].forEach(id=>{const el=document.getElementById(id);if(el)observer.observe(el)})});
 
 // ═══ UPLOAD ═══
-function setImg(type,d){if(type==='prod'){prodImgData=d;productAppearance='';document.getElementById('prodPv').src=d;document.getElementById('prodPv').classList.remove('hid');document.getElementById('prodPh').classList.add('hid');document.getElementById('upBox1').classList.add('has-img')}else{refImgData=d;document.getElementById('refPv').src=d;document.getElementById('refPv').classList.remove('hid');document.getElementById('refPh').classList.add('hid');document.getElementById('upBox2').classList.add('has-img')}try{saveSettings()}catch(e){}}
+function setImg(type,d){if(type==='prod'){geminiWebConversationKey='zhutu_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);prodImgData=d;productAppearance='';document.getElementById('prodPv').src=d;document.getElementById('prodPv').classList.remove('hid');document.getElementById('prodPh').classList.add('hid');document.getElementById('upBox1').classList.add('has-img')}else{refImgData=d;document.getElementById('refPv').src=d;document.getElementById('refPv').classList.remove('hid');document.getElementById('refPh').classList.add('hid');document.getElementById('upBox2').classList.add('has-img')}try{saveSettings()}catch(e){}}
 function clearImg(type){if(type==='prod'){prodImgData=null;document.getElementById('prodPv').classList.add('hid');document.getElementById('prodPh').classList.remove('hid');document.getElementById('upBox1').classList.remove('has-img');document.getElementById('upF1').value=''}else{refImgData=null;document.getElementById('refPv').classList.add('hid');document.getElementById('refPh').classList.remove('hid');document.getElementById('upBox2').classList.remove('has-img');document.getElementById('upF2').value=''}try{saveSettings()}catch(e){}}
 function fileImg(inp,type){const f=inp.files[0];if(!f||!f.type.startsWith('image/'))return;const r=new FileReader;r.onload=e=>setImg(type,e.target.result);r.readAsDataURL(f)}
 function dropImg(e,type){const f=e.dataTransfer.files[0];if(!f||!f.type.startsWith('image/'))return;const r=new FileReader;r.onload=ev=>setImg(type,ev.target.result);r.readAsDataURL(f)}
@@ -1009,7 +1004,7 @@ function cpAll(){const all=prompts.map((p,i)=>`═══ 变体${p.id}：${p.t} 
 
 // ═══ PERSIST SETTINGS ═══
 // 共享设置 key（API Key、模型、市场等）— 所有标签页同步
-const LS_SHARED='ecom_studio_shared';
+const LS_SHARED='ecom_studio_web_shared';
 // 产品专属 key（产品信息、产品图、参考图）— 每个标签页独立
 if(!sessionStorage.getItem('_tab_key_main')){
   sessionStorage.setItem('_tab_key_main','ecom_main_prod_'+Date.now());
@@ -1079,7 +1074,7 @@ function loadSettings(){
       const s=JSON.parse(rs);
       if(s.apiKey)document.getElementById('aKey').value=s.apiKey;
       if(s.txtMdl)document.getElementById('txtMdl').value=s.txtMdl;
-      if(s.imgMdl)document.getElementById('aMdl').value=s.imgMdl;
+      document.getElementById('aMdl').value=s.imgMdl==='chatgpt-web'?'chatgpt-web':'gemini-web';
       if(s.mkt1){document.getElementById('iMkt1').value=s.mkt1;updateSubMarket()}
       if(s.mkt2){document.getElementById('iMkt2').value=s.mkt2;syncLang()}
       if(s.lang)document.getElementById('iLang').value=s.lang;
@@ -1373,6 +1368,8 @@ function fetchSPUData() {
     _erpEmit('REQUEST_SPU_FETCH', { spu: spu });
 }
 </script>
+<script src="/gemini-text-api.js"></script>
+<script src="/ianto-gemini-web.js"></script>
 <script src="/creative-page.js"></script>
 </body>
 </html>

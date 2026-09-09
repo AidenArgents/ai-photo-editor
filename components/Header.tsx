@@ -3,6 +3,10 @@ import React from 'react';
 import { CameraIcon } from './Icons';
 
 interface HeaderProps {
+  appMode: 'web' | 'api';
+  onAppModeChange: (mode: 'web' | 'api') => void;
+  webProvider: 'gemini' | 'chatgpt';
+  onWebProviderChange: (provider: 'gemini' | 'chatgpt') => void;
   selectedModel: string;
   onModelChange: (model: string) => void;
   customApiKey: string;
@@ -14,6 +18,10 @@ interface HeaderProps {
 }
 
 const Header = ({
+  appMode,
+  onAppModeChange,
+  webProvider,
+  onWebProviderChange,
   selectedModel,
   onModelChange,
   customApiKey,
@@ -24,7 +32,7 @@ const Header = ({
   showOpenAiKeyField = false,
 }: HeaderProps): React.JSX.Element => {
   const isOpenAiModel = selectedModel.startsWith('gpt-image-2:');
-  const shouldShowOpenAiKey = isOpenAiModel || showOpenAiKeyField;
+  const shouldShowOpenAiKey = appMode === 'api' && (isOpenAiModel || showOpenAiKeyField);
   const [showGeminiKey, setShowGeminiKey] = React.useState(false);
   const [showOpenAiKey, setShowOpenAiKey] = React.useState(false);
 
@@ -35,26 +43,49 @@ const Header = ({
           {/* Left Side: Logo & Model Selector */}
           <div className="flex items-center gap-3 min-w-0">
             <CameraIcon />
+            <select
+              value={appMode}
+              onChange={(e) => onAppModeChange(e.target.value as 'web' | 'api')}
+              title="切换整套工具的作图方式"
+              className="text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-rose-500 border border-pink-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-pink-300 cursor-pointer shadow-sm"
+            >
+              <option value="web" className="bg-white text-gray-900">Web 网页模式</option>
+              <option value="api" className="bg-white text-gray-900">API 模式</option>
+            </select>
             <h1 className="text-base sm:text-xl font-bold text-gray-800 tracking-tight flex items-center flex-wrap gap-y-1">
               <span className="whitespace-nowrap">AI Photo Editor</span>
               {showModelSelector && (
                 <div className="flex items-center ml-1 sm:ml-2">
                   <span className="text-xs sm:text-sm font-light text-pink-500">with</span>
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => onModelChange(e.target.value)}
-                    className="text-xs sm:text-sm font-semibold text-pink-600 bg-pink-50 border border-pink-200 rounded-md px-1.5 sm:px-2 py-0.5 ml-1 focus:outline-none focus:ring-1 focus:ring-pink-400 cursor-pointer"
-                  >
-                    <option value="gemini-2.5-flash-image">Nano Banana · 最高1K $0.039/¥0.28（2026-10-02停用）</option>
-					<option value="gemini-3.1-flash-image">Nano Banana 2 · 1K $0.067/¥0.48（推荐·最高支持4K）</option>
-					<option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite · 1K $0.0336/¥0.24（快速省钱）</option>
-					<option value="gemini-3-pro-image">Nano Banana Pro · 1K/2K $0.134/¥0.96 · 4K $0.24/¥1.73</option>
-                    <option value="gpt-image-2:auto">GPT Image 2 自动（OpenAI·模型判断质量）</option>
-                    <option value="gpt-image-2:low">GPT Image 2 低 · $0.005–0.006/¥0.04（快速省钱）</option>
-                    <option value="gpt-image-2:medium">GPT Image 2 中 · $0.041–0.053/¥0.30–0.38（推荐）</option>
-                    <option value="gpt-image-2:high">GPT Image 2 高 · $0.165–0.211/¥1.19–1.52（高质量）</option>
-                  </select>
+                  {appMode === 'web' ? (
+                    <select
+                      value={webProvider}
+                      onChange={(e) => onWebProviderChange(e.target.value as 'gemini' | 'chatgpt')}
+                      className="text-xs sm:text-sm font-semibold text-pink-600 bg-pink-50 border border-pink-200 rounded-md px-1.5 sm:px-2 py-0.5 ml-1 focus:outline-none focus:ring-1 focus:ring-pink-400 cursor-pointer"
+                    >
+                      <option value="gemini">Gemini 网页版 · Ianto 自动作图</option>
+                      <option value="chatgpt">ChatGPT 网页版 · Ianto 自动作图</option>
+                    </select>
+                  ) : (
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => onModelChange(e.target.value)}
+                      className="text-xs sm:text-sm font-semibold text-pink-600 bg-pink-50 border border-pink-200 rounded-md px-1.5 sm:px-2 py-0.5 ml-1 focus:outline-none focus:ring-1 focus:ring-pink-400 cursor-pointer"
+                    >
+                      <option value="gemini-2.5-flash-image">Nano Banana · 最高1K $0.039/¥0.28（2026-10-02停用）</option>
+					  <option value="gemini-3.1-flash-image">Nano Banana 2 · 1K $0.067/¥0.48（推荐·最高支持4K）</option>
+					  <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite · 1K $0.0336/¥0.24（快速省钱）</option>
+					  <option value="gemini-3-pro-image">Nano Banana Pro · 1K/2K $0.134/¥0.96 · 4K $0.24/¥1.73</option>
+                      <option value="gpt-image-2:auto">GPT Image 2 自动（OpenAI·模型判断质量）</option>
+                      <option value="gpt-image-2:low">GPT Image 2 低 · $0.005–0.006/¥0.04（快速省钱）</option>
+                      <option value="gpt-image-2:medium">GPT Image 2 中 · $0.041–0.053/¥0.30–0.38（推荐）</option>
+                      <option value="gpt-image-2:high">GPT Image 2 高 · $0.165–0.211/¥1.19–1.52（高质量）</option>
+                    </select>
+                  )}
                 </div>
+              )}
+              {appMode === 'web' && showModelSelector && (
+                <span id="geminiWebStatus" className="text-[10px] font-medium text-gray-400 ml-2 hidden xl:inline">正在检测 Ianto...</span>
               )}
               <span className="text-[10px] sm:text-xs font-bold text-gray-400 ml-2 hidden lg:inline">Powered by Aiden_Argents</span>
             </h1>

@@ -1,3 +1,5 @@
+import { recordRequest } from './requestTrace';
+
 /**
  * Client-side padding helper to ensure product/image details are not distorted
  * when changing aspect ratios. Runs entirely in the browser canvas.
@@ -86,6 +88,7 @@ export interface PromptExpansionRequest {
   mergeMode: string;
   aspectRatio: string;
   customApiKey: string;
+  promptOptimizerSystem?: string;
 }
 
 export interface PromptExpansionResult {
@@ -104,6 +107,7 @@ export const expandPromptForImage = async ({
   mergeMode,
   aspectRatio,
   customApiKey,
+  promptOptimizerSystem,
 }: PromptExpansionRequest): Promise<PromptExpansionResult> => {
   const response = await fetch('/api/expand-prompt', {
     method: 'POST',
@@ -118,6 +122,7 @@ export const expandPromptForImage = async ({
       hasReferenceImage,
       mergeMode,
       aspectRatio,
+      promptOptimizerSystem,
     }),
   });
 
@@ -138,6 +143,7 @@ export const expandPromptForImage = async ({
     throw new Error('提示词扩写服务没有返回扩写结果，请重试。');
   }
 
+  if (data.request) recordRequest({...data.request,status:'success'});
   return {
     expandedPrompt: String(data.expandedPrompt),
     expansionModel: String(data.expansionModel || ''),
@@ -227,16 +233,16 @@ export const editImage = async (
     // exactly one image plus one short instruction, with no fusion framework.
     const inputFiles = isWatermarkRemoval ? allInputFiles.slice(0, 1) : allInputFiles;
     const requestAspectRatio = isWatermarkRemoval ? 'auto' : aspectRatio;
-    // Custom mode is the direct Gemini API experiment: send the original image
+    // Send original image bytes by default in every mode; padding is an explicit user option.
     // bytes without client-side resizing, JPEG conversion, or white padding.
     const requestHighFidelityPreserve =
       isWatermarkRemoval || isRawCustomMode ? false : highFidelityPreserve;
-    const requestPrompt = isWatermarkRemoval ? '去除右下角的gemini图标' : prompt;
+    const requestPrompt = prompt;
     const requestModel = model;
 
     const optimizedImages: File[] = [];
     for (const f of inputFiles) {
-      let opt = isRawCustomMode ? f : await optimizeImageForUpload(f);
+      let opt = f;
       if (requestAspectRatio !== 'auto' && requestHighFidelityPreserve) {
         opt = await padImageToAspectRatio(opt, requestAspectRatio);
       }
@@ -245,9 +251,7 @@ export const editImage = async (
 
     let finalSecondaryImage =
       !isWatermarkRemoval && secondaryImageFile
-        ? isRawCustomMode
-          ? secondaryImageFile
-          : await optimizeImageForUpload(secondaryImageFile)
+        ? secondaryImageFile
         : null;
     if (
       requestAspectRatio !== 'auto' &&
@@ -318,6 +322,7 @@ export const editImage = async (
     }
 
     // Check if there is an error field in the JSON
+    if (data.request) recordRequest({...data.request,status:data.error?'error':'success'});
     const serverError = data.error || '';
     if (serverError) {
       const errStr = typeof serverError === 'object' ? JSON.stringify(serverError) : String(serverError);

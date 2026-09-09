@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>电商AI主图生成工作台</title>
+<title>电商AI场景图生成工作台</title>
 <style>
 :root{
   --bg:#f5f7fa;--card:#fff;--card2:#f8fafc;--bdr:#e2e8f0;
@@ -180,14 +180,13 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 </script>
 <script src="/prompt-settings.js"></script>
 <script src="/creative-core.js"></script>
-<script src="/gemini-text-api.js"></script>
 </head>
 <body>
 
 <!-- ═══ HEADER ═══ -->
 <header class="hd">
   <div class="hd-row1">
-    <div class="hd-b"><div class="hd-l">AI</div><div><div class="hd-t">电商AI主图生成工作台</div><div class="hd-s">E-Commerce Main Image Studio</div></div></div>
+    <div class="hd-b"><div class="hd-l">AI</div><div><div class="hd-t">电商AI场景图生成工作台</div><div class="hd-s">E-Commerce Scene Image Studio</div></div></div>
     <nav class="hd-nav">
       <a href="#" onclick="event.preventDefault();openSettings()" style="background:var(--card2);border-color:var(--bdr)">⚙️</a>
     </nav>
@@ -198,26 +197,21 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
     <input id="aKey" type="hidden" value="">
     <label>文本:</label>
 	<select class="hd-api select" id="txtMdl" onchange="saveSettings()">
-	  <option value="gemini-2.5-flash" selected>2.5 Flash · 入$0.30/¥2.16 M · 出$2.50/¥18 M（2026-10-16停用）</option>
-	  <option value="gemini-3.5-flash-lite">3.5 Flash-Lite · 入$0.30/¥2.16 M · 出$2.50/¥18 M（新款低成本）</option>
+	  <option value="gemini-2.5-flash">2.5 Flash · 入$0.30/¥2.16 M · 出$2.50/¥18 M（部分新Key不可用）</option>
+	  <option value="gemini-3.5-flash-lite" selected>3.5 Flash-Lite · 入$0.30/¥2.16 M · 出$2.50/¥18 M（推荐）</option>
 	  <option value="gemini-3.6-flash">3.6 Flash · 入$1.50/¥10.80 M · 出$7.50/¥54 M（新款高质量）</option>
 	  <option value="gemini-3.1-flash-lite">3.1 Flash-Lite · 入$0.25/¥1.80 M · 出$1.50/¥10.80 M</option>
 	  <option value="gemini-3.1-pro-preview">3.1 Pro · 入$2/¥14.40 M · 出$12/¥86.40 M（预览版）</option>
 	  <option value="gemini-3-flash-preview">3 Flash · 入$0.50/¥3.60 M · 出$3/¥21.60 M（预览版）</option>
-	  <option value="gemini-2.5-flash-lite">2.5 Flash-Lite · 入$0.10/¥0.72 M · 出$0.40/¥2.88 M（2026-10-16停用）</option>
-	  <option value="gemini-2.5-pro">2.5 Pro · 入$1.25/¥9 M · 出$10/¥72 M（2026-10-16停用）</option>
+	  <option value="gemini-2.5-flash-lite">2.5 Flash-Lite · 入$0.10/¥0.72 M · 出$0.40/¥2.88 M（部分新Key不可用）</option>
+	  <option value="gemini-2.5-pro">2.5 Pro · 入$1.25/¥9 M · 出$10/¥72 M（部分新Key不可用）</option>
 	</select>
 	<label>生图:</label>
 	<select class="hd-api select" id="aMdl" onchange="saveSettings()">
-	  <option value="gemini-2.5-flash-image" selected>Nano Banana · 最高1K $0.039/¥0.28（2026-10-02停用）</option>
-	  <option value="gemini-3.1-flash-image">Nano Banana 2 · 1K $0.067/¥0.48（推荐·最高支持4K）</option>
-	  <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite · 1K $0.0336/¥0.24（快速省钱）</option>
-	  <option value="gemini-3-pro-image">Nano Banana Pro · 1K/2K $0.134/¥0.96 · 4K $0.24/¥1.73</option>
-	  <option value="gpt-image-2:auto">GPT Image 2 自动（OpenAI·模型判断质量）</option>
-	  <option value="gpt-image-2:low">GPT Image 2 低 · $0.005–0.006/¥0.04（快速省钱）</option>
-	  <option value="gpt-image-2:medium">GPT Image 2 中 · $0.041–0.053/¥0.30–0.38（推荐）</option>
-	  <option value="gpt-image-2:high">GPT Image 2 高 · $0.165–0.211/¥1.19–1.52（高质量）</option>
+	  <option value="gemini-web" selected>Gemini 网页版 · 由 Ianto 自动作图并回传</option>
+	  <option value="chatgpt-web">ChatGPT 网页版 · 由 Ianto 自动作图并回传</option>
 	</select>
+    <span class="hint" id="geminiWebStatus">正在检测 Ianto...</span>
     <span class="hint"><a href="https://aistudio.google.com/apikey" target="_blank">获取Key →</a> · Key存于浏览器本地</span>
     <label style="display:flex;align-items:center;gap:4px;margin-left:auto;cursor:pointer;user-select:none"><input type="checkbox" id="autoMode" onchange="saveSettings()" style="cursor:pointer"><span style="font-size:11px;font-weight:600;color:var(--t2)">全自动</span><span style="font-size:10px;color:var(--t3)">（不保证最终质量）</span></label>
   </div>
@@ -249,7 +243,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
         </div>
 
         <div class="cd-t" style="margin-top: 16px;">📦 产品资料</div>
-        <div class="fg"><label class="fl rq">产品信息（名称、描述、卖点、促销）</label><textarea class="ft" id="iInfo" rows="5" placeholder="把产品相关信息都填在这里，AI 会根据当前工具自动提取特征与卖点。&#10;例如：透明质酸保湿精华液 30ml，透明玻璃瓶身，金色瓶盖&#10;72小时持久保湿、医美级玻尿酸、敏感肌友好&#10;限时5折" oninput="saveSettings()"></textarea></div>
+        <div class="fg"><label class="fl rq">产品信息（名称、描述、卖点、促销）</label><textarea class="ft" id="iInfo" rows="5" placeholder="把产品相关信息都填在这里，AI 会根据当前工具自动提取特征与卖点。&#10;例如：透明质酸保湿精华液 30ml，透明玻璃瓶身，金色瓶盖&#10;72小时持久保湿、医美级玻尿酸、敏感肌友好&#10;限时5折" oninput="saveSettings()"></textarea>
 <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
   <span style="font-size:10px;color:var(--t3);align-self:center;white-space:nowrap">快捷限制：</span>
   <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要出现包装图" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要出现包装图')">🚫 不要包装图</button>
@@ -257,7 +251,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
   <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要出现产品价格" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要出现产品价格')">🚫 不要价格</button>
   <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要产品/包装清单图" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要产品/包装清单图')">🚫 不要清单图</button>
 </div>
-<div class="fi-hint" style="margin-top:4px">💡 描述越具体，AI 生成的细节和排版越准确 · 促销或主打卖点直接写在这里即可<br>💡 后续可从表格自动填入 · 点击标签追加限制条件，再次点击取消</div>
+<div class="fi-hint" style="margin-top:4px">💡 描述越具体，AI 生成的细节和排版越准确 · 促销或主打卖点直接写在这里即可<br>💡 后续可从表格自动填入 · 点击标签追加限制条件，再次点击取消</div></div>
         <div class="up-row">
           <div>
             <div class="up-label">产品图 <span class="up-tag main">必填·主图</span></div>
@@ -284,7 +278,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 
       <div>
         <div class="cd-t">⚙️ 输出设置</div>
-<div class="fg"><label class="fl rq">目标市场</label><div class="cas"><select class="fs" id="iMkt1" onchange="updateSubMarket();saveSettings()"><option value="latam">🌎 拉美</option><option value="sea">🌏 东南亚</option></select><select class="fs" id="iMkt2" onchange="syncLang();saveSettings()"></select></div></div>
+        <div class="fg"><label class="fl rq">目标市场</label><div class="cas"><select class="fs" id="iMkt1" onchange="updateSubMarket();saveSettings()"><option value="latam">🌎 拉美</option><option value="sea">🌏 东南亚</option></select><select class="fs" id="iMkt2" onchange="syncLang();saveSettings()"></select></div></div>
         <div class="fg"><label class="fl rq">文案语言</label><select class="fs" id="iLang" onchange="saveSettings()"><option value="es-MX">🇲🇽 墨西哥西班牙语 (Español Mexicano)</option><option value="pt-BR">🇧🇷 巴西葡萄牙语 (Português Brasileiro)</option><option value="id">🇮🇩 印尼语 (Bahasa Indonesia)</option><option value="tl-en">🇵🇭 菲律宾英语 (菲英混合)</option><option value="fil">🇵🇭 菲律宾语 (Filipino)</option><option value="vi">🇻🇳 越南语 (Tiếng Việt)</option><option value="th">🇹🇭 泰语 (ภาษาไทย)</option><option value="ms">🇲🇾 马来语 (Bahasa Melayu)</option><option value="en">🌐 英语 (English)</option></select><div class="fi-hint">💡 选择市场后自动匹配（英语适用于菲/马来/新加坡）</div></div>
         <div class="fg"><label class="fl">画幅比例</label><select class="fs" id="iAR" onchange="saveSettings()"><option value="auto">保持原图</option><option value="1:1">1:1 正方形</option><option value="3:4">3:4 竖版</option><option value="4:3">4:3 横版</option><option value="3:2">3:2 横版</option><option value="4:5">4:5 竖版</option><option value="16:9">16:9 宽屏</option><option value="9:16">9:16 竖屏</option></select></div>
         <div class="fg"><label class="fl">风格偏好（可选）</label><input class="fi" id="iStyle" placeholder="如：韩系清冷、高奢极简、日系治愈" onchange="saveSettings()">
@@ -297,8 +291,8 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
           </div>
           <div style="margin-top:6px;padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:var(--r);font-size:11px;color:#0369a1;line-height:1.8">
             <div style="font-weight:700;margin-bottom:4px">📌 三个工具怎么选</div>
-            <div>· <b>主图（本工具）</b>：优先产品识别与点击动机，占比和信息密度按实际平台与版位决定。</div>
-            <div>· <b>场景图</b>：产品融入故事场景，重氛围，产品可小可偏，适合品牌种草、详情页。</div>
+            <div>· <b>场景图（本工具）</b>：产品融入故事场景，重氛围，产品可小可偏，适合品牌种草、详情页。</div>
+            <div>· <b>主图</b>：优先产品识别与点击动机，占比和信息密度按实际平台与版位决定。</div>
             <div>· <b>套图</b>：同一风格 9 张成套，封面主图+场景+细节+卖点全覆盖，适合铺品上架。</div>
           </div>
         </div>
@@ -529,13 +523,13 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
           <span style="width:24px;height:24px;border-radius:6px;background:var(--grn);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">2</span>
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--t1)">设计理念生成</div>
-            <div style="font-size:10px;color:var(--t3)">点击生成主图方案时触发 · 控制主图方向、点击率目标与平台边界</div>
+            <div style="font-size:10px;color:var(--t3)">点击生成场景方案时触发 · 控制使用语境、物理可信度与场景差异</div>
           </div>
         </div>
         <div class="fg">
           <label class="fl" style="font-size:12px;font-weight:700">
-            🎨 主图方案策略 System Prompt
-            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第②步主图变体的业务目标与成功标准；输出结构由系统管理</span>
+            🎨 场景方案策略 System Prompt
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第②步场景方向的业务目标与成功标准；输出结构由系统管理</span>
           </label>
           <textarea class="ft" id="sp_concept" rows="14" style="font-size:11px;font-family:var(--fm)"></textarea>
           <div class="fi-hint">变量：<code>{lang}</code> 目标语言，<code>{market}</code> 目标市场，<code>{model}</code> 模特类型。市场审美（见下方）会自动追加到此prompt末尾。</div>
@@ -666,37 +660,21 @@ concepts数组（恰好9个），每个对应slots中的一张图，格式：
 产品外观约束（仅防止AI画错产品）：用"颜色+product"指代产品，不要描述产品细节形状。
 只输出JSON对象，不加markdown代码块。`,
 
-prompt:`你是顶级电商主图AI作图专家，精通Shopee/Lazada/TikTok主图规范和爆款视觉逻辑。用户已确认各主图变体方向，现在需要根据每个变体方向，生成可直接用于AI出图的高质量提示词。
+prompt:`你是一名引领行业潮流、拥有百万级爆款经验的电商美妆类目视觉总监/AI作图专家。用户已确认9张电商图的设计理念，你现在需要根据每张确认的理念，高质量创作可直接使用的AI作图提示词。
 
-【主图提示词铁律 - 每条提示词必须遵守】
-1. 产品占画面60-75%，作为绝对视觉主体，必须明确说明产品位置（居中/稍偏）
-2. 背景服务于产品（渐变/纹理/轻场景均可），不得喧宾夺主
-3. 文案/角标/badge放在安全区（产品上方或下方留白），不遮挡产品
-4. 200×200缩略图下产品依然清晰可识别，信息层次一目了然
-5. 说明促销标签/卖点角标的位置和样式（如有）
+输出JSON数组(9个对象)：{"en":"English prompt","zh":"中文提示词"}
 
-输出JSON数组(N个对象)：{"en":"English prompt","zh":"中文提示词"}
-
-语言规则：en纯英文禁止中文字符，zh纯中文（品牌名除外），图片文案/slogan在en和zh中都用{lang}
-产品外观约束：用"颜色+product"指代产品，产品图会作为reference传入，不要描述产品形状细节
-风格/色彩/排版/文案调性必须符合目标市场审美和目标平台规范
-
-每条提示词必须包含以下所有元素：
-· 产品主体（占比约65%、位置、视角，如：centered large product, front view, filling 65% of frame）
-· 背景类型（如：gradient pastel background / light texture / minimalist solid color）
-· 文案区域（如：top 20% headline area / bottom badge strip，用{lang}表示文案内容）
-· 色调方案（主色+辅色，如：warm coral main, white typography, gold accent）
-· 促销元素（如有，说明位置+样式，如：top-right corner flash sale badge in orange）
-· 平台视觉风格（符合平台审美，如：Shopee-style high saturation / Lazada clean minimalist）
-· 光影质感（如：soft studio lighting, subtle shadow, clean product highlight）
-
-只输出JSON数组，不加markdown代码块。`,
+语言规则：en纯英文禁止中文字符，zh纯中文（品牌名除外），图片文案/slogan在en和zh中都用{lang}。
+产品外观约束：用"颜色+product"指代产品，产品图会作为reference传入，不要描述产品细节。
+风格/色彩/排版/文案调性必须符合目标市场审美。
+每个提示词必须包含：画面内容、设计风格、光影氛围、产品/模特姿态、色彩方案、构图方式、材质质感、分辨率/画幅。
+图片文案只用{lang}，明确内容和位置。具体可执行，不笼统。
+只输出JSON。`,
 
 imggen:`# Image Reference Instructions
-- The first image is the product photo. You MUST preserve this product's exact appearance (shape, color, label, packaging, texture) in the generated image. Do not alter, redesign, or reimagine the product.
+- The first image is the product photo (white/transparent background). You MUST preserve this product's exact appearance (shape, color, label, packaging, texture) in the generated image. Do not alter, redesign, or reimagine the product.
 - {refNote}
 - {prodAppearance}
-- MAIN IMAGE RULE: The product must occupy approximately 60-75% of the final frame as the absolute visual hero. Background elements (gradients, textures, light scenes) must complement and support the product — never overshadow or compete with it.
 - Generate the final image based on the prompt below, keeping the product faithful to the original photo.`,
 
 aesthetic:JSON.stringify({
@@ -711,12 +689,12 @@ aesthetic:JSON.stringify({
 },null,2)
 };
 
-DEF_PROMPTS.strategy=`你负责跨境电商主图的创意策略。先依据产品信息、产品图、目标市场和平台环境判断最值得测试的点击动机，再提出彼此差异明确、可执行的主图方向。
+DEF_PROMPTS.strategy=`你负责电商场景图的创意策略。先从产品用途、目标人群、使用时刻和目标市场中寻找可信的场景机会，再提出彼此差异明确、能帮助顾客理解产品价值的场景方向。
 
-成功标准：产品在缩略图中一眼可识别；视觉层级清楚；背景、文案和促销元素服务于产品；不同方向测试不同的构图或信息重点，而不是只换颜色。不得虚构产品规格、认证、价格、功效、品牌或包装信息。不要在这里编写最终生图提示词，也不要自行规定返回字段；调用方会追加任务数据、数量与严格输出结构。`;
+成功标准：产品与环境有可信的尺度、接触关系、透视和光影；场景能说明使用语境或情绪价值；不同方向测试不同的地点、时刻、人物关系或叙事目的，而不是只换背景颜色。不得虚构产品规格、功效、认证、价格、品牌或包装信息。不要在这里编写最终生图提示词，也不要自行规定返回字段；调用方会追加任务数据、数量与严格输出结构。`;
 
 // Current prompts (loaded from localStorage or defaults)
-const PROMPT_MODE='zhutu';
+const PROMPT_MODE='changjing';
 window.PhotoCreative.upgradeDefaults(PROMPT_MODE,DEF_PROMPTS);
 let CUR_PROMPTS={...DEF_PROMPTS};
 
@@ -805,6 +783,9 @@ const LANG_MAP={'es-MX':'Mexican Spanish (Español Mexicano)','pt-BR':'Brazilian
 let SLOTS=[];
 const ICONS=['🎯','⭐','💎','🌸','🔍','✨','🧪','🏆','🔥'];
 
+// Re-encode image through canvas to ensure clean PNG base64 (preserves transparency in auto mode, pads with white in ar mode)
+  
+
 
 // Re-encode image through canvas to preserve transparency or pad to aspect ratio
 function cleanImageData(dataUrl, targetRatioStr = 'auto'){
@@ -875,6 +856,7 @@ function gAesthetic(){return window.PhotoCreative.profile(window.PhotoCreative.p
 // ═══ STATE ═══
 let concepts=[],prompts=[],images=[],promptLangs=[];
 let prodImgData=null,refImgData=null,editIdx=-1,editResult=null;
+let geminiWebConversationKey='changjing_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
 
 // ═══ INIT ═══
 function updateSubMarket(){const r=document.getElementById('iMkt1').value;const sel=document.getElementById('iMkt2');sel.innerHTML=MARKETS[r].subs.map(s=>`<option value="${s.v}" data-m="${s.m}" data-lang="${s.lang}">${s.l}</option>`).join('');syncLang()}
@@ -888,7 +870,7 @@ const observer=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isInt
 document.addEventListener('DOMContentLoaded',()=>{['step1','step2','step3','step4'].forEach(id=>{const el=document.getElementById(id);if(el)observer.observe(el)})});
 
 // ═══ UPLOAD ═══
-function setImg(type,d){if(type==='prod'){prodImgData=d;productAppearance='';document.getElementById('prodPv').src=d;document.getElementById('prodPv').classList.remove('hid');document.getElementById('prodPh').classList.add('hid');document.getElementById('upBox1').classList.add('has-img')}else{refImgData=d;document.getElementById('refPv').src=d;document.getElementById('refPv').classList.remove('hid');document.getElementById('refPh').classList.add('hid');document.getElementById('upBox2').classList.add('has-img')}try{saveSettings()}catch(e){}}
+function setImg(type,d){if(type==='prod'){geminiWebConversationKey='changjing_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);prodImgData=d;productAppearance='';document.getElementById('prodPv').src=d;document.getElementById('prodPv').classList.remove('hid');document.getElementById('prodPh').classList.add('hid');document.getElementById('upBox1').classList.add('has-img')}else{refImgData=d;document.getElementById('refPv').src=d;document.getElementById('refPv').classList.remove('hid');document.getElementById('refPh').classList.add('hid');document.getElementById('upBox2').classList.add('has-img')}try{saveSettings()}catch(e){}}
 function clearImg(type){if(type==='prod'){prodImgData=null;document.getElementById('prodPv').classList.add('hid');document.getElementById('prodPh').classList.remove('hid');document.getElementById('upBox1').classList.remove('has-img');document.getElementById('upF1').value=''}else{refImgData=null;document.getElementById('refPv').classList.add('hid');document.getElementById('refPh').classList.remove('hid');document.getElementById('upBox2').classList.remove('has-img');document.getElementById('upF2').value=''}try{saveSettings()}catch(e){}}
 function fileImg(inp,type){const f=inp.files[0];if(!f||!f.type.startsWith('image/'))return;const r=new FileReader;r.onload=e=>setImg(type,e.target.result);r.readAsDataURL(f)}
 function dropImg(e,type){const f=e.dataTransfer.files[0];if(!f||!f.type.startsWith('image/'))return;const r=new FileReader;r.onload=ev=>setImg(type,ev.target.result);r.readAsDataURL(f)}
@@ -1009,12 +991,12 @@ function cpAll(){const all=prompts.map((p,i)=>`═══ 变体${p.id}：${p.t} 
 
 // ═══ PERSIST SETTINGS ═══
 // 共享设置 key（API Key、模型、市场等）— 所有标签页同步
-const LS_SHARED='ecom_studio_shared';
+const LS_SHARED='ecom_studio_web_shared';
 // 产品专属 key（产品信息、产品图、参考图）— 每个标签页独立
-if(!sessionStorage.getItem('_tab_key_main')){
-  sessionStorage.setItem('_tab_key_main','ecom_main_prod_'+Date.now());
+if(!sessionStorage.getItem('_tab_key')){
+  sessionStorage.setItem('_tab_key','ecom_studio_prod_'+Date.now());
 }
-const LS_PROD=sessionStorage.getItem('_tab_key_main');
+const LS_PROD=sessionStorage.getItem('_tab_key');
 function prependInfo(tag){
   const el=document.getElementById('iInfo');
   const cur=el.value;
@@ -1079,7 +1061,7 @@ function loadSettings(){
       const s=JSON.parse(rs);
       if(s.apiKey)document.getElementById('aKey').value=s.apiKey;
       if(s.txtMdl)document.getElementById('txtMdl').value=s.txtMdl;
-      if(s.imgMdl)document.getElementById('aMdl').value=s.imgMdl;
+      document.getElementById('aMdl').value=s.imgMdl==='chatgpt-web'?'chatgpt-web':'gemini-web';
       if(s.mkt1){document.getElementById('iMkt1').value=s.mkt1;updateSubMarket()}
       if(s.mkt2){document.getElementById('iMkt2').value=s.mkt2;syncLang()}
       if(s.lang)document.getElementById('iLang').value=s.lang;
@@ -1140,8 +1122,7 @@ async function callOpenAiImageApi(model,prompt,aspectRatio,mainBase64Images,refe
 async function startGen(){return window.PhotoCreativePage.startGen()}
 async function callGemini(apiKey,model,prompt,task={}){return window.PhotoCreativePage.callGemini(apiKey,model,prompt,task)}
 
-// Re-encode image through canvas to ensure clean PNG base64 (preserves transparency in auto mode, pads with white in ar mode)
-  
+
 function renderIG(){
   document.getElementById('iG').innerHTML=prompts.map((p,i)=>{const img=images[i];let slot='';
     if(!img||img.status==='pending')slot=`<div class="ld"><span style="font-size:20px">${window.PhotoCreative.escapeHtml(p.i)}</span><span>等待中</span></div>`;
@@ -1373,6 +1354,8 @@ function fetchSPUData() {
     _erpEmit('REQUEST_SPU_FETCH', { spu: spu });
 }
 </script>
+<script src="/gemini-text-api.js"></script>
+<script src="/ianto-gemini-web.js"></script>
 <script src="/creative-page.js"></script>
 </body>
 </html>

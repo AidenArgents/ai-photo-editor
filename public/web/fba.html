@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>电商AI主图生成工作台</title>
+<title>FBA场景图生成</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
-  --bg:#f5f7fa;--card:#fff;--card2:#f8fafc;--bdr:#e2e8f0;
+  --bg:#f5f7fa;--card:#fff;--card2:#f8fafc;--bdr:#e2e8f0;--bd:var(--bdr);
   --t1:#1e293b;--t2:#475569;--t3:#94a3b8;
   --blue:#3b82f6;--blue-l:#dbeafe;--blue-d:#1d4ed8;
   --grn:#10b981;--grn-l:#d1fae5;--org:#f59e0b;--org-l:#fef3c7;--red:#ef4444;
@@ -120,6 +121,17 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 .pc-ll{font-size:11px;font-weight:600;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center}
 .pc-edit{width:100%;padding:10px;border-radius:var(--r);background:#fff;border:1.5px solid var(--bdr);font-size:11px;line-height:1.7;color:var(--t1);font-family:var(--fm);resize:vertical;min-height:80px;outline:none;transition:.2s}
 .pc-edit:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-l)}
+.pc-work-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(440px,480px);gap:20px;align-items:stretch}
+.pc-media-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-left:20px;border-left:1px solid var(--bdr)}
+.pc-media-grid .mini-box{height:210px;padding:6px;border-radius:8px;width:100%;aspect-ratio:auto}
+.pc-media-grid .mini-box .up-prev{object-fit:contain}
+.pc-prompt-state{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--card2);color:var(--t3)}
+.pc-prompt-state.ready{background:#dcfce7;color:#15803d}
+.pc-prompt-state.loading{background:var(--blue-l);color:var(--blue-d)}
+.pc-prompt-state.error{background:#fee2e2;color:#b91c1c}
+.prompt-stage-note{padding:10px 12px;margin-bottom:12px;border:1px solid #bae6fd;border-radius:8px;background:#f0f9ff;color:#0369a1;font-size:11px;line-height:1.65}
+@media(max-width:1050px){.pc-work-grid{grid-template-columns:1fr}.pc-media-grid{padding-left:0;padding-top:14px;border-left:none;border-top:1px solid var(--bdr)}}
+@media(max-width:520px){.pc-media-grid{grid-template-columns:1fr}}
 .pc-lang-toggle{display:flex;gap:0;border:1.5px solid var(--bdr);border-radius:6px;overflow:hidden;margin-left:auto}
 .pc-lang-btn{padding:3px 12px;font-size:10px;font-weight:600;border:none;cursor:pointer;font-family:var(--f);background:var(--card2);color:var(--t3);transition:.15s}
 .pc-lang-btn.active{background:var(--blue);color:#fff}
@@ -148,7 +160,15 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 .mo-imgs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .mo-ib{border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;aspect-ratio:1;background:var(--card2);display:flex;align-items:center;justify-content:center}
 .mo-ib img{max-width:100%;max-height:100%;object-fit:contain}
+#mRes{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
 .mo-il{font-size:11px;font-weight:600;color:var(--t2);margin-bottom:3px;text-align:center}
+.mini-editor-controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px;padding:8px 10px;border:1px solid var(--bdr);border-radius:8px;background:var(--card2)}
+.mini-editor-controls label{font-size:11px;font-weight:700;color:var(--t2)}
+.mini-editor-controls select{padding:5px 8px;border:1px solid var(--bdr);border-radius:6px;background:#fff;color:var(--t1);font-size:11px}
+.mini-editor-note{font-size:10px;color:var(--t3);line-height:1.5}
+
+.ft2{text-align:center;padding:20px;margin-top:24px;border-top:1px solid var(--bdr);font-size:11px;color:var(--t3)}.ft2 a{color:var(--blue)}
+.hid{display:none!important}.mt{margin-top:14px}
 
 .ft2{text-align:center;padding:20px;margin-top:24px;border-top:1px solid var(--bdr);font-size:11px;color:var(--t3)}.ft2 a{color:var(--blue)}
 .hid{display:none!important}.mt{margin-top:14px}
@@ -162,6 +182,10 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 .sn-item.active .sn-num{background:rgba(255,255,255,.25);color:#fff}
 .sn-txt{font-size:11px;font-weight:600;white-space:nowrap}
 @media(max-width:768px){.sn-txt{display:none}.sn-item{padding:6px}}
+
+.mini-box { height: 70px; padding: 4px; border-radius: 6px; }
+.mini-box .up-overlay button { font-size: 10px; padding: 2px 8px; margin: 0 2px; }
+.mini-box #prodPh, .mini-box #refPh { line-height: 1.2; }
 </style>
 <script>
   window.addEventListener('DOMContentLoaded', () => {
@@ -180,14 +204,13 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 </script>
 <script src="/prompt-settings.js"></script>
 <script src="/creative-core.js"></script>
-<script src="/gemini-text-api.js"></script>
 </head>
 <body>
 
 <!-- ═══ HEADER ═══ -->
 <header class="hd">
   <div class="hd-row1">
-    <div class="hd-b"><div class="hd-l">AI</div><div><div class="hd-t">电商AI主图生成工作台</div><div class="hd-s">E-Commerce Main Image Studio</div></div></div>
+    <div class="hd-b"><div class="hd-l">AI</div><div><div class="hd-t">FBA场景图生成</div><div class="hd-s">E-Commerce Scene Image Studio</div></div></div>
     <nav class="hd-nav">
       <a href="#" onclick="event.preventDefault();openSettings()" style="background:var(--card2);border-color:var(--bdr)">⚙️</a>
     </nav>
@@ -209,15 +232,10 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 	</select>
 	<label>生图:</label>
 	<select class="hd-api select" id="aMdl" onchange="saveSettings()">
-	  <option value="gemini-2.5-flash-image" selected>Nano Banana · 最高1K $0.039/¥0.28（2026-10-02停用）</option>
-	  <option value="gemini-3.1-flash-image">Nano Banana 2 · 1K $0.067/¥0.48（推荐·最高支持4K）</option>
-	  <option value="gemini-3.1-flash-lite-image">Nano Banana 2 Lite · 1K $0.0336/¥0.24（快速省钱）</option>
-	  <option value="gemini-3-pro-image">Nano Banana Pro · 1K/2K $0.134/¥0.96 · 4K $0.24/¥1.73</option>
-	  <option value="gpt-image-2:auto">GPT Image 2 自动（OpenAI·模型判断质量）</option>
-	  <option value="gpt-image-2:low">GPT Image 2 低 · $0.005–0.006/¥0.04（快速省钱）</option>
-	  <option value="gpt-image-2:medium">GPT Image 2 中 · $0.041–0.053/¥0.30–0.38（推荐）</option>
-	  <option value="gpt-image-2:high">GPT Image 2 高 · $0.165–0.211/¥1.19–1.52（高质量）</option>
+	  <option value="gemini-web" selected>Gemini 网页版 · 由 Ianto 自动作图并回传</option>
+	  <option value="chatgpt-web">ChatGPT 网页版 · 由 Ianto 自动作图并回传</option>
 	</select>
+    <span class="hint" id="geminiWebStatus">正在检测 Ianto...</span>
     <span class="hint"><a href="https://aistudio.google.com/apikey" target="_blank">获取Key →</a> · Key存于浏览器本地</span>
     <label style="display:flex;align-items:center;gap:4px;margin-left:auto;cursor:pointer;user-select:none"><input type="checkbox" id="autoMode" onchange="saveSettings()" style="cursor:pointer"><span style="font-size:11px;font-weight:600;color:var(--t2)">全自动</span><span style="font-size:10px;color:var(--t3)">（不保证最终质量）</span></label>
   </div>
@@ -232,92 +250,92 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 </nav>
 
 <div class="ctn" style="padding-top:16px;padding-bottom:40px">
-
-<!-- ═══════════ STEP 1: 产品信息 ═══════════ -->
 <div class="block" id="step1">
   <div class="block-h"><div class="block-t"><span class="num">1</span>产品信息录入</div></div>
   <div class="block-body">
     <div class="g2">
-      <div>
-        <div class="cd-t">🔍 快速抓取</div>
-        <div class="fg">
-          <label class="fl rq">参考产品SPU</label>
-          <div style="display: flex; gap: 10px;">
-            <input type="text" id="pSku" class="fi" placeholder="输入 SPU 编号 (按回车键直接抓取)..." onkeypress="if(event.key==='Enter') fetchSPUData()">
-            <button class="btn btn-g" id="fetchErpBtn" style="flex-shrink: 0; padding: 0 24px;" onclick="fetchSPUData()">↓ 抓取 ERP</button>
+      <!-- LEFT COLUMN -->
+      <div style="display:flex;flex-direction:column;gap:16px;flex:1">
+        <!-- Input Method 1: Excel -->
+        <div>
+          <div class="cd-t">📄 方式一：Excel 需求表解析</div>
+          <div class="fg" style="margin-bottom:0">
+            <input type="file" accept=".xlsx,.xls,.csv" id="excelFile" onchange="handleExcelUpload(event)" style="display:none">
+            <div id="excelUpBox" class="up-box" style="padding:12px;text-align:center;cursor:pointer;width:100%;height:auto;aspect-ratio:unset" onclick="document.getElementById('excelFile').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');handleExcelDrop(event)">
+              <div style="font-size:24px;margin-bottom:4px">📊</div>
+              <div style="font-size:11px;color:var(--t2)"><b>点击上传</b> / 拖拽 / 粘贴(Ctrl+V) Excel</div>
+            </div>
           </div>
         </div>
 
-        <div class="cd-t" style="margin-top: 16px;">📦 产品资料</div>
-        <div class="fg"><label class="fl rq">产品信息（名称、描述、卖点、促销）</label><textarea class="ft" id="iInfo" rows="5" placeholder="把产品相关信息都填在这里，AI 会根据当前工具自动提取特征与卖点。&#10;例如：透明质酸保湿精华液 30ml，透明玻璃瓶身，金色瓶盖&#10;72小时持久保湿、医美级玻尿酸、敏感肌友好&#10;限时5折" oninput="saveSettings()"></textarea></div>
-<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
-  <span style="font-size:10px;color:var(--t3);align-self:center;white-space:nowrap">快捷限制：</span>
-  <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要出现包装图" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要出现包装图')">🚫 不要包装图</button>
-  <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要有健康医疗类的描述" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要有健康医疗类的描述')">🚫 不要医疗描述</button>
-  <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要出现产品价格" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要出现产品价格')">🚫 不要价格</button>
-  <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要产品/包装清单图" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要产品/包装清单图')">🚫 不要清单图</button>
-</div>
-<div class="fi-hint" style="margin-top:4px">💡 描述越具体，AI 生成的细节和排版越准确 · 促销或主打卖点直接写在这里即可<br>💡 后续可从表格自动填入 · 点击标签追加限制条件，再次点击取消</div>
-        <div class="up-row">
-          <div>
-            <div class="up-label">产品图 <span class="up-tag main">必填·主图</span></div>
-            <div class="up-box" id="upBox1" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');dropImg(event,'prod')" onclick="if(!prodImgData)document.getElementById('upF1').click()">
-              <input type="file" accept="image/*" id="upF1" onchange="fileImg(this,'prod')" style="display:none">
-              <div id="prodPh"><div style="font-size:28px;margin-bottom:6px">📷</div><div class="up-t"><b>点击上传</b> / 拖入 / 粘贴</div></div>
-              <img id="prodPv" class="up-prev hid">
-              <div class="up-overlay"><button class="ov-ch" onclick="event.stopPropagation();document.getElementById('upF1').click()">换图</button><button class="ov-rm" onclick="event.stopPropagation();clearImg('prod')">删除</button></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="flex:1;height:1px;background:var(--bdr)"></div>
+          <span style="font-size:10px;color:var(--t3);font-weight:600">或</span>
+          <div style="flex:1;height:1px;background:var(--bdr)"></div>
+        </div>
+
+        <!-- Input Method 2: Manual -->
+        <div style="display:flex;flex-direction:column;flex:1">
+          <div class="cd-t">✍️ 方式二：手动录入产品资料</div>
+          <div class="fg" style="display:flex;flex-direction:column;flex:1;margin-bottom:0">
+            <textarea class="ft" id="iInfo" placeholder="可在此手动输入，或检查 Excel 提取的内容...&#10;产品名称、材质、卖点、使用场景等" oninput="saveSettings()" style="flex:1;min-height:220px;resize:vertical"></textarea>
+            
+            <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">
+              <span style="font-size:10px;color:var(--t3);align-self:center;white-space:nowrap">快捷限制：</span>
+              <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要出现包装图" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要出现包装图')">🚫 不要包装图</button>
+              <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要有健康医疗类的描述" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要有健康医疗类的描述')">🚫 不要医疗描述</button>
+              <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要出现产品价格" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要出现产品价格')">🚫 不要价格</button>
+              <button type="button" class="btn btn-sm btn-x quick-tag-btn" data-tag="不要产品/包装清单图" style="font-size:10px;padding:3px 10px;border-radius:14px" onclick="prependInfo('不要产品/包装清单图')">🚫 不要清单图</button>
             </div>
-            <div class="up-url-row"><input type="text" id="urlProd" placeholder="粘贴图片或URL" onpaste="pasteImg(event,'prod')"><button onclick="loadUrl('prod')">加载</button></div>
-          </div>
-          <div>
-            <div class="up-label">参考图 <span class="up-tag sub">可选</span></div>
-            <div class="up-box" id="upBox2" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');dropImg(event,'ref')" onclick="if(!refImgData)document.getElementById('upF2').click()">
-              <input type="file" accept="image/*" id="upF2" onchange="fileImg(this,'ref')" style="display:none">
-              <div id="refPh"><div style="font-size:28px;margin-bottom:6px">🎨</div><div class="up-t"><b>点击上传</b> / 拖入 / 粘贴</div></div>
-              <img id="refPv" class="up-prev hid">
-              <div class="up-overlay"><button class="ov-ch" onclick="event.stopPropagation();document.getElementById('upF2').click()">换图</button><button class="ov-rm" onclick="event.stopPropagation();clearImg('ref')">删除</button></div>
-            </div>
-            <div class="up-url-row"><input type="text" id="urlRef" placeholder="粘贴图片或URL" onpaste="pasteImg(event,'ref')"><button onclick="loadUrl('ref')">加载</button></div>
+            <div class="fi-hint" style="margin-top:6px">💡 描述越具体，AI 生成的细节和排版越准确 · 点击标签可追加限制条件</div>
           </div>
         </div>
       </div>
+      
+      <!-- RIGHT COLUMN (Settings) -->
+      <div style="display:flex;flex-direction:column;gap:16px;flex:1">
+        <div>
+          <div class="cd-t">⚙️ 输出设置</div>
+          <div class="fg">
+            <label class="fl rq">目标市场</label>
+            <input type="hidden" id="iMkt1" value="na">
+            <select class="fs" id="iMkt2" onchange="syncLang();saveSettings()"></select>
+            <div class="fi-hint">仅使用美国 Amazon FBA 电商审美</div>
+          </div>
+          <div class="fg">
+            <label class="fl rq">文案语言</label>
+            <select class="fs" id="iLang" onchange="saveSettings()">
+              <option value="en-US">🇺🇸 英语 (English-US)</option>
+            </select>
+            <div class="fi-hint">💡 选择市场后自动匹配</div>
+          </div>
 
-      <div>
-        <div class="cd-t">⚙️ 输出设置</div>
-<div class="fg"><label class="fl rq">目标市场</label><div class="cas"><select class="fs" id="iMkt1" onchange="updateSubMarket();saveSettings()"><option value="latam">🌎 拉美</option><option value="sea">🌏 东南亚</option></select><select class="fs" id="iMkt2" onchange="syncLang();saveSettings()"></select></div></div>
-        <div class="fg"><label class="fl rq">文案语言</label><select class="fs" id="iLang" onchange="saveSettings()"><option value="es-MX">🇲🇽 墨西哥西班牙语 (Español Mexicano)</option><option value="pt-BR">🇧🇷 巴西葡萄牙语 (Português Brasileiro)</option><option value="id">🇮🇩 印尼语 (Bahasa Indonesia)</option><option value="tl-en">🇵🇭 菲律宾英语 (菲英混合)</option><option value="fil">🇵🇭 菲律宾语 (Filipino)</option><option value="vi">🇻🇳 越南语 (Tiếng Việt)</option><option value="th">🇹🇭 泰语 (ภาษาไทย)</option><option value="ms">🇲🇾 马来语 (Bahasa Melayu)</option><option value="en">🌐 英语 (English)</option></select><div class="fi-hint">💡 选择市场后自动匹配（英语适用于菲/马来/新加坡）</div></div>
-        <div class="fg"><label class="fl">画幅比例</label><select class="fs" id="iAR" onchange="saveSettings()"><option value="auto">保持原图</option><option value="1:1">1:1 正方形</option><option value="3:4">3:4 竖版</option><option value="4:3">4:3 横版</option><option value="3:2">3:2 横版</option><option value="4:5">4:5 竖版</option><option value="16:9">16:9 宽屏</option><option value="9:16">9:16 竖屏</option></select></div>
-        <div class="fg"><label class="fl">风格偏好（可选）</label><input class="fi" id="iStyle" placeholder="如：韩系清冷、高奢极简、日系治愈" onchange="saveSettings()">
+        <div class="fg"><label class="fl">画幅比例</label><select class="fs" id="iAR" onchange="saveSettings()">
+  <option value="task" selected>根据每个任务要求（默认）</option>
+  <option value="1:1">强制 1:1 正方形</option>
+  <option value="3:4">强制 3:4 竖图</option>
+  <option value="16:9">强制 16:9 宽屏</option>
+</select>
+          <div class="fi-hint">默认逐任务使用需求表解析出的比例；选择其他比例会忽略所有任务自身比例并强制覆盖。</div>
+        </div>
+        <div class="fg"><label class="fl">风格偏好（可选）</label><input class="fi" id="iStyle" placeholder="如：美国高端家居、Amazon A+ 极简、现代工业" onchange="saveSettings()">
           <div class="fi-hint">💡 填了优先使用偏好，留空AI自动匹配</div>
           <div style="margin-top:8px;padding:10px 12px;background:var(--card2);border:1px solid var(--bd);border-radius:var(--r);font-size:11px;color:var(--t2);line-height:1.8">
             <div style="font-weight:700;color:var(--t1);margin-bottom:4px">🎨 风格填写指南</div>
-            <div>· <b>填一个风格（推荐）</b>：定下整体视觉基调。套图会保持统一，多方案变体也会在同一风格下延展。</div>
+            <div>· <b>填一个风格（推荐）</b>：定下整体视觉基调。多方案变体会在此风格下延展。</div>
             <div>· <b>填多个风格</b>：AI 可能会随机分配或导致风格打架，最终结果不受控。</div>
-            <div>· <b>留空</b>：AI 完全自由发挥 / 按目标市场审美自动判断，适合探索阶段。</div>
+            <div>· <b>留空</b>：AI 按美国 Amazon FBA 审美自动判断。</div>
           </div>
           <div style="margin-top:6px;padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:var(--r);font-size:11px;color:#0369a1;line-height:1.8">
             <div style="font-weight:700;margin-bottom:4px">📌 三个工具怎么选</div>
-            <div>· <b>主图（本工具）</b>：优先产品识别与点击动机，占比和信息密度按实际平台与版位决定。</div>
-            <div>· <b>场景图</b>：产品融入故事场景，重氛围，产品可小可偏，适合品牌种草、详情页。</div>
-            <div>· <b>套图</b>：同一风格 9 张成套，封面主图+场景+细节+卖点全覆盖，适合铺品上架。</div>
+            <div>· <b>场景图（本工具）</b>：产品融入故事场景，重氛围，适合品牌种草、A+页面。</div>
+            <div>· <b>主图</b>：优先产品识别与点击动机，占比和信息密度按实际平台与版位决定。</div>
+            <div>· <b>套图</b>：同一风格 9 张成套，封面主图+场景+细节全覆盖，适合铺品上架。</div>
           </div>
         </div>
       </div>
     </div>
     
-    <div style="display:flex;gap:20px;align-items:center;padding:10px 14px;background:var(--card2);border:1px solid var(--bd);border-radius:var(--r);margin-top:12px">
-      <span style="font-size:11px;font-weight:700;color:var(--t2);flex-shrink:0">生成方向：</span>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--blue-d)">
-        <input type="checkbox" id="useA" checked onchange="saveSettings();updateGenBtn()" style="accent-color:var(--blue);width:14px;height:14px;cursor:pointer">
-        <span class="plan-badge pa" style="pointer-events:none">方案 A</span> 知识库驱动
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--vio)">
-        <input type="checkbox" id="useB" checked onchange="saveSettings();updateGenBtn()" style="accent-color:var(--vio);width:14px;height:14px;cursor:pointer">
-        <span class="plan-badge pb" style="pointer-events:none">方案 B</span> AI自由发挥
-      </label>
-    </div>
-    <div class="warn hid" id="vW">❌ <b>前置检查：</b><span id="vM"></span></div>
-    <button class="btn btn-p btn-lg btn-full mt" onclick="genConcepts()" id="genConBtn">✨ 生成双方案变体</button>
   </div>
 </div>
 
@@ -340,12 +358,23 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 .plan-loading{display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px;color:var(--t3);font-size:12px}
 .plan-ring-a{width:26px;height:26px;border:3px solid var(--blue-l);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite}
 .plan-ring-b{width:26px;height:26px;border:3px solid #ede9fe;border-top-color:var(--vio);border-radius:50%;animation:spin 1s linear infinite}
+.plan-generate-box{margin-bottom:12px;padding:14px;border:1px solid #bfdbfe;border-radius:12px;background:linear-gradient(135deg,#eff6ff,#f8fafc)}
+.plan-flow{display:flex;align-items:stretch;gap:10px;margin-bottom:12px}
+.plan-flow-step{flex:1;padding:9px 11px;border:1px solid var(--bdr);border-radius:8px;background:var(--card);font-size:11px;color:var(--t2);line-height:1.55}
+.plan-flow-step b{display:block;color:var(--t1);font-size:12px;margin-bottom:2px}
+.plan-flow-arrow{display:flex;align-items:center;color:var(--blue);font-weight:800}
+.plan-generate-controls{display:flex;align-items:center;gap:10px}
+.plan-count-control{display:flex;align-items:center;gap:6px;flex-shrink:0;font-size:11px;font-weight:700;color:var(--t2)}
+.plan-count-control input{width:64px;padding:7px;border:1px solid var(--bdr);border-radius:7px;background:var(--card);font-size:12px}
+.plan-generate-controls .btn{flex:1}
+.plan-image-note{margin-top:8px;font-size:10px;color:var(--t3);line-height:1.55}
 /* 变体卡片 */
 .vc-list{display:flex;flex-direction:column;gap:8px}
 .vc{background:var(--card2);border:1.5px solid var(--bdr);border-radius:var(--r2);padding:12px 14px;position:relative;cursor:pointer;transition:.15s;user-select:none}
 .vc:hover{border-color:var(--blue)}
 .vc.sel-a{border-color:var(--blue);background:var(--blue-l)}
 .vc.sel-b{border-color:var(--vio);background:#f5f3ff}
+.vc.placeholder{cursor:default;border-style:dashed;background:var(--card);opacity:.8}
 .vc-chk{position:absolute;top:10px;right:10px;width:18px;height:18px;border-radius:4px;border:1.5px solid var(--bdr);background:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;transition:.15s}
 .vc.sel-a .vc-chk{background:var(--blue);border-color:var(--blue);color:#fff}
 .vc.sel-b .vc-chk{background:var(--vio);border-color:var(--vio);color:#fff}
@@ -354,59 +383,136 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 .vc-name{font-size:12px;font-weight:700;color:var(--t1)}
 .vc-typetag{font-size:9px;padding:1px 6px;border-radius:3px;font-weight:600;background:var(--card);border:1px solid var(--bdr);color:var(--t2);margin-left:auto;flex-shrink:0}
 .vc-concept{font-size:11px;color:var(--t2);line-height:1.6;margin-bottom:6px}
+.vc-plan-edit{width:100%;min-height:132px;padding:9px 10px;border:1px solid var(--bdr);border-radius:7px;background:var(--card);color:var(--t1);font-family:var(--f);font-size:11px;line-height:1.65;resize:vertical;outline:none}
+.vc-plan-edit:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(59,130,246,.1)}
 .vc-ptoggle{font-size:10px;color:var(--blue);cursor:pointer;background:none;border:none;padding:0;font-family:var(--f);text-decoration:underline;text-underline-offset:2px}
 .vc-pbox{margin-top:7px;padding:8px;background:var(--card);border:1px solid var(--bdr);border-radius:var(--r);font-size:10px;font-family:var(--fm);color:var(--t2);line-height:1.6}
 .vc-pbox textarea{width:100%;background:transparent;border:none;outline:none;color:var(--t1);font-family:var(--fm);font-size:10px;line-height:1.6;resize:vertical;min-height:52px}
-/* 已选bar */
-.sel-bar{padding:8px 14px;background:var(--blue-l);border:1px solid var(--blue);border-radius:var(--r);display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--blue-d);margin-bottom:10px}
+/* 任务模块与同步选择栏 */
+.selection-hint{padding:9px 12px;margin-bottom:10px;border-radius:var(--r);background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:11px;line-height:1.55}
+.sel-bar{padding:9px 12px;background:var(--blue-l);border:1px solid var(--blue);border-radius:var(--r);display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:var(--blue-d);margin-bottom:10px}
 .sel-bar b{font-family:var(--fm)}
+.sel-bar-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.vc-module{background:var(--card);border:1px solid var(--bdr);border-radius:12px;overflow:hidden}
+.vc-module-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;background:var(--card2);border-bottom:1px solid var(--bdr);cursor:pointer}
+.vc-module-head:hover{background:#f1f5f9}
+.vc-module-title{display:flex;align-items:center;gap:8px;min-width:0}
+.vc-module-arrow{width:16px;color:var(--t3);font-size:10px;text-align:center;flex-shrink:0}
+.vc-module-name{font-size:13px;font-weight:800;color:var(--t1)}
+.vc-module-meta{font-size:10px;color:var(--t3);white-space:nowrap}
+.vc-module-select{display:inline-flex;align-items:center;gap:7px;padding:5px 9px;border:1px solid var(--bdr);border-radius:7px;background:var(--card);color:var(--t2);font:600 11px var(--f);cursor:pointer;white-space:nowrap}
+.vc-module-select:hover{border-color:var(--blue);color:var(--blue)}
+.vc-module-check{width:16px;height:16px;border:1.5px solid var(--bdr);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#fff;font-size:11px;font-weight:800}
+.vc-module-select[data-state="all"] .vc-module-check,.vc-module-select[data-state="partial"] .vc-module-check{background:var(--blue);border-color:var(--blue)}
+.vc-module-body{display:flex;flex-direction:column;gap:12px;padding:12px;background:var(--bg2)}
+.vc-module-body.hid{display:none}
+
+.vc-task-row{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;padding:16px;background:var(--card);border:1px solid var(--bdr);border-radius:10px;align-items:stretch}
+.vc-task-row.task-preselected{border-color:var(--blue);box-shadow:0 0 0 2px rgba(59,130,246,.12);cursor:pointer}
+.vc-task-main{min-width:0;display:flex;flex-direction:column}
+.vc-task-heading{display:flex;align-items:flex-start;gap:10px;padding-bottom:11px;border-bottom:1px solid var(--bdr)}
+.vc-task-num{width:28px;height:28px;border-radius:7px;background:var(--blue-l);color:var(--blue-d);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
+.vc-task-title{font-size:14px;font-weight:800;color:var(--t1);line-height:1.35}
+.vc-task-meta{display:flex;align-items:center;gap:7px;margin-top:4px;font-size:10px;color:var(--t3)}
+.vc-task-desc{font-size:11px;color:var(--t2);line-height:1.65;margin-top:9px}
+.vc-options{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.vc-option-label{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--t3);font-weight:600}
+.vc-task-media{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-left:20px;border-left:1px solid var(--bdr)}
+.vc-media-col{min-width:0;display:flex;flex-direction:column}
+.vc-media-head{font-size:10px;color:var(--t2);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;gap:6px;min-height:22px}
+.vc-apply{color:var(--blue);cursor:pointer;background:var(--blue-l);padding:2px 6px;border-radius:4px;white-space:nowrap}
+.vc-task-row .mini-box{height:210px;padding:6px;border-radius:8px;width:100%;aspect-ratio:auto}
+.vc-task-row .mini-box .up-overlay button{font-size:10px;padding:3px 8px;margin:0 2px}
+.vc-task-row .mini-box .up-prev{object-fit:contain}
+.vc-product-gallery{height:210px;padding:7px;border:1.5px dashed var(--bdr);border-radius:8px;background:var(--card2);display:flex;flex-direction:column;align-items:stretch;gap:7px;overflow-x:hidden;overflow-y:auto}
+.vc-product-gallery.has-img{border-style:solid;background:var(--card)}
+.vc-product-thumb{position:relative;width:100%;height:150px;min-height:150px;border:1px solid var(--bdr);border-radius:7px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.vc-product-thumb img{width:100%;height:100%;object-fit:contain}
+.vc-product-remove{position:absolute;right:4px;top:4px;width:20px;height:20px;border:0;border-radius:50%;background:rgba(15,23,42,.78);color:#fff;font-size:12px;line-height:20px;cursor:pointer}
+.vc-product-add{width:100%;height:72px;min-height:72px;border:1.5px dashed var(--blue);border-radius:7px;background:var(--blue-l);color:var(--blue-d);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;font-size:10px;text-align:center;padding:5px}
+.vc-product-add:hover{background:#dbeafe}
+.vc-media-note{font-size:9px;color:var(--t3);line-height:1.45;margin-top:6px}
+.mo-prod-gallery{height:320px;padding:7px;border:1px solid var(--bdr);border-radius:8px;background:var(--card2);display:flex;flex-direction:column;align-items:stretch;gap:7px;overflow-x:hidden;overflow-y:auto}
+.mo-prod-thumb{position:relative;width:100%;height:240px;min-height:240px;border:1px solid var(--bdr);border-radius:7px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.mo-prod-thumb img{width:100%;height:100%;object-fit:contain}
+.mo-prod-empty{grid-column:1/-1;height:100%;min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:var(--t3);font-size:11px;cursor:pointer}
+@media(max-width:1050px){
+  .vc-task-row{grid-template-columns:1fr}
+  .vc-task-media{padding-left:0;padding-top:14px;border-left:none;border-top:1px solid var(--bdr)}
+}
+@media(max-width:520px){
+  .plan-flow,.plan-generate-controls{flex-direction:column}
+  .plan-flow-arrow{transform:rotate(90deg);align-self:center}
+  .plan-count-control{align-self:stretch;justify-content:space-between}
+  .plan-generate-controls .btn{width:100%}
+  .sel-bar{align-items:flex-start;flex-direction:column}
+  .sel-bar-actions{width:100%}
+  .sel-bar-actions .btn{flex:1}
+  .vc-module-head{align-items:flex-start;flex-direction:column}
+  .vc-module-select{align-self:stretch;justify-content:center}
+  .vc-task-media{grid-template-columns:1fr}
+  .vc-task-row .mini-box{height:190px}
+}
 </style>
 
 <div class="block" id="step2">
   <div class="block-h">
-    <div class="block-t"><span class="num">2</span>变体方案选择</div>
-    <div class="acts">
-      <button class="btn btn-sm btn-x" onclick="vcSelectAll()">全选</button>
-      <button class="btn btn-sm btn-x" onclick="vcSelectNone()">清空</button>
-    </div>
+    <div class="block-t"><span class="num">2</span>任务候选选择</div>
   </div>
   <div class="block-body">
-    <div class="plans-row">
-      <!-- 方案A -->
-      <div class="plan-panel pa">
-        <div class="plan-hd pa">
-          <span class="plan-badge pa">方案 A</span>
-          <span style="font-size:12px;font-weight:700;color:var(--blue-d)">知识库驱动</span>
-          <span class="plan-desc">结合专业提示词知识库</span>
-          <label style="font-size:11px;color:var(--t3);margin-left:auto;display:flex;align-items:center;gap:4px;flex-shrink:0">数量<input type="number" id="cntA" value="4" min="1" max="16" oninput="this.value=Math.min(16,Math.max(1,parseInt(this.value)||1));saveSettings()" style="width:42px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;font-size:11px;text-align:center;background:var(--bg2)"></label>
+    <div class="plan-generate-box">
+      <div class="plan-flow">
+        <div class="plan-flow-step">
+          <b>① 表格解析（第1次 AI）</b>
+          已解析 <strong id="parsedTaskCount">0</strong> 个作图任务，并按模块显示在下方。
         </div>
-        <div class="plan-body">
-          <div id="planAState"><div style="color:var(--t3);text-align:center;padding:28px;font-size:12px">请先完成第①步</div></div>
-          <div class="vc-list hid" id="planAList"></div>
+        <div class="plan-flow-arrow">→</div>
+        <div class="plan-flow-step">
+          <b>② 生成设计方案（第2次 AI）</b>
+          按解析任务生成可编辑的中文设计方案，不会再次解析表格。
         </div>
       </div>
-      <!-- 方案B -->
-      <div class="plan-panel pb">
-        <div class="plan-hd pb">
-          <span class="plan-badge pb">方案 B</span>
-          <span style="font-size:12px;font-weight:700;color:var(--vio)">AI自由发挥</span>
-          <span class="plan-desc">不受预设约束，纯创意</span>
-          <label style="font-size:11px;color:var(--t3);margin-left:auto;display:flex;align-items:center;gap:4px;flex-shrink:0">数量<input type="number" id="cntB" value="4" min="1" max="16" oninput="this.value=Math.min(16,Math.max(1,parseInt(this.value)||1));saveSettings()" style="width:42px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;font-size:11px;text-align:center;background:var(--bg2)"></label>
-        </div>
-        <div class="plan-body">
-          <div id="planBState"><div style="color:var(--t3);text-align:center;padding:28px;font-size:12px">请先完成第①步</div></div>
-          <div class="vc-list hid" id="planBList"></div>
-        </div>
+      <div class="plan-generate-controls">
+        <label class="plan-count-control">
+          每个任务生成
+          <input type="number" id="cntA" min="1" max="16" step="1" value="1" inputmode="numeric" onchange="this.value=normalizePerTaskCount(this.value);saveSettings()">
+          个候选
+        </label>
+        <button class="btn btn-p btn-lg" onclick="genConcepts()" id="genConBtn" disabled>请先上传表格并解析任务</button>
+      </div>
+      <div class="plan-image-note">💡 第二步只负责选择任务与设计方案，不在这里上传图片。确认后到第三步，把产品资料图、目标参考图和对应提示词放在同一行处理。</div>
+      <div class="warn hid" id="vW1" style="margin-top:10px;margin-bottom:0">❌ <b>方案生成：</b><span id="vM1"></span></div>
+    </div>
+    <div class="selection-hint">💡 普通点击即可逐个选中或取消，可连续点击多个；Shift+点击选择两项之间的连续范围。也可以按模块整组选中或取消，顶部与底部状态会同步。</div>
+    <div class="selection-hint" id="vcSelectionHint">第二步先选择要生成方案的任务：普通点击切换单个任务，Shift+点击选择连续任务，也可以按模块整组选择。</div>
+    <div class="sel-bar" id="vcSelBarTop">
+      <span>已选 <b data-vc-selected-count>0</b> 个候选，覆盖 <b data-vc-task-count>0</b> 个任务</span>
+      <div class="sel-bar-actions">
+        <button class="btn btn-sm btn-x" onclick="vcSelectAll()">全选</button>
+        <button class="btn btn-sm btn-x" onclick="vcSelectNone()">全不选</button>
+      </div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--bd);border-radius:8px;overflow:hidden">
+      <div style="background:var(--blue-l);padding:10px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px">
+        <span style="font-size:14px;font-weight:700;color:var(--blue-d)">解析任务与候选方案</span>
+        <span style="font-size:12px;color:var(--t2)">（按模块分组，每个解析任务一行）</span>
+      </div>
+      <div style="padding:16px;background:var(--bg2);min-height:150px">
+        <div id="planAState"><div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">请先解析需求表，或在上方录入产品并点击【按任务生成候选方案】</div></div>
+        <div class="vc-list hid" id="planAList" style="display:flex;flex-direction:column;gap:16px"></div>
       </div>
     </div>
 
-    <div class="sel-bar hid" id="vcSelBar">
-      已选 <b id="vcSelCount">0</b> 个变体 &nbsp;·&nbsp; 点击下方按钮生成提示词
-      <button class="btn btn-sm btn-x" onclick="vcSelectAll()">全选</button>
+    <div class="sel-bar" id="vcSelBarBottom" style="margin-top:10px">
+      <span>已选 <b data-vc-selected-count>0</b> 个候选，覆盖 <b data-vc-task-count>0</b> 个任务</span>
+      <div class="sel-bar-actions">
+        <button class="btn btn-sm btn-x" onclick="vcSelectAll()">全选</button>
+        <button class="btn btn-sm btn-x" onclick="vcSelectNone()">全不选</button>
+      </div>
     </div>
 
-    <div class="warn hid" id="vW">❌ <b>前置检查：</b><span id="vM"></span></div>
-    <button class="btn btn-g btn-lg btn-full mt" id="tpBtn" onclick="genPromptsFromVC()" disabled>✅ 确认选中变体，进入提示词编辑</button>
+    <div class="warn hid" id="vW2">❌ <b>前置检查：</b><span id="vM2"></span></div>
+    <button class="btn btn-g btn-lg btn-full mt" id="tpBtn" onclick="genPromptsFromVC()" disabled>✅ 确认选中候选，配置图片与提示词</button>
   </div>
 </div>
 
@@ -415,12 +521,14 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
   <div class="block-h">
     <div class="block-t"><span class="num">3</span>提示词编辑</div>
     <div class="acts">
-      <div class="pc-lang-toggle" style="margin-right:6px"><button class="pc-lang-btn active" id="glbE" onclick="setAllLang('en')">🇺🇸 全部英文</button><button class="pc-lang-btn" id="glbZ" onclick="setAllLang('zh')">🇨🇳 全部中文</button></div>
+      <span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;background:var(--blue-l);color:var(--blue-d);font-size:11px;font-weight:700">当前批次 <b id="currentBatchCount" style="margin:0 3px;font-family:var(--fm)">0</b> 项</span>
       <button class="btn btn-p btn-sm" onclick="cpAll()">📋 复制全部</button>
     </div>
   </div>
   <div class="block-body">
-    <div id="pC"><div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">请先完成第②步，确认设计理念后生成提示词</div></div>
+    <div class="prompt-stage-note">第三步顺序：为每项上传产品资料图（可多张）与目标参考图（单张）→ 点击“根据图片生成/更新提示词”→ 检查或修改提示词 → 生成图片。产品资料图决定“画什么产品”；目标参考图只决定“做成什么结构和样子”。</div>
+    <div id="pC"><div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">请先完成第②步，确认中文设计方案后生成提示词</div></div>
+    <button class="btn btn-p btn-lg btn-full mt" onclick="generatePromptsWithMedia()" id="genPromptBtn" disabled>✨ 图片配置完成，生成/更新提示词</button>
     <button class="btn btn-p btn-lg btn-full mt" onclick="startGen()" id="gBtn" disabled>🖼️ 一键生成全部图片</button>
   </div>
 </div>
@@ -446,17 +554,17 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
       <!-- Reference images row -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
         <div>
-          <div class="mo-il">产品原图 <button class="btn btn-sm btn-x" onclick="document.getElementById('mProdF').click()" style="font-size:9px;padding:2px 6px">换图</button></div>
-          <input type="file" accept="image/*" id="mProdF" onchange="miniEditorChangeImg(this,'prod')" style="display:none">
-          <div class="mo-ib" style="aspect-ratio:1"><img id="mProdImg" style="max-width:100%;max-height:100%;object-fit:contain"></div>
+          <div class="mo-il">产品原图（可多张） <span id="mProdCount" style="color:var(--t3);font-weight:400"></span> <button class="btn btn-sm btn-x" onclick="document.getElementById('mProdF').click()" style="font-size:9px;padding:2px 6px">添加</button> <button class="btn btn-sm btn-x" onclick="clearMiniProducts()" style="font-size:9px;padding:2px 6px">清空</button></div>
+          <input type="file" accept="image/*" multiple id="mProdF" onchange="miniEditorChangeImg(this,'prod')" style="display:none">
+          <div class="mo-prod-gallery" id="mProdGallery"></div>
         </div>
         <div>
           <div class="mo-il">当前图片</div>
-          <div class="mo-ib" style="aspect-ratio:1"><img id="mImg" style="max-width:100%;max-height:100%;object-fit:contain"></div>
+          <div class="mo-ib"><img id="mImg" style="max-width:100%;max-height:100%;object-fit:contain"></div>
         </div>
         <div>
           <div class="mo-il">编辑结果 <button class="btn btn-sm btn-g hid" id="mUseBtn" onclick="useEditResult()" style="font-size:9px;padding:2px 6px">← 用作当前图</button></div>
-          <div class="mo-ib" style="aspect-ratio:1" id="mRes"><span style="color:var(--t3);font-size:12px">编辑后显示在这里</span></div>
+          <div class="mo-ib"><div id="mRes"><span style="color:var(--t3);font-size:12px">编辑后显示在这里</span></div></div>
         </div>
       </div>
       <!-- Reference image 2 -->
@@ -477,11 +585,23 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
           <option value="replace_product">替换产品 (Replace Product)</option>
         </select>
       </div>
+      <div class="mini-editor-controls">
+        <label for="mAspectRatio">本次输出比例</label>
+        <select id="mAspectRatio" onchange="updateMiniAspectRatio()">
+          <option value="1:1">1:1 正方形</option>
+          <option value="3:4">3:4 竖图</option>
+          <option value="4:5">4:5 竖图</option>
+          <option value="9:16">9:16 长竖图</option>
+          <option value="16:9">16:9 宽图</option>
+        </select>
+        <span class="mini-editor-note" id="mAspectHint">独立控制本次编辑结果，不从提示词文字猜比例。</span>
+        <span class="mini-editor-note">Mini Editor 仅调用一次生图接口，不会重跑表格、方案或提示词流程。</span>
+      </div>
       <!-- Prompt -->
       <div class="fg"><label class="fl">提示词（可编辑，修改后点AI编辑生效）</label><textarea class="ft" id="mPmt" rows="4" style="font-size:11px;font-family:var(--fm)"></textarea></div>
       <!-- Actions -->
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-p" onclick="runEdit()" id="mEBtn">✨ AI编辑</button>
+        <button class="btn btn-p" onclick="runEdit()" id="mEBtn">✨ 生成编辑图</button>
         <button class="btn btn-g hid" id="mABtn" onclick="applyEdit()">✅ 应用到第④步</button>
         <button class="btn btn-x" onclick="dlIdx(editIdx)">⬇ 下载当前</button>
         <button class="btn btn-x hid" id="mDlResBtn" onclick="dlEditResult()">⬇ 下载结果</button>
@@ -509,17 +629,17 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--blue)">
           <span style="width:24px;height:24px;border-radius:6px;background:var(--blue);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">1</span>
           <div>
-            <div style="font-size:13px;font-weight:700;color:var(--t1)">产品信息阶段</div>
-            <div style="font-size:10px;color:var(--t3)">方案与提示词直接读取产品原图；本规则防止改错商品，不再单独识别一个颜色</div>
+            <div style="font-size:13px;font-weight:700;color:var(--t1)">需求表解析阶段</div>
+            <div style="font-size:10px;color:var(--t3)">上传 Excel/CSV 后运行 · 把运营需求提取成独立 FBA 作图任务</div>
           </div>
         </div>
         <div class="fg">
           <label class="fl" style="font-size:12px;font-weight:700">
-            📷 产品保真规则
-            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：商品身份、颜色、包装、标签和配件保真</span>
+            📋 FBA 任务提取 Prompt
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：模块、任务名、画幅和原始要求的提取</span>
           </label>
           <textarea class="ft" id="sp_recognize" rows="2" style="font-size:11px;font-family:var(--fm)"></textarea>
-          <div class="fi-hint">本规则直接用于方案、提示词和出图。旧版颜色识别指令已备份；不把识别结果当作绝对事实。</div>
+          <div class="fi-hint">变量：<code>{csvText}</code> 为工作簿转换后的文本。返回结构由系统校验。</div>
         </div>
       </div>
 
@@ -528,25 +648,25 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--grn)">
           <span style="width:24px;height:24px;border-radius:6px;background:var(--grn);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">2</span>
           <div>
-            <div style="font-size:13px;font-weight:700;color:var(--t1)">设计理念生成</div>
-            <div style="font-size:10px;color:var(--t3)">点击生成主图方案时触发 · 控制主图方向、点击率目标与平台边界</div>
+            <div style="font-size:13px;font-weight:700;color:var(--t1)">中文设计方案生成</div>
+            <div style="font-size:10px;color:var(--t3)">点击「按任务生成候选方案」触发 · 把需求表原文翻译成可编辑的机器执行方案</div>
           </div>
         </div>
         <div class="fg">
           <label class="fl" style="font-size:12px;font-weight:700">
-            🎨 主图方案策略 System Prompt
-            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第②步主图变体的业务目标与成功标准；输出结构由系统管理</span>
+            🎨 中文设计方案 System Prompt
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第②步把需求表原文翻译为机器可执行的中文设计方案</span>
           </label>
           <textarea class="ft" id="sp_concept" rows="14" style="font-size:11px;font-family:var(--fm)"></textarea>
-          <div class="fi-hint">变量：<code>{lang}</code> 目标语言，<code>{market}</code> 目标市场，<code>{model}</code> 模特类型。市场审美（见下方）会自动追加到此prompt末尾。</div>
+          <div class="fi-hint">需求表原文只作为约束来源，不能原样填入设计方案。生成后的方案可在任务行中直接编辑。</div>
         </div>
         <div class="fg">
           <label class="fl" style="font-size:12px;font-weight:700">
-            🌏 国家/地区市场审美描述
-            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第②步理念生成 + 第③步提示词生成的市场风格方向</span>
+            🇺🇸 美国 FBA 市场审美描述
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第②步设计方案 + 第③步提示词的美国 Amazon 风格方向</span>
           </label>
           <div style="font-size:10px;color:var(--t3);margin-bottom:4px;padding:6px 10px;background:var(--org-l);border-radius:6px;border-left:3px solid var(--org)">
-            ⚠️ JSON格式，key对应市场代码（MX/BR/ID/PH/VN/TH/MY/SG）。修改此处会同步更新市场配置。
+            仅保留 US。JSON 格式，修改后会同步更新美国 FBA 审美配置。
           </div>
           <textarea class="ft" id="sp_aesthetic" rows="12" style="font-size:11px;font-family:var(--fm)"></textarea>
         </div>
@@ -558,16 +678,16 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
           <span style="width:24px;height:24px;border-radius:6px;background:var(--org);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">3</span>
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--t1)">提示词生成</div>
-            <div style="font-size:10px;color:var(--t3)">理念全部确认后触发 · 影响第③步英文/中文提示词的质量和格式</div>
+            <div style="font-size:10px;color:var(--t3)">设计方案确认后触发 · 影响第③步中文提示词的质量和格式</div>
           </div>
         </div>
         <div class="fg">
           <label class="fl" style="font-size:12px;font-weight:700">
             ⚡ 提示词生成 System Prompt
-            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第③步每张图的英文/中文提示词内容和结构</span>
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第③步每张图的中文提示词内容和结构</span>
           </label>
           <textarea class="ft" id="sp_prompt" rows="14" style="font-size:11px;font-family:var(--fm)"></textarea>
-          <div class="fi-hint">变量：<code>{lang}</code> 目标语言。市场/平台档案、视觉DNA、产品图和保真规则随本次任务一起发送。</div>
+          <div class="fi-hint">美国 FBA 审美、每个任务的最终画幅和产品颜色约束会自动追加到此 prompt。</div>
         </div>
       </div>
 
@@ -598,7 +718,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
           <span style="width:24px;height:24px;border-radius:6px;background:var(--t3);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">★</span>
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--t1)">提示词知识库</div>
-            <div style="font-size:10px;color:var(--t3)">第②步按高级运行参数筛选后注入，供AI选择，不要求全部使用 · 当前 <span id="kbCount" style="color:var(--blue);font-weight:700"></span> 条目</div>
+            <div style="font-size:10px;color:var(--t3)">第②步设计方案生成时注入，供 AI 选择摄影、构图和材质词 · 当前 <span id="kbCount" style="color:var(--blue);font-weight:700"></span> 条目</div>
           </div>
         </div>
         <div class="fg">
@@ -631,99 +751,58 @@ const KB={"风格":[{"e":"Pre-Raphaelite Brotherhood","z":"前拉斐尔派兄弟
 const DEF_PROMPTS={
 recognize:`What is the main color of this product? Reply with ONLY the color name(s), like "red" or "pink and gold". Under 5 words. English only.`,
 
-concept:`你是电商视觉总监/AI作图专家，拥有百万级爆款操盘经验。根据产品信息和目标市场，为电商黄金9图生成高质量设计理念。
+concept:`你是美国 Amazon FBA 电商视觉总监和 AI 生图方案工程师。你的任务不是复述运营人员写的需求，而是把每条人类语言需求翻译成可供生图模型继续执行的中文设计方案。
 
-你必须输出一个JSON对象，严格遵循结构：
-{"styles":["风格1","风格2","风格3","风格4","风格5"],"slots":[9个图片类型],"concepts":[9个设计理念]}
+设计方案必须使用清晰、具体、无歧义的机器可执行语言，并包含：主体与产品保真、场景与道具、构图与机位、主体占比与空间关系、光线与色温、色彩与材质、人物动作（如需要）、文案内容与位置（如需要）、画幅比例、禁止项。只使用美国 Amazon FBA 审美：专业、可信、清晰、高转化、premium lifestyle、A+ 内容风格。
 
-styles字段：推荐5个最适合该产品+目标市场的视觉风格方向，中文，第一个最推荐。
+严禁直接复制、拼接或只做同义词替换原始需求；严禁输出其他国家或地区电商平台风格。只输出调用方指定的严格 JSON。`,
 
-slots数组（恰好9个）：根据产品推荐最合适的9张图类型，格式：
-{"t":"中文名称","s":"English name","d":"一句话说明","i":"emoji图标"}
-主图/封面图必须是第一张，其余根据产品特性选择最有转化力的组合。
+prompt:`你是美国 Amazon FBA 电商 AI 生图提示词工程师。用户已经确认并可能编辑了中文设计方案。请把每个方案进一步展开为一条可直接用于生图模型的中文提示词。
 
-concepts数组（恰好9个），每个对应slots中的一张图，格式：
-{"concept":"中文理念（必须详尽，见要求）","en":"English prompt（必须完整，见要求）","zh":"中文提示词（必须完整，见要求）"}
+输出严格 JSON 数组，每个对象只有一个字段：{"zh":"中文提示词"}。对象数量必须与输入方案数量完全一致。
 
-【concept字段 - 中文理念，必须包含以下所有维度，总字数不少于150字】：
-• 【转化目标】这张图要打动谁？解决什么购买疑虑或激发什么购买欲望？
-• 【核心场景】具体场景描述：在哪里？什么时间？什么人物/氛围？
-• 【光影情绪】光线方向、色温、整体情绪基调（如：晨光侧逆光/暖黄氛围/高级感）
-• 【视觉构图】构图方式（如：三分法/对角线/居中对称）、主体占比、前后景关系
-• 【色彩方案】主色+辅色+点缀色，色调风格（如：莫兰迪/高饱和/低纯度奶油色）
-• 【文案位置】标题/卖点/角标的位置、字体风格、文案内容方向
-• 【设计风格】具体风格参考（如：ins风极简/K-beauty/Shopee爆款风）
-结尾标注应用概念。
-
-【en字段 - 英文提示词，必须包含以下所有元素，总字数不少于80词】：
-完整画面内容 + 具体场景/道具/模特姿态 + 光影描述 + 色彩方案 + 构图方式 + 材质质感 + 分辨率 + 文案说明（用{lang}表示文案内容）
-严禁中文字符。产品名不加中文括号。
-
-【zh字段 - 中文提示词，必须与en对应，总字数不少于60字】：
-文案/slogan用{lang}。纯中文。
-
-图片风格、色彩、排版、文案调性必须严格符合目标市场审美。
-产品外观约束（仅防止AI画错产品）：用"颜色+product"指代产品，不要描述产品细节形状。
-只输出JSON对象，不加markdown代码块。`,
-
-prompt:`你是顶级电商主图AI作图专家，精通Shopee/Lazada/TikTok主图规范和爆款视觉逻辑。用户已确认各主图变体方向，现在需要根据每个变体方向，生成可直接用于AI出图的高质量提示词。
-
-【主图提示词铁律 - 每条提示词必须遵守】
-1. 产品占画面60-75%，作为绝对视觉主体，必须明确说明产品位置（居中/稍偏）
-2. 背景服务于产品（渐变/纹理/轻场景均可），不得喧宾夺主
-3. 文案/角标/badge放在安全区（产品上方或下方留白），不遮挡产品
-4. 200×200缩略图下产品依然清晰可识别，信息层次一目了然
-5. 说明促销标签/卖点角标的位置和样式（如有）
-
-输出JSON数组(N个对象)：{"en":"English prompt","zh":"中文提示词"}
-
-语言规则：en纯英文禁止中文字符，zh纯中文（品牌名除外），图片文案/slogan在en和zh中都用{lang}
-产品外观约束：用"颜色+product"指代产品，产品图会作为reference传入，不要描述产品形状细节
-风格/色彩/排版/文案调性必须符合目标市场审美和目标平台规范
-
-每条提示词必须包含以下所有元素：
-· 产品主体（占比约65%、位置、视角，如：centered large product, front view, filling 65% of frame）
-· 背景类型（如：gradient pastel background / light texture / minimalist solid color）
-· 文案区域（如：top 20% headline area / bottom badge strip，用{lang}表示文案内容）
-· 色调方案（主色+辅色，如：warm coral main, white typography, gold accent）
-· 促销元素（如有，说明位置+样式，如：top-right corner flash sale badge in orange）
-· 平台视觉风格（符合平台审美，如：Shopee-style high saturation / Lazada clean minimalist）
-· 光影质感（如：soft studio lighting, subtle shadow, clean product highlight）
-
-只输出JSON数组，不加markdown代码块。`,
+每条中文提示词必须具体、可执行，并完整包含：画面主体、产品保真要求、场景与道具、构图与机位、主体占比、光影与色温、色彩方案、材质质感、人物动作（如需要）、文案内容和位置（如需要）、目标画幅、清晰度与禁止项。
+画幅必须使用对应任务给出的比例；当输入标明“强制比例”时，必须忽略方案中的原比例并使用强制比例。
+视觉、色彩、排版和文案调性只允许美国 Amazon FBA 审美。PRODUCT TRUTH SOURCE 产品资料图是唯一产品身份来源；TARGET TEMPLATE REFERENCE 仅提供结构与视觉模板，其中旧产品、包装、Logo、品牌和文字必须全部替换。
+提示词使用中文；图片内文案仍按输入的 English-US 要求写成英文。不要输出英文提示词字段，不要输出 markdown。`,
 
 imggen:`# Image Reference Instructions
-- The first image is the product photo. You MUST preserve this product's exact appearance (shape, color, label, packaging, texture) in the generated image. Do not alter, redesign, or reimagine the product.
+- All images marked PRODUCT TRUTH SOURCE are complementary product originals and the only source of product identity. Read them together to understand the product's exact shape, color, label, packaging, texture, angles, quantities, styles, and dimensions.
+- The TARGET TEMPLATE REFERENCE controls only layout, structure, camera, lighting, and visual hierarchy. Remove and replace every product, package, logo, brand, label, number, and claim visible in it.
+- You MUST preserve the selected user product's exact appearance. Do not alter, redesign, reimagine, or mix it with the template product.
 - {refNote}
 - {prodAppearance}
-- MAIN IMAGE RULE: The product must occupy approximately 60-75% of the final frame as the absolute visual hero. Background elements (gradients, textures, light scenes) must complement and support the product — never overshadow or compete with it.
-- Generate the final image based on the prompt below, keeping the product faithful to the original photo.`,
+- {arNote}
+- Generate the final image based on the prompt below, keeping the product faithful to all relevant product originals while matching the target reference's finished look.`,
 
 aesthetic:JSON.stringify({
-  MX:'Mexican e-commerce: bold vibrant colors, expressive typography, aspirational but approachable, prominent pricing and trust badges',
-  BR:'Brazilian e-commerce: tropical warm colors, diverse models, sensual yet natural beauty, bold discounts, social proof, fun energetic vibe',
-  ID:'Indonesian e-commerce: clean pastel backgrounds, hijab-friendly options, Shopee/Tokopedia style, flash sale banners, halal certification, soft feminine colors',
-  PH:'Philippine e-commerce: bright cheerful colors, approachable everyday beauty, warm and energetic vibe, diverse and real-looking models, clean layouts with vibrant accents, clear product focus',
-  VN:'Vietnamese e-commerce: clean soft pink/white, K-beauty influenced, before/after popular, VND pricing with strikethrough, youthful cute style',
-  TH:'Thai e-commerce: bright colorful playful, gold/white premium for beauty, celebrity endorsement style, cute kawaii elements, strong promo emphasis',
-  MY:'Malaysian e-commerce: multicultural inclusive, halal-conscious, clean modern, bilingual Malay/English, modest fashion awareness, soft neutral palettes',
-  SG:'Singaporean e-commerce: premium minimalist clean, high-end positioning, sophisticated typography, quality-over-price, clinical/scientific beauty trend'
+  US:'Amazon US FBA e-commerce aesthetic: professional, trustworthy and conversion-focused; premium lifestyle context; crisp high-contrast lighting; clean hierarchy and readable English-US copy; authentic diverse American models when needed; A+ content quality; product accuracy first; no visual language from non-US marketplaces'
 },null,2)
 };
 
-DEF_PROMPTS.strategy=`你负责跨境电商主图的创意策略。先依据产品信息、产品图、目标市场和平台环境判断最值得测试的点击动机，再提出彼此差异明确、可执行的主图方向。
+DEF_PROMPTS.extract=`你负责把美国 Amazon FBA 运营需求表提取成作图任务。输入可能包含多个由表名分隔的子表。完整遍历内容，忽略与作图无关的说明行，不做视觉方案扩写。
 
-成功标准：产品在缩略图中一眼可识别；视觉层级清楚；背景、文案和促销元素服务于产品；不同方向测试不同的构图或信息重点，而不是只换颜色。不得虚构产品规格、认证、价格、功效、品牌或包装信息。不要在这里编写最终生图提示词，也不要自行规定返回字段；调用方会追加任务数据、数量与严格输出结构。`;
+输出 JSON 数组。每个对象包含：
+- group_name：所属模块；优先使用表名、分区标题或原文模块名，同一模块必须完全一致。
+- name：保留运营填写的原始任务名；原文没有名称时，依据模块与行内容生成简短名称。
+- ratio：正整数:正整数；原文明示时原样保留，未明示时按图片用途、版位和构图方向判断，不要全部固定成同一比例。
+- desc：完整保留人类填写的主体、场景、排版、文案和限制条件。这里只做任务提取，不把它改写成 AI 设计方案，不增加原文没有的产品事实或营销主张。
+
+所有任务均面向美国 Amazon FBA，不加入其他平台或国家风格。
+
+工作簿文本：
+{csvText}`;
 
 // Current prompts (loaded from localStorage or defaults)
-const PROMPT_MODE='zhutu';
+const PROMPT_SCHEMA_VERSION=3;
+const PROMPT_MODE='fba';
 window.PhotoCreative.upgradeDefaults(PROMPT_MODE,DEF_PROMPTS);
 let CUR_PROMPTS={...DEF_PROMPTS};
 
 function openSettings(){
   window.PhotoCreative.openAdvanced(PROMPT_MODE,CUR_PROMPTS);
-  document.getElementById('sp_recognize').value=CUR_PROMPTS.recognize;
-  document.getElementById('sp_concept').value=CUR_PROMPTS.strategy;
+  document.getElementById('sp_recognize').value=CUR_PROMPTS.extract;
+  document.getElementById('sp_concept').value=CUR_PROMPTS.concept;
   document.getElementById('sp_prompt').value=CUR_PROMPTS.prompt;
   document.getElementById('sp_imggen').value=CUR_PROMPTS.imggen;
   document.getElementById('sp_aesthetic').value=CUR_PROMPTS.aesthetic;
@@ -739,7 +818,7 @@ function savePromptSettings(){
     const next={...CUR_PROMPTS,...window.PhotoCreative.readAdvanced()};
     for(const key of ["recognize","concept","prompt","imggen","aesthetic","extract"]){
       const field=document.getElementById("sp_"+key);
-      if(field)next[key==="concept" && DEF_PROMPTS.strategy ? "strategy" : key]=field.value;
+      if(field)next[key==="recognize" ? "extract" : key]=field.value;
     }
     const newKB=window.PhotoCreative.parseMap(document.getElementById("sp_kb").value,"知识库");
     if(Object.values(newKB).some(value=>!Array.isArray(value)))throw new Error("知识库分类必须为数组");
@@ -772,38 +851,25 @@ function loadPromptSettings(){
     }catch(e){}
   }catch(e){}
 }
-loadPromptSettings();
 
 // ═══ KB passed directly to AI, no pre-matching ═══
 
 // ═══ MARKET CONFIG ═══
 const MARKETS={
-  latam:{subs:[
-    {v:'MX',l:'🇲🇽 墨西哥',m:'Mexican model',lang:'es-MX',
-     aes:'Mexican e-commerce aesthetic: bold vibrant colors (red, gold, warm tones), expressive typography, family/community-oriented lifestyle, aspirational but approachable, Mercado Libre/Amazon MX style product listings with prominent pricing and trust badges'},
-    {v:'BR',l:'🇧🇷 巴西',m:'Brazilian model',lang:'pt-BR',
-     aes:'Brazilian e-commerce aesthetic: tropical warm colors, diverse models, sensual yet natural beauty style, Shopee/Mercado Livre style with bold discounts, social proof emphasis, fun energetic vibe'},
-  ]},
-  sea:{subs:[
-    {v:'ID',l:'🇮🇩 印度尼西亚',m:'Indonesian model',lang:'id',
-     aes:'Indonesian e-commerce aesthetic: clean pastel backgrounds, hijab-friendly model options, Shopee/Tokopedia style with flash sale banners, price-first layout, halal certification prominent, soft feminine colors'},
-    {v:'PH',l:'🇵🇭 菲律宾',m:'Filipino model',lang:'tl-en',
-     aes:'Philippine e-commerce aesthetic: bright cheerful colors, approachable everyday beauty, warm and energetic vibe, diverse and real-looking models, clean layouts with vibrant accents, clear product focus'},
-    {v:'VN',l:'🇻🇳 越南',m:'Vietnamese model',lang:'vi',
-     aes:'Vietnamese e-commerce aesthetic: clean soft pink/white tones, K-beauty influenced, Shopee VN/Tiki style, before/after comparisons popular, price in VND with strikethrough, youthful cute style, detailed ingredient callouts'},
-    {v:'TH',l:'🇹🇭 泰国',m:'Thai model',lang:'th',
-     aes:'Thai e-commerce aesthetic: bright colorful playful style, Shopee TH/Lazada style, gold/white premium tones for beauty, celebrity endorsement style, Thai script prominent, cute kawaii elements, strong promo/discount emphasis'},
-    {v:'MY',l:'🇲🇾 马来西亚',m:'Malaysian model',lang:'ms',
-     aes:'Malaysian e-commerce aesthetic: multicultural inclusive imagery, Shopee MY style, halal-conscious, clean modern layouts, bilingual Malay/English, modest fashion awareness, soft neutral color palettes'},
-    {v:'SG',l:'🇸🇬 新加坡',m:'Singaporean model',lang:'en',
-     aes:'Singaporean e-commerce aesthetic: premium minimalist clean design, high-end beauty positioning, Shopee SG/Sephora style, English-only, sophisticated typography, quality-over-price messaging, clinical/scientific beauty trend'},
+  na:{subs:[
+    {v:'US',l:'🇺🇸 美国 FBA（Amazon US）',m:'American model',lang:'en-US',
+     aes:JSON.parse(DEF_PROMPTS.aesthetic).US},
   ]},
 };
-const LANG_MAP={'es-MX':'Mexican Spanish (Español Mexicano)','pt-BR':'Brazilian Portuguese (Português Brasileiro)','id':'Indonesian (Bahasa Indonesia)','fil':'Filipino (Wikang Filipino)','tl-en':'Taglish (Filipino and English mixed, as naturally used in Philippine e-commerce)','vi':'Vietnamese (Tiếng Việt)','th':'Thai (ภาษาไทย)','ms':'Malay (Bahasa Melayu)','en':'English'};
+const LANG_MAP={'en-US':'English (United States)'};
+loadPromptSettings();
 
 // SLOTS are now dynamic - AI recommends 9 image types per product
 let SLOTS=[];
 const ICONS=['🎯','⭐','💎','🌸','🔍','✨','🧪','🏆','🔥'];
+
+// Re-encode image through canvas to ensure clean PNG base64 (preserves transparency in auto mode, pads with white in ar mode)
+  
 
 
 // Re-encode image through canvas to preserve transparency or pad to aspect ratio
@@ -870,15 +936,37 @@ function cleanImageData(dataUrl, targetRatioStr = 'auto'){
   });
 }
 
-function gAesthetic(){return window.PhotoCreative.profile(window.PhotoCreative.parseMap(CUR_PROMPTS.aesthetic,"市场档案")[document.getElementById("iMkt2").value])}
+function gAesthetic(){return window.PhotoCreative.profile(window.PhotoCreative.parseMap(CUR_PROMPTS.aesthetic,"市场档案")["US"])}
 
 // ═══ STATE ═══
-let concepts=[],prompts=[],images=[],promptLangs=[];
+let concepts=[],prompts=[],images=[];
 let prodImgData=null,refImgData=null,editIdx=-1,editResult=null;
+let geminiWebConversationKey='fba_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
 
 // ═══ INIT ═══
-function updateSubMarket(){const r=document.getElementById('iMkt1').value;const sel=document.getElementById('iMkt2');sel.innerHTML=MARKETS[r].subs.map(s=>`<option value="${s.v}" data-m="${s.m}" data-lang="${s.lang}">${s.l}</option>`).join('');syncLang()}
-function syncLang(){const sel=document.getElementById('iMkt2');const l=sel.options[sel.selectedIndex]?.dataset.lang;if(l)document.getElementById('iLang').value=l}
+function updateSubMarket(){
+  const r=document.getElementById('iMkt1').value;
+  const sel=document.getElementById('iMkt2');
+  if(!sel) return;
+  sel.innerHTML='';
+  if(!MARKETS[r])return;
+  MARKETS[r].subs.forEach(s=>{
+    const opt=document.createElement('option');
+    opt.value=s.v;opt.textContent=s.l;
+    opt.dataset.m=s.m;
+    sel.appendChild(opt);
+  });
+  syncLang();
+}
+function syncLang(){
+  const r=document.getElementById('iMkt1').value;
+  const v=document.getElementById('iMkt2').value;
+  const sub=MARKETS[r]?.subs.find(s=>s.v===v);
+  if(sub&&sub.lang){
+    const lEl = document.getElementById('iLang');
+    if(lEl) lEl.value=sub.lang;
+  }
+}
 updateSubMarket();
 
 // ═══ SCROLL NAV ═══
@@ -888,8 +976,42 @@ const observer=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isInt
 document.addEventListener('DOMContentLoaded',()=>{['step1','step2','step3','step4'].forEach(id=>{const el=document.getElementById(id);if(el)observer.observe(el)})});
 
 // ═══ UPLOAD ═══
-function setImg(type,d){if(type==='prod'){prodImgData=d;productAppearance='';document.getElementById('prodPv').src=d;document.getElementById('prodPv').classList.remove('hid');document.getElementById('prodPh').classList.add('hid');document.getElementById('upBox1').classList.add('has-img')}else{refImgData=d;document.getElementById('refPv').src=d;document.getElementById('refPv').classList.remove('hid');document.getElementById('refPh').classList.add('hid');document.getElementById('upBox2').classList.add('has-img')}try{saveSettings()}catch(e){}}
-function clearImg(type){if(type==='prod'){prodImgData=null;document.getElementById('prodPv').classList.add('hid');document.getElementById('prodPh').classList.remove('hid');document.getElementById('upBox1').classList.remove('has-img');document.getElementById('upF1').value=''}else{refImgData=null;document.getElementById('refPv').classList.add('hid');document.getElementById('refPh').classList.remove('hid');document.getElementById('upBox2').classList.remove('has-img');document.getElementById('upF2').value=''}try{saveSettings()}catch(e){}}
+function setImg(type,d){
+  geminiWebConversationKey='fba_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  if(type==='prod'){
+    prodImgData=d;productAppearance='';
+    document.getElementById('prodPv').src=d;
+    document.getElementById('prodPv').classList.remove('hid');
+    document.getElementById('prodPh').classList.add('hid');
+    document.getElementById('upBox1').classList.add('has-img');
+  }else{
+    refImgData=d;
+    document.getElementById('refPv').src=d;
+    document.getElementById('refPv').classList.remove('hid');
+    document.getElementById('refPh').classList.add('hid');
+    document.getElementById('upBox2').classList.add('has-img');
+  }
+  if(parsedTasks.length&&vcPlanA.length)renderVCPlan(vcPlanA);
+  try{saveSettings()}catch(e){}
+}
+function clearImg(type){
+  geminiWebConversationKey='fba_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  if(type==='prod'){
+    prodImgData=null;
+    document.getElementById('prodPv').classList.add('hid');
+    document.getElementById('prodPh').classList.remove('hid');
+    document.getElementById('upBox1').classList.remove('has-img');
+    document.getElementById('upF1').value='';
+  }else{
+    refImgData=null;
+    document.getElementById('refPv').classList.add('hid');
+    document.getElementById('refPh').classList.remove('hid');
+    document.getElementById('upBox2').classList.remove('has-img');
+    document.getElementById('upF2').value='';
+  }
+  if(parsedTasks.length&&vcPlanA.length)renderVCPlan(vcPlanA);
+  try{saveSettings()}catch(e){}
+}
 function fileImg(inp,type){const f=inp.files[0];if(!f||!f.type.startsWith('image/'))return;const r=new FileReader;r.onload=e=>setImg(type,e.target.result);r.readAsDataURL(f)}
 function dropImg(e,type){const f=e.dataTransfer.files[0];if(!f||!f.type.startsWith('image/'))return;const r=new FileReader;r.onload=ev=>setImg(type,ev.target.result);r.readAsDataURL(f)}
 function blobToDataUrl(blob){return new Promise((resolve,reject)=>{const rd=new FileReader;rd.onload=()=>resolve(String(rd.result||''));rd.onerror=()=>reject(new Error('图片转换失败'));rd.readAsDataURL(blob)})}
@@ -897,10 +1019,106 @@ async function remoteImageToDataUrl(url){let value=String(url||'').trim();if(val
 async function loadUrl(type){const u=document.getElementById(type==='prod'?'urlProd':'urlRef').value.trim();if(!u||(!u.startsWith('http')&&!u.startsWith('//'))){alert('请输入有效URL');return}try{setImg(type,await remoteImageToDataUrl(u))}catch(e){alert('加载失败：'+(e?.message||'无法下载图片'))}}
 function pasteImg(e,type){const items=e.clipboardData?.items;if(items){for(const it of items){if(it.type.startsWith('image/')){e.preventDefault();const f=it.getAsFile();const r=new FileReader;r.onload=ev=>setImg(type,ev.target.result);r.readAsDataURL(f);return}}}setTimeout(()=>{const v=document.getElementById(type==='prod'?'urlProd':'urlRef').value.trim();if(v.startsWith('http'))loadUrl(type)},100)}
 
+
+// ═══ TASK-LEVEL IMAGE UPLOAD HELPERS ═══
+function readImageFiles(files) {
+  const imageFiles=Array.from(files||[]).filter(file=>file?.type?.startsWith('image/'));
+  return Promise.all(imageFiles.map(file=>new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.onload=event=>resolve(event.target.result);
+    reader.onerror=()=>resolve(null);
+    reader.readAsDataURL(file);
+  }))).then(results=>results.filter(Boolean));
+}
+function vcSetProductImages(i,images,rerender=true) {
+  const taskId=vcPlanA[i]?.task_id;
+  if(!taskId)return;
+  const normalized=normalizeProductImages(images);
+  [vcPlanA,parsedTasks,prompts].forEach(collection=>{
+    collection.forEach(item=>{
+      if(item.task_id===taskId){
+        item.prodImgs=[...normalized];
+        item.prodImg=normalized[0]||null;
+        item.prodImgOverride=true;
+      }
+    });
+  });
+  if(rerender)renderVCPlan(vcPlanA);
+}
+function vcSetImg(i,type,d,rerender=true) {
+  if(type==='prod'){
+    vcSetProductImages(i,d?[d]:[],rerender);
+    return;
+  }
+  const taskId=vcPlanA[i]?.task_id;
+  if(!taskId)return;
+  const field='refImg';
+  const overrideField='refImgOverride';
+  vcPlanA.forEach(variant=>{if(variant.task_id===taskId){variant[field]=d;variant[overrideField]=true}});
+  parsedTasks.forEach(task=>{if(task.task_id===taskId){task[field]=d;task[overrideField]=true}});
+  prompts.forEach(prompt=>{if(prompt.task_id===taskId){prompt[field]=d;prompt[overrideField]=true}});
+  if(rerender)renderVCPlan(vcPlanA);
+}
+function vcClearImg(i, type) {
+  if(type==='prod')vcSetProductImages(i,[]);
+  else vcSetImg(i,type,null);
+}
+function vcRemoveProductImg(i,imageIndex) {
+  const current=resolveTaskMedia(vcPlanA[i],prodImgData,refImgData,document.getElementById('iAR')?.value||'task').productImages;
+  vcSetProductImages(i,current.filter((_,index)=>index!==imageIndex));
+}
+async function vcFileImg(inp, i, type) {
+  const images=await readImageFiles(inp.files);
+  inp.value='';
+  if(!images.length)return;
+  if(type==='prod'){
+    const current=resolveTaskMedia(vcPlanA[i],prodImgData,refImgData,document.getElementById('iAR')?.value||'task').productImages;
+    const combined=normalizeProductImages([...current,...images]);
+    if(current.length+images.length>MAX_PRODUCT_IMAGES)alert(`每个任务最多保留 ${MAX_PRODUCT_IMAGES} 张产品原图，超出的图片未加入。`);
+    vcSetProductImages(i,combined);
+  }else{
+    vcSetImg(i,type,images[0]);
+  }
+}
+async function vcDropImg(e, i, type) {
+  const images=await readImageFiles(e.dataTransfer.files);
+  if(!images.length)return;
+  if(type==='prod'){
+    const current=resolveTaskMedia(vcPlanA[i],prodImgData,refImgData,document.getElementById('iAR')?.value||'task').productImages;
+    const combined=normalizeProductImages([...current,...images]);
+    if(current.length+images.length>MAX_PRODUCT_IMAGES)alert(`每个任务最多保留 ${MAX_PRODUCT_IMAGES} 张产品原图，超出的图片未加入。`);
+    vcSetProductImages(i,combined);
+  }else{
+    vcSetImg(i,type,images[0]);
+  }
+}
+function applyImgToAll(e, startIndex, type) {
+  e.stopPropagation();
+  const sourceMedia=resolveTaskMedia(vcPlanA[startIndex],prodImgData,refImgData,document.getElementById('iAR')?.value||'task');
+  const sourceValue=type==='prod'?sourceMedia.productImages:sourceMedia.referenceImage;
+  if(type==='prod'?!sourceValue.length:!sourceValue) {
+    alert('当前任务没有上传图片，无法应用到下方。');
+    return;
+  }
+  const groups=groupTaskVariants(vcPlanA);
+  const sourceTaskId=vcPlanA[startIndex]?.task_id;
+  const sourceGroupIndex=groups.findIndex(group=>group.task.task_id===sourceTaskId);
+  let appliedCount=0;
+  groups.slice(sourceGroupIndex+1).forEach(group=>{
+    const targetIndex=group.variants[0]?.index;
+    if(targetIndex==null)return;
+    if(type==='prod')vcSetProductImages(targetIndex,[...sourceValue],false);
+    else vcSetImg(targetIndex,type,sourceValue,false);
+    appliedCount++;
+  });
+  renderVCPlan(vcPlanA);
+  alert(`成功将${type==='prod'?sourceValue.length+' 张产品图':'参考图'}应用到了下方的 ${appliedCount} 个任务中！`);
+}
+
 // ═══ HELPERS ═══
 function gModel(){const s=document.getElementById('iMkt2');return s.options[s.selectedIndex]?.dataset.m||'model'}
-function gMarket(){const r=document.getElementById('iMkt1'),s=document.getElementById('iMkt2');return r.options[r.selectedIndex].textContent.trim()+' '+s.options[s.selectedIndex].textContent.trim()}
-function gLang(){return LANG_MAP[document.getElementById('iLang').value]||'English'}
+function gMarket(){return "US"}
+function gLang(){return "English"}
 function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}
 
 // ═══ STEP 1→2: GENERATE CONCEPTS (AI or template) ═══
@@ -908,12 +1126,359 @@ let recStyles=[]; // AI recommended styles
 let activeStyle='';
 let productAppearance=''; // AI-recognized product appearance description
 
+async function fetchWithTimeout(url,options={},timeoutMs=120000){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    return await fetch(url,{...options,signal:controller.signal});
+  }catch(error){
+    if(error?.name==='AbortError')throw new Error(`AI 请求超过 ${Math.round(timeoutMs/1000)} 秒，请检查网络或稍后重试`);
+    throw error;
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
 // Step 0: Recognize product appearance from image (for color/material constraint only)
 async function recognizeProduct(){return ""} // Product images are now used directly; no lossy color classifier.
 
 // ═══ DUAL-PLAN VARIANT STATE ═══
 let vcPlanA = [], vcPlanB = [];
-let vcSelected = new Set(); // keys like "a-0", "b-3"
+let vcSelected = new Set(); // keys are candidate indexes as strings
+let vcSelectionAnchor = null;
+let vcTaskSelected = new Set(); // parsed task ids selected for plan generation
+let vcTaskSelectionAnchor = null; // parsed task position used by Shift selection
+let vcCollapsedModules = new Set();
+let vcRenderedModules = [];
+let parsedTasks = [];
+
+// === TASK VARIANT HELPERS START ===
+const MAX_PRODUCT_IMAGES=12;
+
+function normalizeProductImages(value,legacyValue){
+  const source=Array.isArray(value)
+    ?value
+    :(typeof value==='string'&&value?[value]:
+      (Array.isArray(legacyValue)?legacyValue:(typeof legacyValue==='string'&&legacyValue?[legacyValue]:[])));
+  const seen=new Set();
+  return source
+    .filter(item=>typeof item==='string'&&item.trim())
+    .map(item=>item.trim())
+    .filter(item=>{
+      if(seen.has(item))return false;
+      seen.add(item);
+      return true;
+    })
+    .slice(0,MAX_PRODUCT_IMAGES);
+}
+
+function normalizePerTaskCount(value){
+  return Math.min(16,Math.max(1,parseInt(value)||1));
+}
+
+function normalizeTaskVariants(tasks, perTaskCount, candidates){
+  const count=normalizePerTaskCount(perTaskCount);
+  const source=Array.isArray(candidates)?candidates:[];
+  const hasIndexedCandidates=source.some(v=>Number.isFinite(Number(v?.task_index)));
+  const result=[];
+
+  tasks.forEach((task,taskIndex)=>{
+    const taskId=task.task_id||`task-${taskIndex+1}`;
+    const displayTaskIndex=Number(task.display_task_index||task.task_index||taskIndex+1);
+    const taskProductImages=normalizeProductImages(task.prodImgs,task.prodImg);
+    for(let variantIndex=1;variantIndex<=count;variantIndex++){
+      let candidate=null;
+      if(hasIndexedCandidates){
+        candidate=source.find(v=>
+          Number(v?.task_index)===taskIndex+1 &&
+          Number(v?.variant_index||1)===variantIndex
+        )||null;
+      }else{
+        candidate=source[taskIndex*count+variantIndex-1]||null;
+      }
+      const candidateName=candidate?.name||
+        (count===1?task.name:`${task.name} · 候选${variantIndex}`);
+      const designPlan=candidate?.design_plan||candidate?.concept||task.design_plan||'设计方案未生成，请重新生成候选方案';
+      result.push({
+        ...task,
+        ...candidate,
+        task_id:taskId,
+        task_index:displayTaskIndex,
+        task_name:task.name||`任务 ${taskIndex+1}`,
+        group_name:task.group_name||candidate?.group_name||'',
+        task_concept:task.concept||'',
+        task_type_label:task.type_label||'',
+        variant_index:variantIndex,
+        variant_count:count,
+        is_placeholder:false,
+        name:candidateName,
+        icon:candidate?.icon||task.icon||'🎨',
+        type_label:candidate?.type_label||task.type_label||'',
+        concept:designPlan,
+        design_plan:designPlan,
+        prodImgs:[...taskProductImages],
+        prodImg:taskProductImages[0]||null,
+        refImg:task.refImg??null,
+        prodImgOverride:task.prodImgOverride??(
+          Object.prototype.hasOwnProperty.call(task,'prodImgs')||
+          Object.prototype.hasOwnProperty.call(task,'prodImg')
+        ),
+        refImgOverride:task.refImgOverride??Object.prototype.hasOwnProperty.call(task,'refImg'),
+        aspect_ratio:task.aspect_ratio||candidate?.aspect_ratio||''
+      });
+    }
+  });
+  return result;
+}
+
+function createTaskPreviewVariants(tasks){
+  return normalizeTaskVariants(tasks,1,[]).map(variant=>({
+    ...variant,
+    name:'待生成候选方案',
+    concept:'请点击上方【按任务生成候选方案】，生成后再勾选。',
+    design_plan:'请点击上方【按任务生成候选方案】，生成后再勾选。',
+    variant_count:0,
+    is_placeholder:true
+  }));
+}
+
+function groupTaskVariants(variants){
+  const groups=[];
+  const byId=new Map();
+  variants.forEach((variant,index)=>{
+    const taskId=variant.task_id||`task-${variant.task_index||index+1}`;
+    let group=byId.get(taskId);
+    if(!group){
+      group={
+        task:{
+          ...variant,
+          task_id:taskId,
+          task_name:variant.task_name||variant.name||'默认任务'
+        },
+        variants:[]
+      };
+      byId.set(taskId,group);
+      groups.push(group);
+    }
+    group.variants.push({index,v:variant});
+  });
+  return groups;
+}
+
+function deriveTaskGroupName(task){
+  const explicit=String(task?.group_name||'').trim();
+  if(explicit)return explicit;
+  const taskName=String(task?.task_name||task?.name||'').trim();
+  const legacyName=taskName.replace(/[0-9\s]+$/,'').trim();
+  return legacyName||'其他';
+}
+
+function groupTaskVariantModules(variants){
+  const modules=[];
+  const byName=new Map();
+  groupTaskVariants(variants).forEach(taskGroup=>{
+    const moduleName=deriveTaskGroupName(taskGroup.task);
+    let module=byName.get(moduleName);
+    if(!module){
+      module={
+        name:moduleName,
+        tasks:[],
+        actionableIndices:[],
+        variantCount:0
+      };
+      byName.set(moduleName,module);
+      modules.push(module);
+    }
+    module.tasks.push(taskGroup);
+    module.variantCount+=taskGroup.variants.length;
+    taskGroup.variants.forEach(item=>{
+      if(!item.v.is_placeholder)module.actionableIndices.push(item.index);
+    });
+  });
+  return modules;
+}
+
+function getModuleSelectionState(indices,selectedValues){
+  const selected=new Set(Array.from(selectedValues||[],value=>String(value)));
+  const actionable=Array.from(indices||[],value=>String(value));
+  const selectedCount=actionable.filter(index=>selected.has(index)).length;
+  const totalCount=actionable.length;
+  return {
+    state:selectedCount===0?'none':(selectedCount===totalCount?'all':'partial'),
+    selectedCount,
+    totalCount
+  };
+}
+
+function getSelectedVariantIndicesInOrder(variants,selectedValues){
+  const selected=new Set(Array.from(selectedValues||[],value=>String(value)));
+  const ordered=[];
+  (variants||[]).forEach((variant,index)=>{
+    if(!variant?.is_placeholder&&selected.has(String(index)))ordered.push(index);
+  });
+  return ordered;
+}
+
+function getSelectionStats(variants,selectedValues){
+  const ordered=getSelectedVariantIndicesInOrder(variants,selectedValues);
+  const taskIds=new Set();
+  ordered.forEach(index=>{
+    const variant=variants[index];
+    taskIds.add(String(variant?.task_id||`task-${variant?.task_index||index+1}`));
+  });
+  return {candidateCount:ordered.length,taskCount:taskIds.size};
+}
+
+function applyWindowsSelection(actionableIndices,selectedValues,currentIndex,anchorIndex,modifiers={}){
+  const order=Array.from(actionableIndices||[],value=>Number(value));
+  const current=Number(currentIndex);
+  const currentPosition=order.indexOf(current);
+  const selected=new Set(Array.from(selectedValues||[],value=>String(value)));
+  if(currentPosition<0){
+    return {
+      selected:order.filter(index=>selected.has(String(index))).map(String),
+      anchorIndex
+    };
+  }
+
+  let nextAnchor=anchorIndex;
+  if(modifiers.shiftKey){
+    const parsedAnchor=Number(anchorIndex);
+    const anchorPosition=order.indexOf(parsedAnchor);
+    const effectiveAnchorPosition=anchorPosition<0?currentPosition:anchorPosition;
+    const start=Math.min(effectiveAnchorPosition,currentPosition);
+    const end=Math.max(effectiveAnchorPosition,currentPosition);
+    order.slice(start,end+1).forEach(index=>selected.add(String(index)));
+    if(anchorPosition<0)nextAnchor=current;
+  }else{
+    const key=String(current);
+    if(selected.has(key))selected.delete(key);else selected.add(key);
+    nextAnchor=current;
+  }
+
+  return {
+    selected:order.filter(index=>selected.has(String(index))).map(String),
+    anchorIndex:nextAnchor
+  };
+}
+
+// Per-task business strategy is editable; schema is supplied by creative-core.js.
+
+function resolveAspectRatio(taskAspectRatio,aspectRatioMode){
+  const mode=aspectRatioMode==='auto'?'task':(aspectRatioMode||'task');
+  const taskRatio=normalizeImageAspectRatio(taskAspectRatio);
+  if(mode==='task')return taskRatio;
+  return normalizeImageAspectRatio(mode||taskRatio);
+}
+
+function resolveTaskMedia(task,globalProductImage,globalReferenceImage,aspectRatioMode){
+  const hasProduct=task!=null&&(
+    Object.prototype.hasOwnProperty.call(task,'prodImgs')||
+    Object.prototype.hasOwnProperty.call(task,'prodImg')
+  );
+  const hasReference=task!=null&&Object.prototype.hasOwnProperty.call(task,'refImg');
+  const useProductOverride=task?.prodImgOverride===true||(task?.prodImgOverride==null&&hasProduct);
+  const useReferenceOverride=task?.refImgOverride===true||(task?.refImgOverride==null&&hasReference);
+  const taskProductImages=normalizeProductImages(task?.prodImgs,task?.prodImg);
+  const globalProductImages=normalizeProductImages(globalProductImage);
+  const productImages=useProductOverride?taskProductImages:globalProductImages;
+  return {
+    productImages,
+    productImage:productImages[0]||null,
+    referenceImage:useReferenceOverride?task.refImg:(globalReferenceImage||null),
+    aspectRatio:resolveAspectRatio(task?.aspect_ratio,aspectRatioMode)
+  };
+}
+
+function normalizeChinesePromptResults(selectedVariants,parsedResults){
+  const parsed=Array.isArray(parsedResults)?parsedResults:[];
+  return selectedVariants.map((variant,index)=>({
+    id:index+1,
+    t:variant.name,
+    s:variant.type_label,
+    d:variant.concept,
+    i:variant.icon,
+    task_id:variant.task_id,
+    task_name:variant.task_name,
+    variant_index:variant.variant_index,
+    source_index:variant.idx??variant.source_index??null,
+    prodImgs:normalizeProductImages(variant.prodImgs,variant.prodImg),
+    prodImg:normalizeProductImages(variant.prodImgs,variant.prodImg)[0]||null,
+    refImg:variant.refImg,
+    aspect_ratio:variant.aspect_ratio,
+    zhFull:parsed[index]?.zh||parsed[index]?.prompt_zh||parsed[index]?.prompt||'',
+    prompt_status:(parsed[index]?.zh||parsed[index]?.prompt_zh||parsed[index]?.prompt||'').trim()?'ready':'pending',
+    prompt_error:''
+  }));
+}
+
+function escapeHtml(value){
+  return String(value??'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function escapeAttr(value){
+  return escapeHtml(value).replace(/`/g,'&#96;');
+}
+
+function resolveSavedPerTaskCount(settings){
+  if(!settings?.perTaskCount)return 1;
+  return normalizePerTaskCount(settings.perTaskCount);
+}
+
+const COMMON_IMAGE_ASPECT_RATIOS=['1:1','2:3','3:2','3:4','4:3','4:5','5:4','9:16','16:9','21:9'];
+
+function normalizeImageAspectRatio(value){
+  const normalized=String(value||'')
+    .trim()
+    .replace(/[：]/g,':')
+    .replace(/[×xX/]/g,':')
+    .replace(/\s/g,'');
+  if(COMMON_IMAGE_ASPECT_RATIOS.includes(normalized))return normalized;
+  const match=normalized.match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);
+  if(!match)return'1:1';
+  const width=Number(match[1]),height=Number(match[2]);
+  if(!(width>0&&height>0))return'1:1';
+  const target=width/height;
+  return COMMON_IMAGE_ASPECT_RATIOS.reduce((best,ratio)=>{
+    const [w,h]=ratio.split(':').map(Number);
+    const [bestW,bestH]=best.split(':').map(Number);
+    return Math.abs(Math.log(target/(w/h)))<Math.abs(Math.log(target/(bestW/bestH)))?ratio:best;
+  },'1:1');
+}
+
+function normalizeMiniAspectRatio(value){
+  return normalizeImageAspectRatio(value);
+}
+
+function normalizeImageModel(model){
+  const aliases={
+    'gemini-3.1-flash-image-preview':'gemini-3.1-flash-image',
+    'gemini-3-pro-image-preview':'gemini-3-pro-image'
+  };
+  const value=String(model||'gemini-3.1-flash-lite-image');
+  return aliases[value]||value;
+}
+
+function buildImageGenerateContentUrl(model,apiKey){
+  return `https://generativelanguage.googleapis.com/v1/models/${normalizeImageModel(model)}:generateContent?key=${encodeURIComponent(apiKey||'')}`;
+}
+
+function buildMiniImageGenerationConfig(model,aspectRatio){
+  const imageConfig={aspectRatio:normalizeImageAspectRatio(aspectRatio)};
+  if(/^gemini-3(?:\.1)?-|^gemini-3-pro-image/.test(normalizeImageModel(model)))imageConfig.imageSize='1K';
+  return {
+    responseModalities:['IMAGE'],
+    imageConfig
+  };
+}
+
+// Result editing rules are editable in advanced settings.
+// === TASK VARIANT HELPERS END ===
 
 // ═══ STEP 1→2: GENERATE DUAL PLANS ═══
 async function genConcepts(overrideStyle){return window.PhotoCreativePage.genConcepts(overrideStyle)}
@@ -922,73 +1487,340 @@ async function genConcepts(overrideStyle){return window.PhotoCreativePage.genCon
 
 // Text requests are compiled by creative-core.js.
 
-// ═══ STEP 2: RENDER VARIANT PANELS ═══
-function renderVCPlan(plan,variants){
+// ═══ STEP 2: RENDER MODULE GROUPS WITH ONE ROW PER PARSED TASK ═══
+function renderVCPlan(variants){
   const stateEl=document.getElementById('planAState')||null;
-  const stId=plan==='a'?'planAState':'planBState';
-  const lstId=plan==='a'?'planAList':'planBList';
-  document.getElementById(stId).classList.add('hid');
-  const lst=document.getElementById(lstId);
-  lst.innerHTML=variants.map((v,i)=>renderVCCard(plan,i,v)).join('');
+  if(stateEl) stateEl.classList.add('hid');
+  const lst=document.getElementById('planAList');
+  vcRenderedModules=groupTaskVariantModules(variants);
+  lst.innerHTML=vcRenderedModules.map((module,index)=>renderVCModule(module,index)).join('');
   lst.classList.remove('hid');
-}
-
-function renderVCCard(plan,i,v){
-  const key=plan+'-'+i;
-  const isSel=vcSelected.has(key);
-  const selCls=isSel?(plan==='a'?'sel-a':'sel-b'):'';
-  return `<div class="vc ${selCls}" id="vc-${key}" onclick="vcToggle('${key}')">
-    <div class="vc-chk">${isSel?'✓':''}</div>
-    <div class="vc-row1">
-      <span class="vc-ico">${window.PhotoCreative.escapeHtml(v.icon||'🎨')}</span>
-      <span class="vc-name">${window.PhotoCreative.escapeHtml(v.name)}</span>
-      <span class="vc-typetag">${window.PhotoCreative.escapeHtml(v.type_label||'')}</span>
-    </div>
-    <div class="vc-concept">${window.PhotoCreative.escapeHtml(v.concept)}</div>
-  </div>`;
-}
-
-
-function vcToggle(key){
-  if(vcSelected.has(key))vcSelected.delete(key);else vcSelected.add(key);
-  const [plan,i]=key.split('-');
-  const variants=plan==='a'?vcPlanA:vcPlanB;
-  const el=document.getElementById('vc-'+key);
-  if(el)el.outerHTML=renderVCCard(plan,parseInt(i),variants[parseInt(i)]);
   vcUpdateSelBar();
 }
 
-function vcSelectAll(){
-  vcPlanA.forEach((_,i)=>vcSelected.add('a-'+i));
-  vcPlanB.forEach((_,i)=>vcSelected.add('b-'+i));
-  vcReRender();vcUpdateSelBar();
+function renderVCModule(module,moduleIndex){
+  const selection=getModuleSelectionState(module.actionableIndices,vcSelected);
+  const collapsed=vcCollapsedModules.has(module.name);
+  const stateIcon=selection.state==='all'?'✓':(selection.state==='partial'?'−':'');
+  const actionText=selection.state==='all'?'取消整组':(selection.state==='partial'?'补选整组':'选择整组');
+  const candidateText=selection.totalCount
+    ?`${selection.totalCount} 个候选，已选 ${selection.selectedCount}`
+    :'候选待生成';
+  return `<section class="vc-module" data-module-name="${escapeAttr(module.name)}">
+    <div class="vc-module-head" onclick="toggleModuleBody(event,${moduleIndex})">
+      <div class="vc-module-title">
+        <span class="vc-module-arrow">${collapsed?'▶':'▼'}</span>
+        <span>📂</span>
+        <span class="vc-module-name">${escapeHtml(module.name)}</span>
+        <span class="vc-module-meta">${module.tasks.length} 个任务 · ${candidateText}</span>
+      </div>
+      <button type="button" class="vc-module-select" role="checkbox" aria-checked="${selection.state==='partial'?'mixed':String(selection.state==='all')}" data-state="${selection.state}" onclick="event.stopPropagation();toggleModuleSelection(event,${moduleIndex})" ${selection.totalCount?'':'disabled'}>
+        <span class="vc-module-check">${stateIcon}</span>
+        ${actionText}
+      </button>
+    </div>
+    <div class="vc-module-body ${collapsed?'hid':''}">
+      ${module.tasks.map(taskGroup=>renderVCTaskRow(taskGroup,Math.max(0,Number(taskGroup.task.task_index||1)-1))).join('')}
+    </div>
+  </section>`;
 }
-function vcSelectNone(){vcSelected.clear();vcReRender();vcUpdateSelBar();}
+
+function renderVCTaskRow(group,taskIndex){
+  const task=group.task;
+  const items=group.variants;
+  const firstIndex=items[0]?.index??0;
+  const actionableItems=items.filter(it=>!it.v.is_placeholder);
+  const allSelected=actionableItems.length>0&&actionableItems.every(it=>vcSelected.has(it.index.toString()));
+  const chkText=actionableItems.length===0?'等待生成':(allSelected?'取消本任务':'选择本任务');
+  const indices=JSON.stringify(actionableItems.map(it=>it.index));
+  const ratioMode=document.getElementById('iAR')?.value||'task';
+  const media=resolveTaskMedia(task,prodImgData,refImgData,ratioMode);
+  const ratio=ratioMode==='task'?`任务比例 ${media.aspectRatio}`:`强制比例 ${media.aspectRatio}`;
+  const countText=actionableItems.length?`${actionableItems.length} 个候选`:'候选待生成';
+
+  return `<div class="vc-task-row" data-task-id="${escapeAttr(task.task_id)}">
+    <div class="vc-task-main">
+      <div class="vc-task-heading">
+        <div class="vc-task-num">${taskIndex+1}</div>
+        <div style="flex:1;min-width:0">
+          <div class="vc-task-title">${escapeHtml(task.task_name)}</div>
+          <div class="vc-task-meta">
+            <span class="vc-typetag" style="margin-left:0">${escapeHtml(task.task_type_label||task.type_label||'作图任务')}</span>
+            <span>${escapeHtml(ratio)}</span>
+            <span>·</span>
+            <span>${countText}</span>
+          </div>
+        </div>
+        <button class="btn btn-sm" ${actionableItems.length?'':'disabled'} onclick="event.stopPropagation();toggleTaskSelection(event,${indices})">${chkText}</button>
+      </div>
+      <div class="vc-task-desc"><b>原始任务（仅用于核对）：</b>${escapeHtml(task.task_concept||'').replace(/\n/g,'<br>')}</div>
+      <div class="vc-options">
+        <div class="vc-option-label"><span>AI 中文设计方案（可编辑）</span><span>点击卡片勾选；文字可直接修改</span></div>
+        ${items.map(it=>renderVCCard(it.index,it.v)).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderVCCard(i,v){
+  const key=i.toString();
+  if(v.is_placeholder){
+    return `<div class="vc placeholder" id="vc-${key}" style="margin:0">
+      <div class="vc-row1">
+        <span class="vc-ico">⏳</span>
+        <span class="vc-name">${escapeHtml(v.name)}</span>
+      </div>
+      <div class="vc-concept">${escapeHtml(v.concept).replace(/\n/g,'<br>')}</div>
+    </div>`;
+  }
+  const isSel=vcSelected.has(key);
+  const selCls=isSel?'sel-a':'';
+  return `<div class="vc ${selCls}" id="vc-${key}" data-vc-index="${key}" onclick="vcToggle(event,'${key}')" style="margin:0">
+    <div class="vc-chk">${isSel?'✓':''}</div>
+    <div class="vc-row1">
+      <span class="vc-ico">${escapeHtml(v.icon||'🎨')}</span>
+      <span class="vc-name">${escapeHtml(v.name)}</span>
+      <span class="vc-typetag">${escapeHtml(v.type_label||'')}</span>
+    </div>
+    <textarea class="vc-plan-edit" aria-label="中文设计方案" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()" oninput="updateVariantPlan(${i},this.value)">${escapeHtml(v.concept)}</textarea>
+  </div>`;
+}
+
+function updateVariantPlan(index,value){
+  if(!vcPlanA[index])return;
+  vcPlanA[index].concept=value;
+  vcPlanA[index].design_plan=value;
+}
+
+function toggleModuleBody(event,moduleIndex){
+  event?.stopPropagation();
+  const module=vcRenderedModules[moduleIndex];
+  if(!module)return;
+  if(vcCollapsedModules.has(module.name))vcCollapsedModules.delete(module.name);
+  else vcCollapsedModules.add(module.name);
+  renderVCPlan(vcPlanA);
+}
+
+function toggleModuleSelection(event,moduleIndex){
+  event?.stopPropagation();
+  const module=vcRenderedModules[moduleIndex];
+  if(!module?.actionableIndices.length)return;
+  const selection=getModuleSelectionState(module.actionableIndices,vcSelected);
+  module.actionableIndices.forEach(index=>{
+    if(selection.state==='all')vcSelected.delete(String(index));
+    else vcSelected.add(String(index));
+  });
+  renderVCPlan(vcPlanA);
+}
+
+function toggleTaskSelection(event,indices) {
+  event?.stopPropagation();
+  if(!indices.length)return;
+  const allSel = indices.every(i => vcSelected.has(i.toString()));
+  indices.forEach(i => {
+    if(allSel) vcSelected.delete(i.toString());
+    else vcSelected.add(i.toString());
+  });
+  renderVCPlan(vcPlanA);
+}
+
+function vcToggle(event,key){
+  const index=parseInt(key);
+  if(vcPlanA[index]?.is_placeholder)return;
+  const actionableIndices=vcPlanA.flatMap((variant,i)=>variant.is_placeholder?[]:[i]);
+  const result=applyWindowsSelection(
+    actionableIndices,
+    vcSelected,
+    index,
+    vcSelectionAnchor,
+    {shiftKey:!!event?.shiftKey}
+  );
+  vcSelected=new Set(result.selected);
+  vcSelectionAnchor=result.anchorIndex;
+  renderVCPlan(vcPlanA);
+}
+
+function vcSelectAll(){
+  vcPlanA.forEach((variant,i)=>{if(!variant.is_placeholder)vcSelected.add(i.toString())});
+  renderVCPlan(vcPlanA);
+}
+function vcSelectNone(){vcSelected.clear();renderVCPlan(vcPlanA);}
 function vcReRender(){
-  vcPlanA.forEach((v,i)=>{const el=document.getElementById('vc-a-'+i);if(el)el.outerHTML=renderVCCard('a',i,v)});
-  vcPlanB.forEach((v,i)=>{const el=document.getElementById('vc-b-'+i);if(el)el.outerHTML=renderVCCard('b',i,v)});
+  renderVCPlan(vcPlanA);
 }
 function vcUpdateSelBar(){
-  const bar=document.getElementById('vcSelBar');
-  bar.classList.toggle('hid',vcSelected.size===0);
-  document.getElementById('vcSelCount').textContent=vcSelected.size;
-  document.getElementById('tpBtn').disabled=vcSelected.size===0;
-  if(vcSelected.size>0)document.getElementById('tpBtn').textContent=`✅ 确认选中 ${vcSelected.size} 个变体，进入提示词编辑`;
-  else document.getElementById('tpBtn').textContent='✅ 确认选中变体，进入提示词编辑';
+  const actionable=new Set(vcPlanA.flatMap((variant,index)=>variant.is_placeholder?[]:[String(index)]));
+  vcSelected.forEach(key=>{if(!actionable.has(String(key)))vcSelected.delete(String(key))});
+  const stats=getSelectionStats(vcPlanA,vcSelected);
+  document.querySelectorAll('[data-vc-selected-count]').forEach(el=>{el.textContent=stats.candidateCount});
+  document.querySelectorAll('[data-vc-task-count]').forEach(el=>{el.textContent=stats.taskCount});
+  document.getElementById('tpBtn').disabled=stats.candidateCount===0;
+  if(stats.candidateCount>0)document.getElementById('tpBtn').textContent=`✅ 确认选中 ${stats.candidateCount} 个候选，配置图片与提示词`;
+  else document.getElementById('tpBtn').textContent='✅ 确认选中候选，配置图片与提示词';
 }
 
 // ═══ STEP 2→3: GENERATE PROMPTS FROM SELECTED VARIANTS ═══
-async function genPromptsFromVC(){return window.PhotoCreativePage.genPrompts()}
+async function genPromptsFromVC(){
+  try{window.PhotoCreativePage.requireScheme()}catch(error){alert(error.message);return}
+  const selectedIndices=getSelectedVariantIndicesInOrder(vcPlanA,vcSelected);
+  if(selectedIndices.length===0){document.getElementById('vW2').classList.remove('hid');document.getElementById('vM2').textContent='请先选择至少一个候选方案';return}
+  document.getElementById('vW2').classList.add('hid');
+  clearStep4();
+  const btn=document.getElementById('tpBtn');btn.disabled=true;btn.textContent='⏳ 正在准备第三步...';
+  const arMode=document.getElementById('iAR').value;
+
+  // Collect selected variants in current page order (user may have edited them)
+  const selVariants=[];
+  for(const i of selectedIndices){
+    const key=String(i);
+    const v=vcPlanA[i];
+    if(!v)continue;
+    selVariants.push({
+      key,idx:i,
+      icon:v.icon||'🎨',name:v.name,type_label:v.type_label||'',
+      concept:v.concept,
+      task_id:v.task_id,
+      task_name:v.task_name,
+      variant_index:v.variant_index,
+      prodImgs:normalizeProductImages(v.prodImgs,v.prodImg),
+      prodImg:normalizeProductImages(v.prodImgs,v.prodImg)[0]||null,
+      refImg:v.refImg||null,
+      aspect_ratio:v.aspect_ratio||'',
+      effective_aspect_ratio:resolveAspectRatio(v.aspect_ratio,arMode)
+    });
+  }
+
+  const nextSlots=selVariants.map((v,i)=>({id:i+1,t:v.name,s:v.type_label,d:v.concept,i:v.icon}));
+  prompts=normalizeChinesePromptResults(selVariants,[]);
+  window.PhotoCreativePage.bindFbaPreparation();
+  SLOTS=nextSlots;
+  images=prompts.map(()=>({status:'pending',url:null,error:null}));
+  renderPrompts();ckApi();btn.disabled=false;btn.textContent=`✅ 确认选中 ${selectedIndices.length} 个候选，配置图片与提示词`;
+  scrollToBlock('step3');
+}
 
 // ── keep genPrompts as alias for autoMode ──
-async function genPrompts(){return window.PhotoCreativePage.genPrompts()}
+async function genPrompts(){return genPromptsFromVC()}
+
+// Task selection is intentionally separate from candidate selection.
+function vcIsPlanningMode(){return parsedTasks.length>0&&vcPlanA.length>0&&vcPlanA.every(variant=>variant.is_placeholder)}
+function vcTaskIdsForModule(module){return(module?.tasks||[]).map((group,index)=>String(group.task.task_id||`task-${group.task.task_index||index+1}`))}
+function vcTaskSelectionState(ids){
+  const list=Array.from(ids||[],id=>String(id));
+  const selectedCount=list.filter(id=>vcTaskSelected.has(id)).length;
+  return{state:selectedCount===0?'none':(selectedCount===list.length?'all':'partial'),selectedCount,totalCount:list.length};
+}
+function vcParsedTaskPosition(taskId){return parsedTasks.findIndex(task=>String(task.task_id)===String(taskId))}
+
+function renderVCPlan(variants){
+  const stateEl=document.getElementById('planAState');
+  if(stateEl)stateEl.classList.add('hid');
+  const list=document.getElementById('planAList');
+  if(!list)return;
+  vcRenderedModules=groupTaskVariantModules(variants);
+  list.innerHTML=vcRenderedModules.map((module,index)=>renderVCModule(module,index)).join('');
+  list.classList.remove('hid');
+  vcUpdateSelBar();
+}
+
+function renderVCModule(module,moduleIndex){
+  const planning=vcIsPlanningMode();
+  const taskIds=vcTaskIdsForModule(module);
+  const selection=planning?vcTaskSelectionState(taskIds):getModuleSelectionState(module.actionableIndices,vcSelected);
+  const collapsed=vcCollapsedModules.has(module.name);
+  const stateIcon=selection.state==='all'?'✓':(selection.state==='partial'?'−':'');
+  const actionText=selection.state==='all'?'取消整组':(selection.state==='partial'?'补选整组':'选择整组');
+  const summary=planning?`${selection.totalCount} 个解析任务，已选 ${selection.selectedCount}`:(selection.totalCount?`${selection.totalCount} 个候选，已选 ${selection.selectedCount}`:'候选待生成');
+  return `<section class="vc-module" data-module-name="${escapeAttr(module.name)}">
+    <div class="vc-module-head" onclick="toggleModuleBody(event,${moduleIndex})">
+      <div class="vc-module-title"><span class="vc-module-arrow">${collapsed?'▸':'▾'}</span><span>📁</span><span class="vc-module-name">${escapeHtml(module.name)}</span><span class="vc-module-meta">${module.tasks.length} 个任务 · ${summary}</span></div>
+      <button type="button" class="vc-module-select" role="checkbox" aria-checked="${selection.state==='partial'?'mixed':String(selection.state==='all')}" data-state="${selection.state}" onclick="event.stopPropagation();toggleModuleSelection(event,${moduleIndex})" ${selection.totalCount?'':'disabled'}><span class="vc-module-check">${stateIcon}</span>${actionText}</button>
+    </div>
+    <div class="vc-module-body ${collapsed?'hid':''}">${module.tasks.map(group=>{const pos=vcParsedTaskPosition(group.task.task_id);return renderVCTaskRow(group,pos>=0?pos:Number(group.task.task_index||1)-1)}).join('')}</div>
+  </section>`;
+}
+
+function renderVCTaskRow(group,taskIndex){
+  const task=group.task,items=group.variants,planning=vcIsPlanningMode();
+  const taskId=String(task.task_id||`task-${taskIndex+1}`);
+  if(planning){
+    const selected=vcTaskSelected.has(taskId);
+    return `<div class="vc-task-row ${selected?'task-preselected':''}" data-task-id="${escapeAttr(taskId)}" onclick="toggleParsedTaskSelection(event,'${escapeAttr(taskId)}',${taskIndex})">
+      <div class="vc-task-main"><div class="vc-task-heading"><div class="vc-task-num">${taskIndex+1}</div><div style="flex:1;min-width:0"><div class="vc-task-title">${escapeHtml(task.task_name)}</div><div class="vc-task-meta"><span class="vc-typetag" style="margin-left:0">${escapeHtml(task.task_type_label||task.type_label||'作图任务')}</span><span>任务比例 ${escapeHtml(resolveAspectRatio(task.aspect_ratio,'task'))}</span><span>·</span><span>${selected?'已选，待生成设计方案':'未选'}</span></div></div><button class="btn btn-sm" onclick="event.stopPropagation();toggleParsedTaskSelection(event,'${escapeAttr(taskId)}',${taskIndex})">${selected?'取消本任务':'选择本任务'}</button></div>
+      <div class="vc-task-desc"><b>原始任务（仅用于核对）：</b>${escapeHtml(task.task_concept||'').replace(/\n/g,'<br>')}</div>
+      <div class="vc-options"><div class="vc-option-label"><span>本任务将参与第二步设计方案生成</span><span>方案生成后，在这里再选择具体候选方案</span></div>${items.map(item=>renderVCCard(item.index,item.v)).join('')}</div></div>
+    </div>`;
+  }
+  const actionable=items.filter(item=>!item.v.is_placeholder);
+  const allSelected=actionable.length>0&&actionable.every(item=>vcSelected.has(String(item.index)));
+  const indices=JSON.stringify(actionable.map(item=>item.index));
+  const ratioMode=document.getElementById('iAR')?.value||'task';
+  const media=resolveTaskMedia(task,prodImgData,refImgData,ratioMode);
+  const ratio=ratioMode==='task'?`任务比例 ${media.aspectRatio}`:`强制比例 ${media.aspectRatio}`;
+  return `<div class="vc-task-row" data-task-id="${escapeAttr(taskId)}"><div class="vc-task-main"><div class="vc-task-heading"><div class="vc-task-num">${taskIndex+1}</div><div style="flex:1;min-width:0"><div class="vc-task-title">${escapeHtml(task.task_name)}</div><div class="vc-task-meta"><span class="vc-typetag" style="margin-left:0">${escapeHtml(task.task_type_label||task.type_label||'作图任务')}</span><span>${escapeHtml(ratio)}</span><span>·</span><span>${actionable.length?`${actionable.length} 个候选`:'候选待生成'}</span></div></div><button class="btn btn-sm" ${actionable.length?'':'disabled'} onclick="event.stopPropagation();toggleTaskSelection(event,${indices})">${actionable.length?(allSelected?'取消本任务':'选择本任务'):'等待生成'}</button></div><div class="vc-task-desc"><b>原始任务（仅用于核对）：</b>${escapeHtml(task.task_concept||'').replace(/\n/g,'<br>')}</div><div class="vc-options"><div class="vc-option-label"><span>AI 中文设计方案（可编辑）</span><span>点击卡片勾选；文字可直接修改</span></div>${items.map(item=>renderVCCard(item.index,item.v)).join('')}</div></div></div>`;
+}
+
+function toggleParsedTaskSelection(event,taskId,taskIndex){
+  event?.stopPropagation();
+  const order=parsedTasks.map((_,index)=>index);
+  const selected=order.filter(index=>vcTaskSelected.has(String(parsedTasks[index].task_id)));
+  const result=applyWindowsSelection(order,selected,taskIndex,vcTaskSelectionAnchor,{shiftKey:!!event?.shiftKey});
+  vcTaskSelected=new Set(result.selected.map(index=>String(parsedTasks[index].task_id)));
+  vcTaskSelectionAnchor=result.anchorIndex;
+  renderVCPlan(vcPlanA);
+}
+function toggleModuleSelection(event,moduleIndex){
+  event?.stopPropagation();const module=vcRenderedModules[moduleIndex];if(!module)return;
+  if(vcIsPlanningMode()){
+    const ids=vcTaskIdsForModule(module),state=vcTaskSelectionState(ids);
+    ids.forEach(id=>state.state==='all'?vcTaskSelected.delete(id):vcTaskSelected.add(id));vcTaskSelectionAnchor=null;
+  }else{
+    if(!module.actionableIndices.length)return;const state=getModuleSelectionState(module.actionableIndices,vcSelected);
+    module.actionableIndices.forEach(index=>state.state==='all'?vcSelected.delete(String(index)):vcSelected.add(String(index)));
+  }
+  renderVCPlan(vcPlanA);
+}
+function toggleTaskSelection(event,indices){
+  event?.stopPropagation();if(vcIsPlanningMode()||!indices.length)return;
+  const all=indices.every(index=>vcSelected.has(String(index)));indices.forEach(index=>all?vcSelected.delete(String(index)):vcSelected.add(String(index)));renderVCPlan(vcPlanA);
+}
+function vcSelectAll(){
+  if(vcIsPlanningMode()){vcTaskSelected=new Set(parsedTasks.map(task=>String(task.task_id)));vcTaskSelectionAnchor=null;}
+  else vcPlanA.forEach((variant,index)=>{if(!variant.is_placeholder)vcSelected.add(String(index))});
+  renderVCPlan(vcPlanA);
+}
+function vcSelectNone(){
+  if(vcIsPlanningMode()){vcTaskSelected.clear();vcTaskSelectionAnchor=null;}else vcSelected.clear();
+  renderVCPlan(vcPlanA);
+}
+function vcUpdateSelBar(){
+  if(vcIsPlanningMode()){
+    const valid=new Set(parsedTasks.map(task=>String(task.task_id)));vcTaskSelected.forEach(id=>{if(!valid.has(String(id)))vcTaskSelected.delete(id)});
+    const selectedCount=Array.from(vcTaskSelected).filter(id=>valid.has(String(id))).length;
+    document.querySelectorAll('#vcSelBarTop>span,#vcSelBarBottom>span').forEach(el=>el.textContent=`已选 ${selectedCount} 个任务，当前只为这些任务生成方案`);
+    document.querySelectorAll('[data-vc-selected-count]').forEach(el=>el.textContent=String(selectedCount));document.querySelectorAll('[data-vc-task-count]').forEach(el=>el.textContent=String(selectedCount));
+    const tp=document.getElementById('tpBtn');if(tp){tp.disabled=true;tp.textContent='候选方案生成后，再确认候选进入第三步';}
+    const gen=document.getElementById('genConBtn');if(gen){gen.disabled=selectedCount===0;gen.textContent=selectedCount?`✨ 为已选 ${selectedCount} 个任务生成设计方案`:'请先选择要生成方案的任务';}
+    const hint=document.getElementById('vcSelectionHint');if(hint)hint.textContent='第二步先选择要生成方案的任务：普通点击切换单个任务，Shift+点击选择连续任务，也可以按模块整组选择。';
+    return;
+  }
+  const actionable=new Set(vcPlanA.flatMap((variant,index)=>variant.is_placeholder?[]:[String(index)]));vcSelected.forEach(key=>{if(!actionable.has(String(key)))vcSelected.delete(String(key))});
+  const stats=getSelectionStats(vcPlanA,vcSelected);document.querySelectorAll('[data-vc-selected-count]').forEach(el=>el.textContent=String(stats.candidateCount));document.querySelectorAll('[data-vc-task-count]').forEach(el=>el.textContent=String(stats.taskCount));document.querySelectorAll('#vcSelBarTop>span,#vcSelBarBottom>span').forEach(el=>el.textContent=`已选 ${stats.candidateCount} 个候选，覆盖 ${stats.taskCount} 个任务`);
+  const tp=document.getElementById('tpBtn');if(tp){tp.disabled=stats.candidateCount===0;tp.textContent=stats.candidateCount?`✅ 确认 ${stats.candidateCount} 个候选，进入第三步`:'确认候选后进入第三步';}
+  const hint=document.getElementById('vcSelectionHint');if(hint)hint.textContent='设计方案已生成：普通点击切换候选，Shift+点击选择连续候选，也可以按模块整组选择。确认后进入第三步上传图片并生成提示词。';
+}
+
 function okAll(){vcSelectAll()}
 function saveConcepts(){}
 
 // ═══ CLEAR DOWNSTREAM STEPS ═══
 function clearStep3(){
-  prompts=[];promptLangs=[];
-  document.getElementById('pC').innerHTML='<div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">请先完成第②步，确认设计理念后生成提示词</div>';
+  prompts=[];
+  document.getElementById('pC').innerHTML='<div style="color:var(--t3);text-align:center;padding:40px;font-size:13px">请先完成第②步，确认中文设计方案后生成提示词</div>';
+  const batchCount=document.getElementById('currentBatchCount');
+  if(batchCount)batchCount.textContent='0';
+  const promptBtn=document.getElementById('genPromptBtn');
+  if(promptBtn){promptBtn.disabled=true;promptBtn.textContent='✨ 图片配置完成，生成/更新提示词'}
   document.getElementById('gBtn').disabled=true;
 }
 function clearStep4(){
@@ -997,24 +1829,245 @@ function clearStep4(){
 }
 
 // ═══ STEP 3: PROMPT CARDS ═══
-function renderPrompts(){
-  promptLangs=prompts.map(()=>'en');
-  document.getElementById('pC').innerHTML=prompts.map((p,i)=>`<div class="pc" id="pc${i}"><div class="pc-h"><div class="pc-ico">${window.PhotoCreative.escapeHtml(p.i)}</div><div style="flex:1"><div class="pc-t">变体${p.id}：${window.PhotoCreative.escapeHtml(p.t)}</div><div class="pc-s">${window.PhotoCreative.escapeHtml(p.s)}·${window.PhotoCreative.escapeHtml(p.d)}</div></div><div class="pc-lang-toggle"><button class="pc-lang-btn active" id="lbE${i}" onclick="setPromptLang(${i},'en')">🇺🇸 英文</button><button class="pc-lang-btn" id="lbZ${i}" onclick="setPromptLang(${i},'zh')">🇨🇳 中文</button></div></div><div class="pc-b"><div class="pc-sec" id="psE${i}"><div class="pc-ll"><span style="color:var(--blue)">英文提示词</span><button class="btn-cp" onclick="cpOne('en',${i})" id="cpE${i}">📋</button></div><textarea class="pc-edit" id="enP${i}" rows="5" onfocus="setPromptLang(${i},'en')">${window.PhotoCreative.escapeHtml(p.enFull)}</textarea></div><div class="pc-sec inactive" id="psZ${i}"><div class="pc-ll"><span style="color:var(--pink)">中文提示词</span><button class="btn-cp" onclick="cpOne('zh',${i})" id="cpZ${i}">📋</button></div><textarea class="pc-edit" id="zhP${i}" rows="5" onfocus="setPromptLang(${i},'zh')">${window.PhotoCreative.escapeHtml(p.zhFull)}</textarea></div></div></div>`).join('');
+function syncPromptEdits(){
+  prompts.forEach((prompt,index)=>{
+    const textarea=document.getElementById('zhP'+index);
+    if(textarea)prompt.zhFull=textarea.value;
+  });
 }
-function setPromptLang(i,lang){promptLangs[i]=lang;document.getElementById('lbE'+i).classList.toggle('active',lang==='en');document.getElementById('lbZ'+i).classList.toggle('active',lang==='zh');document.getElementById('psE'+i).classList.toggle('inactive',lang!=='en');document.getElementById('psZ'+i).classList.toggle('inactive',lang!=='zh');const allEn=promptLangs.every(l=>l==='en'),allZh=promptLangs.every(l=>l==='zh');document.getElementById('glbE').classList.toggle('active',allEn);document.getElementById('glbZ').classList.toggle('active',allZh)}
-function setAllLang(lang){prompts.forEach((_,i)=>setPromptLang(i,lang))}
-function getActivePrompt(i){return promptLangs[i]==='zh'?document.getElementById('zhP'+i).value:document.getElementById('enP'+i).value}
-function cpOne(t,i){const el=document.getElementById(t==='en'?'enP'+i:'zhP'+i);navigator.clipboard.writeText(el.value);const b=document.getElementById(t==='en'?'cpE'+i:'cpZ'+i);b.textContent='✓';b.classList.add('ok');setTimeout(()=>{b.textContent='📋';b.classList.remove('ok')},1500)}
+
+function promptSourceIndex(prompt){
+  const saved=Number(prompt?.source_index);
+  if(Number.isInteger(saved)&&saved>=0&&vcPlanA[saved])return saved;
+  return vcPlanA.findIndex(item=>
+    item.task_id===prompt?.task_id&&
+    Number(item.variant_index||1)===Number(prompt?.variant_index||1)
+  );
+}
+
+function markPromptTaskStale(taskId){
+  prompts.forEach(prompt=>{
+    if(prompt.task_id===taskId){
+      prompt.prompt_status='pending';
+      prompt.prompt_error='';
+    }
+  });
+}
+
+function refreshPromptsAfterMediaChange(taskId){
+  markPromptTaskStale(taskId);
+  images=prompts.map(()=>({status:'pending',url:null,error:null}));
+  renderPrompts();
+  updatePromptReadyState();
+}
+
+async function promptFileImg(input,promptIndex,type){
+  syncPromptEdits();
+  const selected=await readImageFiles(input.files);
+  input.value='';
+  if(!selected.length)return;
+  const prompt=prompts[promptIndex];
+  const sourceIndex=promptSourceIndex(prompt);
+  if(sourceIndex<0)return;
+  if(type==='prod'){
+    const current=normalizeProductImages(prompt.prodImgs,prompt.prodImg);
+    const combined=normalizeProductImages([...current,...selected]);
+    if(current.length+selected.length>MAX_PRODUCT_IMAGES)alert(`每项最多保留 ${MAX_PRODUCT_IMAGES} 张产品资料图，超出的图片未加入。`);
+    vcSetProductImages(sourceIndex,combined,false);
+  }else{
+    vcSetImg(sourceIndex,'ref',selected[0],false);
+  }
+  refreshPromptsAfterMediaChange(prompt.task_id);
+}
+
+async function promptDropImg(event,promptIndex,type){
+  syncPromptEdits();
+  const selected=await readImageFiles(event.dataTransfer.files);
+  if(!selected.length)return;
+  const prompt=prompts[promptIndex];
+  const sourceIndex=promptSourceIndex(prompt);
+  if(sourceIndex<0)return;
+  if(type==='prod'){
+    const current=normalizeProductImages(prompt.prodImgs,prompt.prodImg);
+    const combined=normalizeProductImages([...current,...selected]);
+    if(current.length+selected.length>MAX_PRODUCT_IMAGES)alert(`每项最多保留 ${MAX_PRODUCT_IMAGES} 张产品资料图，超出的图片未加入。`);
+    vcSetProductImages(sourceIndex,combined,false);
+  }else{
+    vcSetImg(sourceIndex,'ref',selected[0],false);
+  }
+  refreshPromptsAfterMediaChange(prompt.task_id);
+}
+
+function promptRemoveProductImg(promptIndex,imageIndex){
+  syncPromptEdits();
+  const prompt=prompts[promptIndex];
+  const sourceIndex=promptSourceIndex(prompt);
+  if(sourceIndex<0)return;
+  const current=normalizeProductImages(prompt.prodImgs,prompt.prodImg);
+  vcSetProductImages(sourceIndex,current.filter((_,index)=>index!==imageIndex),false);
+  refreshPromptsAfterMediaChange(prompt.task_id);
+}
+
+function promptClearImg(promptIndex,type){
+  syncPromptEdits();
+  const prompt=prompts[promptIndex];
+  const sourceIndex=promptSourceIndex(prompt);
+  if(sourceIndex<0)return;
+  if(type==='prod')vcSetProductImages(sourceIndex,[],false);
+  else vcSetImg(sourceIndex,'ref',null,false);
+  refreshPromptsAfterMediaChange(prompt.task_id);
+}
+
+function promptApplyImgToBelow(event,promptIndex,type){
+  event.stopPropagation();
+  syncPromptEdits();
+  const source=prompts[promptIndex];
+  const sourceValue=type==='prod'
+    ?normalizeProductImages(source.prodImgs,source.prodImg)
+    :source.refImg;
+  if(type==='prod'?!sourceValue.length:!sourceValue){
+    alert('当前项没有图片，无法应用到下方。');
+    return;
+  }
+  const seenTasks=new Set();
+  let appliedCount=0;
+  for(let index=promptIndex+1;index<prompts.length;index++){
+    const target=prompts[index];
+    if(target.task_id===source.task_id||seenTasks.has(target.task_id))continue;
+    seenTasks.add(target.task_id);
+    const sourceIndex=promptSourceIndex(target);
+    if(sourceIndex<0)continue;
+    if(type==='prod')vcSetProductImages(sourceIndex,[...sourceValue],false);
+    else vcSetImg(sourceIndex,'ref',sourceValue,false);
+    markPromptTaskStale(target.task_id);
+    appliedCount++;
+  }
+  renderPrompts();
+  updatePromptReadyState();
+  alert(`成功将${type==='prod'?sourceValue.length+' 张产品资料图':'目标参考图'}应用到下方 ${appliedCount} 个任务。`);
+}
+
+function renderPromptMedia(prompt,index){
+  const productImages=normalizeProductImages(prompt.prodImgs,prompt.prodImg);
+  const referenceImage=prompt.refImg||'';
+  const productGallery=productImages.map((src,imageIndex)=>`
+    <div class="vc-product-thumb">
+      <img src="${escapeAttr(src)}" alt="产品资料图 ${imageIndex+1}">
+      <button type="button" class="vc-product-remove" title="删除这张产品资料图" onclick="event.stopPropagation();promptRemoveProductImg(${index},${imageIndex})">×</button>
+    </div>`).join('');
+  const productAdd=productImages.length<MAX_PRODUCT_IMAGES?`
+    <div class="vc-product-add" onclick="event.stopPropagation();document.getElementById('promptProdF-${index}').click()">
+      <span style="font-size:22px">${productImages.length?'＋':'📷'}</span>
+      <span>${productImages.length?'继续添加':'点击或拖入产品资料图'}</span>
+    </div>`:'';
+  return `<div class="pc-media-grid">
+    <div class="vc-media-col">
+      <div class="vc-media-head">
+        <span>产品资料图（${productImages.length}/${MAX_PRODUCT_IMAGES}） <span style="color:var(--blue);font-weight:700">*产品身份</span></span>
+        <span class="vc-apply" onclick="promptApplyImgToBelow(event,${index},'prod')" title="将全部产品资料图应用到下方任务">👇 应用到下方</span>
+      </div>
+      <input type="file" accept="image/*" multiple id="promptProdF-${index}" onchange="promptFileImg(this,${index},'prod')" style="display:none">
+      <div class="vc-product-gallery ${productImages.length?'has-img':''}" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');promptDropImg(event,${index},'prod')">
+        ${productGallery}${productAdd}
+      </div>
+      <div class="vc-media-note">这些图片共同决定最终必须出现的真实产品：角度、数量、颜色、款式、尺寸、包装和细节均以这里为准。</div>
+    </div>
+    <div class="vc-media-col">
+      <div class="vc-media-head">
+        <span>目标参考图 <span style="color:var(--t3)">结构/样式，可选</span></span>
+        <span class="vc-apply" onclick="promptApplyImgToBelow(event,${index},'ref')" title="将目标参考图应用到下方任务">👇 应用到下方</span>
+      </div>
+      <div class="up-box mini-box ${referenceImage?'has-img':''}" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');promptDropImg(event,${index},'ref')" onclick="if(!prompts[${index}].refImg)document.getElementById('promptRefF-${index}').click()">
+        <input type="file" accept="image/*" id="promptRefF-${index}" onchange="promptFileImg(this,${index},'ref')" style="display:none">
+        <div class="${referenceImage?'hid':''}"><div style="font-size:30px;margin-bottom:5px">🎨</div><div style="font-size:11px;color:var(--t3)">点击或拖入目标参考图</div></div>
+        <img class="up-prev ${referenceImage?'':'hid'}" src="${escapeAttr(referenceImage)}">
+        <div class="up-overlay"><button class="ov-ch" onclick="event.stopPropagation();document.getElementById('promptRefF-${index}').click()">换图</button><button class="ov-rm" onclick="event.stopPropagation();promptClearImg(${index},'ref')">删除</button></div>
+      </div>
+      <div class="vc-media-note">只借用版式、结构、镜头、光影和视觉层级；图中的旧产品、包装、Logo、品牌名和文字必须全部替换。</div>
+    </div>
+  </div>`;
+}
+
+function promptStatusInfo(prompt){
+  if(prompt.prompt_status==='loading')return{cls:'loading',text:'AI 正在识别图片'};
+  if(prompt.prompt_status==='ready')return{cls:'ready',text:'提示词已按图片更新'};
+  if(prompt.prompt_status==='manual')return{cls:'ready',text:'提示词已人工修改'};
+  if(prompt.prompt_status==='error')return{cls:'error',text:'生成失败'};
+  return{cls:'',text:prompt.zhFull?.trim()?'图片已变化，需更新':'等待图片与提示词'};
+}
+
+function renderPrompts(){
+  const batchCount=document.getElementById('currentBatchCount');
+  if(batchCount)batchCount.textContent=String(prompts.length);
+  document.getElementById('pC').innerHTML=prompts.map((p,i)=>{
+    const status=promptStatusInfo(p);
+    return `
+    <div class="pc" id="pc${i}">
+      <div class="pc-h">
+        <div class="pc-ico">${escapeHtml(p.i)}</div>
+        <div style="flex:1">
+          <div class="pc-t">${escapeHtml(p.task_name||'任务')} · 候选${p.variant_index||1}：${escapeHtml(p.t)}</div>
+          <div class="pc-s">${escapeHtml(p.s)} · ${escapeHtml(p.d)}</div>
+        </div>
+        <span class="pc-prompt-state ${status.cls}">${status.text}</span>
+      </div>
+      <div class="pc-b">
+        <div class="pc-work-grid">
+          <div class="pc-sec">
+            <div class="pc-ll"><span style="color:var(--blue)">中文生图提示词（可编辑）</span><button class="btn-cp" onclick="cpOne(${i})" id="cpZ${i}">📋</button></div>
+            <textarea class="pc-edit" id="zhP${i}" rows="12" placeholder="上传产品资料图后，点击任务列表下方的“生成/更新提示词”" oninput="window.PhotoCreativePage.markFbaManual(${i},this.value)">${escapeHtml(p.zhFull)}</textarea>
+            ${p.prompt_error?`<div class="er" style="text-align:left;padding:8px 0 0">❌ ${escapeHtml(p.prompt_error)}</div>`:''}
+          </div>
+          ${renderPromptMedia(p,i)}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  updatePromptReadyState();
+}
+
+function updatePromptReadyState(){
+  const key=document.getElementById('aKey')?.value.trim()||'';
+  const promptBtn=document.getElementById('genPromptBtn');
+  const imageBtn=document.getElementById('gBtn');
+  const missingProducts=prompts.filter(prompt=>normalizeProductImages(prompt.prodImgs,prompt.prodImg).length===0).length;
+  const generating=prompts.some(prompt=>prompt.prompt_status==='loading');
+  const unfinished=prompts.filter(prompt=>
+    !String(prompt.zhFull||'').trim()||
+    ['pending','loading','error'].includes(prompt.prompt_status)
+  ).length;
+  if(promptBtn){
+    promptBtn.disabled=!key||prompts.length===0||missingProducts>0||generating;
+    promptBtn.textContent=prompts.length===0
+      ?'✨ 图片配置完成，生成/更新提示词'
+      :(missingProducts>0
+        ?`请先为 ${missingProducts} 项上传产品资料图`
+        :(generating?'⏳ 正在识别图片并生成提示词...':'✨ 图片配置完成，生成/更新提示词'));
+  }
+  if(imageBtn){
+    imageBtn.disabled=!key||prompts.length===0||unfinished>0||missingProducts>0;
+    imageBtn.textContent=unfinished>0
+      ?`还有 ${unfinished} 项提示词需要生成或更新`
+      :'🖼️ 一键生成全部图片';
+  }
+}
+
+async function generatePromptForItem(prompt){return window.PhotoCreativePage.generatePromptForItem(prompt)}
+
+async function generatePromptsWithMedia(){return window.PhotoCreativePage.generatePromptsWithMedia()}
+
+function getActivePrompt(i){return document.getElementById('zhP'+i)?.value||prompts[i]?.zhFull||''}
+function cpOne(i){const el=document.getElementById('zhP'+i);navigator.clipboard.writeText(el.value);const b=document.getElementById('cpZ'+i);b.textContent='✓';b.classList.add('ok');setTimeout(()=>{b.textContent='📋';b.classList.remove('ok')},1500)}
 function cpAll(){const all=prompts.map((p,i)=>`═══ 变体${p.id}：${p.t} ═══\n${getActivePrompt(i)}`).join('\n\n\n');navigator.clipboard.writeText(all)}
 
 // ═══ PERSIST SETTINGS ═══
 // 共享设置 key（API Key、模型、市场等）— 所有标签页同步
-const LS_SHARED='ecom_studio_shared';
+const LS_SHARED='ecom_studio_web_shared';
 // 产品专属 key（产品信息、产品图、参考图）— 每个标签页独立
-if(!sessionStorage.getItem('_tab_key_main')){
-  sessionStorage.setItem('_tab_key_main','ecom_main_prod_'+Date.now());
+if(!sessionStorage.getItem('_tab_key')){
+  sessionStorage.setItem('_tab_key','ecom_studio_prod_'+Date.now());
 }
-const LS_PROD=sessionStorage.getItem('_tab_key_main');
+const LS_PROD=sessionStorage.getItem('_tab_key');
 function prependInfo(tag){
   const el=document.getElementById('iInfo');
   const cur=el.value;
@@ -1040,8 +2093,23 @@ function prependInfo(tag){
   });
 }
 
-function ckApi(){const k=document.getElementById('aKey').value.trim();document.getElementById('aDot').classList.toggle('on',!!k);document.getElementById('gBtn').disabled=!k}
-function updateGenBtn(){const doA=document.getElementById('useA').checked,doB=document.getElementById('useB').checked;const btn=document.getElementById('genConBtn');if(doA&&doB)btn.textContent='✨ 生成双方案变体';else if(doA)btn.textContent='✨ 生成方案A变体';else if(doB)btn.textContent='✨ 生成方案B变体';else btn.textContent='✨ 生成变体';}
+function ckApi(){
+  const k=document.getElementById('aKey').value.trim();
+  document.getElementById('aDot').classList.toggle('on',!!k);
+  updatePromptReadyState();
+}
+function updateGenBtn(){
+  const btn=document.getElementById('genConBtn');
+  const countEl=document.getElementById('parsedTaskCount');
+  const taskCount=parsedTasks.length;
+  const selectedCount=parsedTasks.filter(task=>vcTaskSelected.has(String(task.task_id))).length;
+  if(countEl)countEl.textContent=String(taskCount);
+  if(!btn)return;
+  btn.disabled=taskCount===0||selectedCount===0;
+  btn.textContent=taskCount
+    ?`✨ 为 ${taskCount} 个任务生成设计方案`
+    :'请先上传表格并解析任务';
+}
 function saveSettings(){
   if(window._loadingSettings)return;
   try{
@@ -1050,16 +2118,13 @@ function saveSettings(){
       apiKey:document.getElementById('aKey').value,
       txtMdl:document.getElementById('txtMdl').value,
       imgMdl:document.getElementById('aMdl').value,
-      mkt1:document.getElementById('iMkt1').value,
-      mkt2:document.getElementById('iMkt2').value,
-      lang:document.getElementById('iLang').value,
+      
+      
+      
       ar:document.getElementById('iAR').value,
       style:document.getElementById('iStyle').value,
       autoMode:document.getElementById('autoMode').checked,
-      cntA:document.getElementById('cntA').value,
-      cntB:document.getElementById('cntB').value,
-      useA:document.getElementById('useA').checked,
-      useB:document.getElementById('useB').checked
+      perTaskCount:String(normalizePerTaskCount(document.getElementById('cntA').value))
     }));
     // 产品专属：产品信息文本、产品图、参考图
     localStorage.setItem(LS_PROD,JSON.stringify({
@@ -1079,17 +2144,17 @@ function loadSettings(){
       const s=JSON.parse(rs);
       if(s.apiKey)document.getElementById('aKey').value=s.apiKey;
       if(s.txtMdl)document.getElementById('txtMdl').value=s.txtMdl;
-      if(s.imgMdl)document.getElementById('aMdl').value=s.imgMdl;
-      if(s.mkt1){document.getElementById('iMkt1').value=s.mkt1;updateSubMarket()}
-      if(s.mkt2){document.getElementById('iMkt2').value=s.mkt2;syncLang()}
-      if(s.lang)document.getElementById('iLang').value=s.lang;
-      if(s.ar)document.getElementById('iAR').value=s.ar;
+      document.getElementById('aMdl').value=s.imgMdl==='chatgpt-web'?'chatgpt-web':'gemini-web';
+      
+      
+      
+      if(s.ar){
+        const savedAr=s.ar==='auto'?'task':s.ar;
+        document.getElementById('iAR').value=['task','1:1','3:4','16:9'].includes(savedAr)?savedAr:'task';
+      }
       if(s.style)document.getElementById('iStyle').value=s.style;
       if(s.autoMode!=null)document.getElementById('autoMode').checked=s.autoMode;
-      if(s.cntA)document.getElementById('cntA').value=s.cntA;
-      if(s.cntB)document.getElementById('cntB').value=s.cntB;
-      if(s.useA!=null)document.getElementById('useA').checked=s.useA;
-      if(s.useB!=null)document.getElementById('useB').checked=s.useB;
+      document.getElementById('cntA').value=String(resolveSavedPerTaskCount(s));
       updateGenBtn();
     }
     // 加载产品专属数据（当前标签页独立）
@@ -1105,6 +2170,7 @@ function loadSettings(){
   ckApi();
 }
 loadSettings();
+updateGenBtn();
 
 // ═══ STEP 4: IMAGE GENERATION ═══
 function isOpenAiImageModel(model){return /^gpt-image-2:(auto|low|medium|high)$/.test(String(model||''))}
@@ -1140,15 +2206,14 @@ async function callOpenAiImageApi(model,prompt,aspectRatio,mainBase64Images,refe
 async function startGen(){return window.PhotoCreativePage.startGen()}
 async function callGemini(apiKey,model,prompt,task={}){return window.PhotoCreativePage.callGemini(apiKey,model,prompt,task)}
 
-// Re-encode image through canvas to ensure clean PNG base64 (preserves transparency in auto mode, pads with white in ar mode)
-  
+
 function renderIG(){
   document.getElementById('iG').innerHTML=prompts.map((p,i)=>{const img=images[i];let slot='';
-    if(!img||img.status==='pending')slot=`<div class="ld"><span style="font-size:20px">${window.PhotoCreative.escapeHtml(p.i)}</span><span>等待中</span></div>`;
+    if(!img||img.status==='pending')slot=`<div class="ld"><span style="font-size:20px">${escapeHtml(p.i)}</span><span>等待中</span></div>`;
     else if(img.status==='loading')slot=`<div class="ld"><div class="sp"></div><span>生成 图${p.id}...</span></div>`;
-    else if(img.status==='error')slot=`<div class="er">❌ ${window.PhotoCreative.escapeHtml(img.error)}<br><button class="btn btn-sm btn-x" style="margin-top:8px" onclick="retry(${i})">🔄 重试</button></div>`;
-    else slot=`<img src="${img.url}" onclick="openEdit(${i})" title="点击编辑">`;
-    return`<div class="ic"><div class="is">${slot}</div><div class="ii"><div class="il">${window.PhotoCreative.escapeHtml(p.i)} 图${p.id}：${window.PhotoCreative.escapeHtml(p.t)}</div><div class="isu">${window.PhotoCreative.escapeHtml(p.s)}</div>${img?.status==='done'?`<div class="ia"><button class="btn btn-sm btn-x" onclick="openEdit(${i})">✏️ 编辑</button><button class="btn btn-sm btn-x" onclick="retry(${i})">🎲 重抽</button><button class="btn btn-sm btn-x" onclick="dlIdx(${i})">⬇</button></div>`:''}</div></div>`}).join('');
+    else if(img.status==='error')slot=`<div class="er">❌ ${escapeHtml(img.error)}<br><button class="btn btn-sm btn-x" style="margin-top:8px" onclick="retry(${i})">🔄 重试</button></div>`;
+    else slot=`<img src="${escapeAttr(img.url)}" onclick="openEdit(${i})" title="点击编辑">`;
+    return`<div class="ic"><div class="is">${slot}</div><div class="ii"><div class="il">${escapeHtml(p.i)} 图${p.id}：${escapeHtml(p.t)}</div><div class="isu">${escapeHtml(p.s)}</div>${img?.status==='done'?`<div class="ia"><button class="btn btn-sm btn-x" onclick="openEdit(${i})">✏️ 编辑</button><button class="btn btn-sm btn-x" onclick="retry(${i})">🎲 重抽</button><button class="btn btn-sm btn-x" onclick="dlIdx(${i})">⬇</button></div>`:''}</div></div>`}).join('');
 }
 async function retry(index){return window.PhotoCreativePage.retry(index)}
 
@@ -1158,20 +2223,83 @@ async function dlAll(){for(let i=0;i<images.length;i++){if(images[i]?.url){dlIdx
 
 // ═══ EDIT MODAL ═══
 // ═══ MINI EDITOR ═══
-let miniProdImg=null; // editor-local product image override
+let miniProdImgs=[];  // editor-local product image overrides
 let miniRefImg=null;  // editor-local reference image override
+let miniAspectRatio='1:1';
+
+function renderMiniProductImages(){
+  const gallery=document.getElementById('mProdGallery');
+  const count=document.getElementById('mProdCount');
+  if(count)count.textContent=`${miniProdImgs.length}/${MAX_PRODUCT_IMAGES}`;
+  if(!gallery)return;
+  if(!miniProdImgs.length){
+    gallery.innerHTML='<div class="mo-prod-empty" onclick="document.getElementById(\'mProdF\').click()"><span style="font-size:28px">📷</span><span>点击添加多张产品原图</span></div>';
+    return;
+  }
+  gallery.innerHTML=miniProdImgs.map((src,index)=>`
+    <div class="mo-prod-thumb">
+      <img src="${escapeAttr(src)}" alt="产品原图 ${index+1}">
+      <button type="button" class="vc-product-remove" title="删除这张产品图" onclick="removeMiniProduct(${index})">×</button>
+    </div>`).join('')
+    +(miniProdImgs.length<MAX_PRODUCT_IMAGES?'<div class="vc-product-add" onclick="document.getElementById(\'mProdF\').click()"><span style="font-size:22px">＋</span><span>继续添加</span></div>':'');
+}
+
+function removeMiniProduct(index){
+  miniProdImgs=miniProdImgs.filter((_,itemIndex)=>itemIndex!==index);
+  renderMiniProductImages();
+}
+
+function clearMiniProducts(){
+  miniProdImgs=[];
+  const input=document.getElementById('mProdF');
+  if(input)input.value='';
+  renderMiniProductImages();
+}
+
+function updateMiniAspectRatio(resetResult=true){
+  const selector=document.getElementById('mAspectRatio');
+  miniAspectRatio=normalizeMiniAspectRatio(selector?.value||miniAspectRatio);
+  const hint=document.getElementById('mAspectHint');
+  if(hint)hint.textContent=`展示框保持固定；本次接口将明确请求 ${miniAspectRatio}，由模型按原图重绘、扩图并重构画布。`;
+  if(resetResult&&editResult){
+    editResult=null;
+    document.getElementById('mRes').innerHTML='<span style="color:var(--t3);font-size:12px">比例已改变，请重新生成</span>';
+    document.getElementById('mABtn').classList.add('hid');
+    document.getElementById('mUseBtn').classList.add('hid');
+    document.getElementById('mDlResBtn').classList.add('hid');
+  }
+}
+
+function setMiniAspectRatio(value){
+  const ratio=normalizeMiniAspectRatio(value);
+  const selector=document.getElementById('mAspectRatio');
+  if(!selector)return;
+  selector.querySelectorAll('option[data-dynamic="true"]').forEach(option=>option.remove());
+  if(!Array.from(selector.options).some(option=>option.value===ratio)){
+    const option=document.createElement('option');
+    option.value=ratio;
+    option.textContent=`当前任务 ${ratio}`;
+    option.dataset.dynamic='true';
+    selector.appendChild(option);
+  }
+  selector.value=ratio;
+  miniAspectRatio=ratio;
+  updateMiniAspectRatio(false);
+}
 
 function openEdit(i){
   editIdx=i;editResult=null;
   document.getElementById('mTi').textContent=`编辑 图${i+1}：${SLOTS[i]?.t||''}`;
   document.getElementById('mImg').src=images[i].url;
   // Show product image
-  miniProdImg=prodImgData;
-  miniRefImg=refImgData;
-  document.getElementById('mProdImg').src=prodImgData||'';
-  document.getElementById('mProdImg').style.display=prodImgData?'block':'none';
-  document.getElementById('mRefImg').src=refImgData||'';
-  document.getElementById('mRefImg').style.display=refImgData?'block':'none';
+  const liveTask=parsedTasks.find(item=>item.task_id===prompts[i]?.task_id)||prompts[i]||{};
+  const media=resolveTaskMedia(liveTask,prodImgData,refImgData,document.getElementById('iAR')?.value||'task');
+  miniProdImgs=[...media.productImages];
+  miniRefImg=media.referenceImage;
+  setMiniAspectRatio(media.aspectRatio);
+  renderMiniProductImages();
+  document.getElementById('mRefImg').src=miniRefImg||'';
+  document.getElementById('mRefImg').style.display=miniRefImg?'block':'none';
   // Pre-fill prompt with the active prompt for this image
   document.getElementById('mPmt').value=getActivePrompt?.(i)||'';
   // Reset result
@@ -1189,25 +2317,27 @@ function hMo(){document.getElementById('mBg').classList.add('hid');document.body
 
 function changeMergeMode(){const templates=window.PhotoCreative.parseMap(CUR_PROMPTS.editTemplates,"编辑模板");document.getElementById("mPmt").value=templates[document.getElementById("mMergeMode").value]||""}
 
-function miniEditorChangeImg(input,type){
-  const f=input.files[0];if(!f||!f.type.startsWith('image/'))return;
-  const r=new FileReader;
-  r.onload=e=>{
-    if(type==='prod'){miniProdImg=e.target.result;document.getElementById('mProdImg').src=e.target.result;document.getElementById('mProdImg').style.display='block'}
-    else{
-      miniRefImg=e.target.result;document.getElementById('mRefImg').src=e.target.result;document.getElementById('mRefImg').style.display='block';
-      const hint = document.getElementById('mRefHint');
-      if(hint) hint.style.display='none';
-      const mm = document.getElementById('mMergeMode');
-      if(mm) mm.style.display='inline-block';
-      const mPmt = document.getElementById('mPmt');
-      if(mPmt && !mPmt.value.trim()) {
-         if(mm) mm.value = 'combine';
-         changeMergeMode();
-      }
+async function miniEditorChangeImg(input,type){
+  const selected=await readImageFiles(input.files);
+  input.value='';
+  if(!selected.length)return;
+  if(type==='prod'){
+    const previousCount=miniProdImgs.length;
+    miniProdImgs=normalizeProductImages([...miniProdImgs,...selected]);
+    if(previousCount+selected.length>MAX_PRODUCT_IMAGES)alert(`Mini Editor 最多保留 ${MAX_PRODUCT_IMAGES} 张产品原图，超出的图片未加入。`);
+    renderMiniProductImages();
+  }else{
+    miniRefImg=selected[0];document.getElementById('mRefImg').src=selected[0];document.getElementById('mRefImg').style.display='block';
+    const hint = document.getElementById('mRefHint');
+    if(hint) hint.style.display='none';
+    const mm = document.getElementById('mMergeMode');
+    if(mm) mm.style.display='inline-block';
+    const mPmt = document.getElementById('mPmt');
+    if(mPmt && !mPmt.value.trim()) {
+       if(mm) mm.value = 'combine';
+       changeMergeMode();
     }
-  };
-  r.readAsDataURL(f);
+  }
 }
 
 function clearMiniRef(){
@@ -1372,7 +2502,142 @@ function fetchSPUData() {
     _erpOn('RESPONSE_SPU_FETCH', handler);
     _erpEmit('REQUEST_SPU_FETCH', { spu: spu });
 }
+
+// ==== EXCEL PARSING LOGIC ====
+function handleExcelFile(file) {
+  if(!file.name.match(/\.(xlsx|xls|csv)$/i)) {
+    alert('请上传 Excel 或 CSV 文件');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data, {type: 'array'});
+    const skipPatterns = /评论|竞品|视频|review|competitor|video|数据|分析/i;
+    let allCSV = '';
+    workbook.SheetNames.forEach(name => {
+      if(skipPatterns.test(name)) return;
+      const csv = XLSX.utils.sheet_to_csv(workbook.Sheets[name]);
+      if(csv.trim().length > 10) {
+        allCSV += '\n===== 【表单: ' + name + '】 =====\n' + csv + '\n';
+      }
+    });
+    if(allCSV.trim().length < 20) {
+      alert('未能从 Excel 中读取到有效内容');
+      return;
+    }
+    extractTasksWithAI(allCSV);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+
+function handleExcelUpload(e) {
+  const file = e.target.files[0];
+  if(file) handleExcelFile(file);
+}
+
+function handleExcelDrop(e) {
+  if(e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    handleExcelFile(e.dataTransfer.files[0]);
+  }
+}
+
+document.addEventListener('paste', (e) => {
+  if(e.clipboardData.files && e.clipboardData.files.length > 0) {
+    const file = e.clipboardData.files[0];
+    if(file.name.match(/\.(xlsx|xls|csv)$/i)) {
+      handleExcelFile(file);
+      return;
+    }
+  }
+  const text = e.clipboardData.getData('text');
+  if(text && text.length > 10 && (text.includes('\t') || text.includes(','))) {
+    const tag = document.activeElement.tagName.toLowerCase();
+    if(tag !== 'input' && tag !== 'textarea') {
+       extractTasksWithAI(text);
+    }
+  }
+});
+
+async function extractTasksWithAI(csvText) {
+  const settings=JSON.parse(JSON.stringify(CUR_PROMPTS));
+  const extractionContext=window.PhotoCreativePage.context();
+
+  const excelBox = document.getElementById('excelUpBox');
+  let oriHtml = '';
+  if (excelBox) oriHtml = excelBox.innerHTML;
+
+  try {
+    const keyEl = document.getElementById('aKey');
+    const key = keyEl ? keyEl.value : '';
+    if(!key) { alert('请先在顶部设置 API Key'); return; }
+    
+    const mdlEl = document.getElementById('txtMdl');
+    const mdl = mdlEl ? mdlEl.value : 'gemini-1.5-flash';
+    
+    if (excelBox) excelBox.innerHTML = '<div style="font-size:12px;color:var(--blue);font-weight:bold;margin-top:10px">正在用 AI 分析 Excel 提取任务...</div>';
+
+    const core=window.PhotoCreative;
+    const schema=core.array(core.object(["group_name","name","ratio","desc"]));
+    schema.items.properties.group_name.minLength=0;schema.items.properties.ratio.minLength=0;
+    const tasks=await core.requestText({apiKey:key,model:mdl,mode:PROMPT_MODE,stage:"extract",settings,context:extractionContext,input:{csvText},schema});
+    if(excelBox)excelBox.innerHTML=oriHtml;
+    if (tasks && tasks.length > 0) {
+      parsedTasks = tasks.map((t, i) => {
+        const name = t.name || ('任务 ' + (i+1));
+        const rawRatio=String(t.ratio||'').trim();
+        const ratio=/^\d+\s*:\s*\d+$/.test(rawRatio)?rawRatio.replace(/\s/g,''):'1:1';
+        let isScene = !name.includes('白底') && (name.includes('场景') || name.includes('附图') || ratio !== '1:1');
+        return {
+          task_id:'task-'+(i+1),
+          group_name:String(t.group_name||'').trim(),
+          icon: isScene ? '📸' : '⚪',
+          name: name,
+          type_label: isScene ? '场景图' : '白底图',
+          concept: `[${ratio}] ${t.desc}`,
+          type: isScene ? 'scene' : 'white',
+          aspect_ratio: ratio,
+          prodImgs:[],
+          prodImg:null,
+          refImg:null,
+          prodImgOverride:false,
+          refImgOverride:false
+        };
+      });
+      vcPlanA = createTaskPreviewVariants(parsedTasks);
+      vcPlanB = [];
+      vcSelected.clear();
+      vcSelectionAnchor=null;
+      vcTaskSelected=new Set(parsedTasks.map(task=>String(task.task_id)));
+      vcTaskSelectionAnchor=null;
+      vcCollapsedModules.clear();
+      clearStep3();
+      clearStep4();
+      renderVCPlan(vcPlanA);
+      vcUpdateSelBar();
+      
+      // Auto-fill product info textarea if empty
+      const infoEl = document.getElementById('iInfo');
+      if(infoEl && !infoEl.value.trim()) {
+        infoEl.value = tasks.map(t => '【' + (t.name||'') + '】' + t.desc).join('\n\n');
+      }
+      
+      updateGenBtn();
+      scrollToBlock('step2');
+    } else {
+      alert("AI 未能在表格中找到明确的作图任务");
+    }
+  } catch(e) {
+    if (excelBox) excelBox.innerHTML = oriHtml;
+    alert("提取失败：" + e.message);
+  }
+}
+// ==== END EXCEL PARSING LOGIC ====
+
 </script>
+<script src="/gemini-text-api.js"></script>
+<script src="/ianto-gemini-web.js"></script>
 <script src="/creative-page.js"></script>
 </body>
 </html>

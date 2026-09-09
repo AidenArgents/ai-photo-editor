@@ -202,6 +202,9 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
     setInterval(syncGlobalKey, 600);
   });
 </script>
+<script src="/prompt-settings.js"></script>
+<script src="/creative-core.js"></script>
+<script src="/gemini-text-api.js"></script>
 </head>
 <body>
 
@@ -332,7 +335,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
           <div style="margin-top:6px;padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:var(--r);font-size:11px;color:#0369a1;line-height:1.8">
             <div style="font-weight:700;margin-bottom:4px">📌 三个工具怎么选</div>
             <div>· <b>场景图（本工具）</b>：产品融入故事场景，重氛围，适合品牌种草、A+页面。</div>
-            <div>· <b>主图</b>：产品占画面主体 60-75%，信息密度高，排版+卖点+平台风格，优先点击率。</div>
+            <div>· <b>主图</b>：优先产品识别与点击动机，占比和信息密度按实际平台与版位决定。</div>
             <div>· <b>套图</b>：同一风格 9 张成套，封面主图+场景+细节全覆盖，适合铺品上架。</div>
           </div>
         </div>
@@ -632,17 +635,17 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--blue)">
           <span style="width:24px;height:24px;border-radius:6px;background:var(--blue);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700">1</span>
           <div>
-            <div style="font-size:13px;font-weight:700;color:var(--t1)">产品信息阶段</div>
-            <div style="font-size:10px;color:var(--t3)">上传产品图后自动运行 · 识别产品颜色，用于后续所有步骤的产品约束</div>
+            <div style="font-size:13px;font-weight:700;color:var(--t1)">需求表解析阶段</div>
+            <div style="font-size:10px;color:var(--t3)">上传 Excel/CSV 后运行 · 把运营需求提取成独立 FBA 作图任务</div>
           </div>
         </div>
         <div class="fg">
           <label class="fl" style="font-size:12px;font-weight:700">
-            📷 产品颜色识别 Prompt
-            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第②③④步中「用XX颜色指代产品」的约束词</span>
+            📋 FBA 任务提取 Prompt
+            <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：模块、任务名、画幅和原始要求的提取</span>
           </label>
           <textarea class="ft" id="sp_recognize" rows="2" style="font-size:11px;font-family:var(--fm)"></textarea>
-          <div class="fi-hint">变量：无。返回值会注入到 concept/prompt/imggen 中作为产品颜色约束。</div>
+          <div class="fi-hint">变量：<code>{csvText}</code> 为工作簿转换后的文本。返回结构由系统校验。</div>
         </div>
       </div>
 
@@ -709,7 +712,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
             <span style="font-size:10px;font-weight:400;color:var(--t3);margin-left:6px">→ 控制：第④步生图时，告诉AI如何处理产品图（保持原样、参考图用途等）</span>
           </label>
           <div style="font-size:10px;color:var(--t3);margin-bottom:4px;padding:6px 10px;background:var(--blue-l);border-radius:6px;border-left:3px solid var(--blue)">
-            💡 变量：<code>{refNote}</code> 自动替换为参考图说明（有/无参考图时不同）；<code>{prodAppearance}</code> 自动替换为产品颜色约束。这两个变量不要删除。
+            💡 变量：<code>{refNote}</code> 自动替换为参考图说明（有/无参考图时不同）；<code>{prodAppearance}</code> 替换为产品保真规则和本次特征锁定。保留变量可继续使用相应规则。
           </div>
           <textarea class="ft" id="sp_imggen" rows="7" style="font-size:11px;font-family:var(--fm)"></textarea>
         </div>
@@ -783,12 +786,28 @@ aesthetic:JSON.stringify({
 },null,2)
 };
 
+DEF_PROMPTS.extract=`你负责把美国 Amazon FBA 运营需求表提取成作图任务。输入可能包含多个由表名分隔的子表。完整遍历内容，忽略与作图无关的说明行，不做视觉方案扩写。
+
+输出 JSON 数组。每个对象包含：
+- group_name：所属模块；优先使用表名、分区标题或原文模块名，同一模块必须完全一致。
+- name：保留运营填写的原始任务名；原文没有名称时，依据模块与行内容生成简短名称。
+- ratio：正整数:正整数；原文明示时原样保留，未明示时按图片用途、版位和构图方向判断，不要全部固定成同一比例。
+- desc：完整保留人类填写的主体、场景、排版、文案和限制条件。这里只做任务提取，不把它改写成 AI 设计方案，不增加原文没有的产品事实或营销主张。
+
+所有任务均面向美国 Amazon FBA，不加入其他平台或国家风格。
+
+工作簿文本：
+{csvText}`;
+
 // Current prompts (loaded from localStorage or defaults)
 const PROMPT_SCHEMA_VERSION=3;
+const PROMPT_MODE='fba';
+window.PhotoCreative.upgradeDefaults(PROMPT_MODE,DEF_PROMPTS);
 let CUR_PROMPTS={...DEF_PROMPTS};
 
 function openSettings(){
-  document.getElementById('sp_recognize').value=CUR_PROMPTS.recognize;
+  window.PhotoCreative.openAdvanced(PROMPT_MODE,CUR_PROMPTS);
+  document.getElementById('sp_recognize').value=CUR_PROMPTS.extract;
   document.getElementById('sp_concept').value=CUR_PROMPTS.concept;
   document.getElementById('sp_prompt').value=CUR_PROMPTS.prompt;
   document.getElementById('sp_imggen').value=CUR_PROMPTS.imggen;
@@ -801,47 +820,34 @@ function openSettings(){
 }
 function closeSettings(){document.getElementById('sBg').classList.add('hid');document.body.style.overflow=''}
 function savePromptSettings(){
-  CUR_PROMPTS.recognize=document.getElementById('sp_recognize').value;
-  CUR_PROMPTS.concept=document.getElementById('sp_concept').value;
-  CUR_PROMPTS.prompt=document.getElementById('sp_prompt').value;
-  CUR_PROMPTS.imggen=document.getElementById('sp_imggen').value;
-  try{
-    const aesMap=JSON.parse(document.getElementById('sp_aesthetic').value);
-    if(!String(aesMap.US||'').trim())throw new Error('必须包含 US 审美描述');
-    CUR_PROMPTS.aesthetic=JSON.stringify({US:String(aesMap.US).trim()},null,2);
-  }catch(e){alert('美国 FBA 审美 JSON 格式错误：'+e.message);return}
-  // Save KB
-  try{
-    const newKB=JSON.parse(document.getElementById('sp_kb').value);
-    Object.keys(KB).forEach(k=>delete KB[k]);
-    Object.assign(KB,newKB);
-  }catch(e){alert('知识库JSON格式错误：'+e.message);return}
-  // Update MARKETS aesthetic from JSON
-  try{
-    const aesMap=JSON.parse(CUR_PROMPTS.aesthetic);
-    for(const region of Object.values(MARKETS)){for(const sub of region.subs){if(aesMap[sub.v])sub.aes=aesMap[sub.v]}}
-  }catch(e){console.warn('Aesthetic JSON parse error:',e)}
-  try{localStorage.setItem('ecom_studio_prompts',JSON.stringify({...CUR_PROMPTS,kb:KB,promptSchemaVersion:PROMPT_SCHEMA_VERSION}))}catch(e){}
-  closeSettings();
-  alert('已保存！');
+  try {
+    const next={...CUR_PROMPTS,...window.PhotoCreative.readAdvanced()};
+    for(const key of ["recognize","concept","prompt","imggen","aesthetic","extract"]){
+      const field=document.getElementById("sp_"+key);
+      if(field)next[key==="recognize" ? "extract" : key]=field.value;
+    }
+    const newKB=window.PhotoCreative.parseMap(document.getElementById("sp_kb").value,"知识库");
+    if(Object.values(newKB).some(value=>!Array.isArray(value)))throw new Error("知识库分类必须为数组");
+    window.AiPhotoPromptSettings.save(PROMPT_MODE,next,newKB);
+    CUR_PROMPTS=next;Object.keys(KB).forEach(key=>delete KB[key]);Object.assign(KB,newKB);
+    window.PhotoCreative.refreshChoices(PROMPT_MODE,()=>CUR_PROMPTS);
+    closeSettings();window.PhotoCreativePage?.flow.update();alert("已保存，仅对本业务页的 Web/API 模式共同生效。");
+  }catch(error){alert("未保存："+error.message)}
 }
 function resetAllPrompts(){
   if(!confirm('确定重置所有内置提示词为默认值？'))return;
   CUR_PROMPTS={...DEF_PROMPTS};
-  try{localStorage.removeItem('ecom_studio_prompts')}catch(e){}
+  try{window.AiPhotoPromptSettings.reset(PROMPT_MODE)}catch(e){}
+  window.PhotoCreative.refreshChoices(PROMPT_MODE,()=>CUR_PROMPTS);
+  window.PhotoCreativePage?.flow.update();
   openSettings();
 }
 function loadPromptSettings(){
   try{
-    const r=localStorage.getItem('ecom_studio_prompts');
-    if(!r)return;
-    const s=JSON.parse(r);
-    if(s.promptSchemaVersion===PROMPT_SCHEMA_VERSION){
-      Object.assign(CUR_PROMPTS,s);
-    }else{
-      // 旧版提示词可能把目标参考图当成产品来源；迁移时只保留不冲突的产品识别指令。
-      if(s.recognize)CUR_PROMPTS.recognize=s.recognize;
-    }
+    const loaded=window.AiPhotoPromptSettings.load(PROMPT_MODE,DEF_PROMPTS);
+    const s=loaded.prompts;
+    Object.assign(CUR_PROMPTS,s);
+    if(loaded.kb)s.kb=loaded.kb;
     // Apply KB if saved
     if(s.kb){try{Object.keys(KB).forEach(k=>delete KB[k]);Object.assign(KB,s.kb)}catch(e){}}
     // Apply aesthetic
@@ -874,7 +880,14 @@ const ICONS=['🎯','⭐','💎','🌸','🔍','✨','🧪','🏆','🔥'];
 
 // Re-encode image through canvas to preserve transparency or pad to aspect ratio
 function cleanImageData(dataUrl, targetRatioStr = 'auto'){
-  return new Promise(resolve=>{
+  return new Promise(async resolve=>{
+    try{
+      dataUrl=await remoteImageToDataUrl(dataUrl);
+    }catch(error){
+      console.error('图片读取失败：',error);
+      resolve(null);
+      return;
+    }
     const img=new Image();
     img.crossOrigin='anonymous';
     img.onload=()=>{
@@ -929,13 +942,7 @@ function cleanImageData(dataUrl, targetRatioStr = 'auto'){
   });
 }
 
-function gAesthetic(){
-  const sel=document.getElementById('iMkt2');
-  const r=document.getElementById('iMkt1').value;
-  const v=sel.value;
-  const sub=MARKETS[r]?.subs.find(s=>s.v===v);
-  return sub?.aes||'';
-}
+function gAesthetic(){return window.PhotoCreative.profile(window.PhotoCreative.parseMap(CUR_PROMPTS.aesthetic,"市场档案")["US"])}
 
 // ═══ STATE ═══
 let concepts=[],prompts=[],images=[];
@@ -1010,7 +1017,9 @@ function clearImg(type){
 }
 function fileImg(inp,type){const f=inp.files[0];if(!f||!f.type.startsWith('image/'))return;const r=new FileReader;r.onload=e=>setImg(type,e.target.result);r.readAsDataURL(f)}
 function dropImg(e,type){const f=e.dataTransfer.files[0];if(!f||!f.type.startsWith('image/'))return;const r=new FileReader;r.onload=ev=>setImg(type,ev.target.result);r.readAsDataURL(f)}
-async function loadUrl(type){const u=document.getElementById(type==='prod'?'urlProd':'urlRef').value.trim();if(!u||!u.startsWith('http')){alert('请输入有效URL');return}try{const r=await fetch(u);const b=await r.blob();if(!b.type.startsWith('image/'))throw 0;const rd=new FileReader;rd.onload=e=>setImg(type,e.target.result);rd.readAsDataURL(b)}catch(e){alert('加载失败，可能跨域限制')}}
+function blobToDataUrl(blob){return new Promise((resolve,reject)=>{const rd=new FileReader;rd.onload=()=>resolve(String(rd.result||''));rd.onerror=()=>reject(new Error('图片转换失败'));rd.readAsDataURL(blob)})}
+async function remoteImageToDataUrl(url){let value=String(url||'').trim();if(value.startsWith('//'))value='https:'+value;if(value.startsWith('data:image/'))return value;if(!/^https?:\/\//i.test(value))throw new Error('图片地址无效');const r=await fetch('/api/proxy-image?url='+encodeURIComponent(value));if(!r.ok)throw new Error('图片下载失败（HTTP '+r.status+'）');const b=await r.blob();if(!b.type.startsWith('image/'))throw new Error('返回内容不是图片');const dataUrl=await blobToDataUrl(b);if(!dataUrl.startsWith('data:image/'))throw new Error('图片转换失败');return dataUrl}
+async function loadUrl(type){const u=document.getElementById(type==='prod'?'urlProd':'urlRef').value.trim();if(!u||(!u.startsWith('http')&&!u.startsWith('//'))){alert('请输入有效URL');return}try{setImg(type,await remoteImageToDataUrl(u))}catch(e){alert('加载失败：'+(e?.message||'无法下载图片'))}}
 function pasteImg(e,type){const items=e.clipboardData?.items;if(items){for(const it of items){if(it.type.startsWith('image/')){e.preventDefault();const f=it.getAsFile();const r=new FileReader;r.onload=ev=>setImg(type,ev.target.result);r.readAsDataURL(f);return}}}setTimeout(()=>{const v=document.getElementById(type==='prod'?'urlProd':'urlRef').value.trim();if(v.startsWith('http'))loadUrl(type)},100)}
 
 
@@ -1134,20 +1143,7 @@ async function fetchWithTimeout(url,options={},timeoutMs=120000){
 }
 
 // Step 0: Recognize product appearance from image (for color/material constraint only)
-async function recognizeProduct(apiKey,txtModel,info){
-  if(!prodImgData)return'';
-  if(productAppearance)return productAppearance;
-  try{
-    const cleanB64r=await cleanImageData(prodImgData);
-    if(!cleanB64r)return'';
-    const imgPart={inline_data:{mime_type:'image/png',data:cleanB64r}};
-    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${txtModel}:generateContent?key=${apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[imgPart,{text:CUR_PROMPTS.recognize}]}]})});
-    if(!resp.ok)return'';
-    const d=await resp.json();
-    productAppearance=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
-    return productAppearance;
-  }catch(e){console.warn('Product recognition failed:',e);return''}
-}
+async function recognizeProduct(){return ""} // Product images are now used directly; no lossy color classifier.
 
 // ═══ DUAL-PLAN VARIANT STATE ═══
 let vcPlanA = [], vcPlanB = [];
@@ -1369,61 +1365,7 @@ function applyWindowsSelection(actionableIndices,selectedValues,currentIndex,anc
   };
 }
 
-function buildPerTaskVariantPrompt({tasks,perTaskCount,context={},kbText=''}) {
-  const count=normalizePerTaskCount(perTaskCount);
-  const forcedRatio=String(context.arLabel||'').startsWith('强制 ')
-    ?String(context.arLabel).slice(3).trim()
-    :'';
-  const taskList=tasks.map((task,index)=>[
-    `任务${index+1}｜${task.name||`任务 ${index+1}`}`,
-    `类型：${task.type_label||'未指定'}`,
-    `原始任务画幅：${task.aspect_ratio||'由任务内容判断'}`,
-    `本次最终画幅：${forcedRatio||task.aspect_ratio||'由任务内容判断'}`,
-    `原始要求：${task.concept||''}`
-  ].join('\n')).join('\n\n');
-  const total=tasks.length*count;
-  const diversityRule=count>1
-    ?`同一任务的 ${count} 个候选必须在场景、构图、光影或叙事方向上明显不同，但都要严格满足该任务的原始要求。`
-    :'每个任务只生成 1 个最符合原始要求的候选方案。';
-
-  return `你是美国 Amazon FBA 电商视觉总监和 AI 生图方案工程师。
-
-任务总数：${tasks.length}
-每个任务生成候选方案数：${count}
-总计必须返回 ${total} 个候选方案。
-
-以下任务来自需求表解析。不得增加、删除、合并、拆分或改名任务：
-
-${taskList}
-
-原始要求只是约束来源，不是设计方案。你必须把运营人员的人类语言翻译成机器可执行的中文设计方案，不能直接复制或轻微改写原始要求，也不能把表格原文直接填入 design_plan。
-
-${diversityRule}
-
-产品信息：${context.info||'请依据任务要求判断'}
-产品颜色：${context.prodDesc||'参考产品图'}
-目标市场：美国 Amazon FBA
-整体风格：${context.style||'按任务要求与美国 FBA 审美判断'}
-市场审美：${context.aesthetic||'专业、可信、清晰、高转化的美国 Amazon A+ 内容风格'}
-
-${kbText?`【知识库参考】\n${kbText}\n`:''}
-每个 design_plan 必须使用中文、具体、无歧义，建议 180-300 字，并按以下结构写成一段机器可执行方案：
-【主体与产品保真】、【场景与道具】、【构图与机位】、【主体占比与空间关系】、【光线与色温】、【色彩与材质】、【人物动作】（如需要）、【文案与排版】（如需要）、【画幅】、【禁止项】。
-【画幅】必须写“本次最终画幅”；如果本次使用强制比例，必须忽略原始任务画幅。
-每个候选都必须保持产品外观准确，体现真实光影、透视和接触阴影。只允许美国 Amazon FBA 审美，禁止混入其他国家或地区电商平台风格。
-
-只输出严格 JSON 数组，数组长度必须是 ${total}。每个对象格式：
-{
-  "task_index": 1,
-  "variant_index": 1,
-  "icon": "emoji",
-  "name": "候选方案名称（4-8字中文）",
-  "type_label": "图片类型",
-  "design_plan": "机器可执行的中文设计方案（180-300字）"
-}
-
-task_index 必须对应上方任务序号 1-${tasks.length}；每个 task_index 必须恰好包含 variant_index 1-${count}。`;
-}
+// Per-task business strategy is editable; schema is supplied by creative-core.js.
 
 function resolveAspectRatio(taskAspectRatio,aspectRatioMode){
   const mode=aspectRatioMode==='auto'?'task':(aspectRatioMode||'task');
@@ -1538,150 +1480,15 @@ function buildMiniImageGenerationConfig(model,aspectRatio){
   };
 }
 
-function buildMiniEditInstruction({
-  prompt,
-  aspectRatio,
-  variationId,
-  hasProductImage,
-  hasReferenceImage,
-  productAppearance
-}){
-  const ratio=normalizeMiniAspectRatio(aspectRatio);
-  return `# MINI EDITOR — SINGLE IMAGE GENERATION PASS
-TARGET OUTPUT ASPECT RATIO: ${ratio}
-VARIATION ID: ${variationId}
-
-- This is a fresh regeneration based on the current image and the user's edited prompt.
-- Do not return a pixel-identical copy of the current image.
-- Even when the prompt is unchanged, introduce subtle natural variation in lighting, background detail, spacing, or micro-composition.
-- If the current image has a different aspect ratio, outpaint and recompose it naturally to fill the complete ${ratio} canvas. Do not stretch the product and do not leave blank bars.
-- Preserve the product's true shape, color, openings, edges, labels, and material.${hasProductImage?'\n- One or more PRODUCT SOURCE originals are provided. Read them together for product fidelity, then use the exact angle, count, color, style, and dimensions requested by the prompt. Do not merge incompatible variants.':''}${hasReferenceImage?'\n- A single TARGET REFERENCE is provided only for the desired finished style, composition, scene, or background. Never use it as the product-identity source.':''}${productAppearance?`\n- Product appearance constraint: ${productAppearance}.`:''}
-
-# USER EDIT PROMPT
-${prompt}`;
-}
+// Result editing rules are editable in advanced settings.
 // === TASK VARIANT HELPERS END ===
 
 // ═══ STEP 1→2: GENERATE DUAL PLANS ═══
-async function genConcepts(overrideStyle){
-  const info=document.getElementById('iInfo').value.trim();
-  const selectedTaskList=parsedTasks.filter(task=>vcTaskSelected.has(String(task.task_id)));
-  if(!selectedTaskList.length&&parsedTasks.length){
-    document.getElementById('vW1').classList.remove('hid');
-    document.getElementById('vM1').textContent='请先在下方选择至少一个任务，再生成设计方案';
-    vcUpdateSelBar();
-    return;
-  }
-  if(!parsedTasks.length){
-    document.getElementById('vW1').classList.remove('hid');
-    document.getElementById('vM1').textContent='请先上传需求表并完成任务解析';
-    return;
-  }
-  document.getElementById('vW1').classList.add('hid');
+async function genConcepts(overrideStyle){return window.PhotoCreativePage.genConcepts(overrideStyle)}
 
-  const apiKey=document.getElementById('aKey').value.trim(),txtModel=document.getElementById('txtMdl').value;
-  if(!apiKey){document.getElementById('vW1').classList.remove('hid');document.getElementById('vM1').textContent='请先在顶部填写 Gemini API Key';return}
+// Business strategy and response schema are compiled by creative-core.js.
 
-  const btn=document.getElementById('genConBtn');btn.disabled=true;btn.textContent=`⏳ 正在生成 ${parsedTasks.length} 个任务的设计方案...`;
-  clearStep3();clearStep4();
-  btn.textContent=`⏳ 正在为 ${selectedTaskList.length} 个已选任务生成设计方案...`;
-  const lang=gLang(),model=gModel(),market=gMarket();
-  const arMode=document.getElementById('iAR').value;
-  const arLabel=arMode==='task'?'按每个任务解析出的比例':`强制 ${arMode}`;
-  const sty=overrideStyle||document.getElementById('iStyle').value.trim();
-  const aesthetic=gAesthetic();
-
-  const perTaskCount=normalizePerTaskCount(document.getElementById('cntA').value);
-  document.getElementById('cntA').value=String(perTaskCount);
-  const baseTasks=selectedTaskList.map(task=>({...task,display_task_index:parsedTasks.indexOf(task)+1}));
-  const prodDesc=productAppearance||'不在方案阶段识别图片；请按任务文字设计，最终出图时严格以每个任务上传的产品图为准';
-
-  // Show loading panels
-  document.getElementById('planAState').innerHTML='<div class="plan-loading"><div class="plan-ring-a"></div><span>AI生成方案中...</span></div>';
-  document.getElementById('planAState').classList.remove('hid');
-  document.getElementById('planAList').classList.add('hid');
-  
-  vcSelected.clear();vcSelectionAnchor=null;vcUpdateSelBar();
-  scrollToBlock('step2');
-
-  // ── Generate candidates for every parsed task ──
-  btn.textContent=`⏳ 为 ${baseTasks.length} 个任务生成候选...`;
-  try{
-    const sysA=buildVariantPrompt({
-      tasks:baseTasks,
-      perTaskCount,
-      info,lang,model,market,arLabel,sty,aesthetic,prodDesc,
-      useKB:true
-    });
-    const aiCandidates=await callVariantAI(apiKey,txtModel,sysA,prodDesc,false);
-    const expectedCount=baseTasks.length*perTaskCount;
-    const hasInvalidPlan=aiCandidates.some(candidate=>!(candidate?.design_plan||candidate?.concept||'').trim());
-    if(aiCandidates.length!==expectedCount||hasInvalidPlan){
-      throw new Error(`AI 应返回 ${expectedCount} 个完整设计方案，实际返回 ${aiCandidates.length} 个`);
-    }
-    vcPlanA=normalizeTaskVariants(baseTasks,perTaskCount,aiCandidates);
-    vcSelected=new Set(vcPlanA.flatMap((variant,index)=>variant.is_placeholder?[]:[String(index)]));
-    vcSelectionAnchor=vcPlanA.length?vcPlanA.length-1:null;
-    renderVCPlan(vcPlanA);
-  }catch(e){
-    vcPlanA=createTaskPreviewVariants(parsedTasks);
-    vcSelected.clear();
-    vcSelectionAnchor=null;
-    renderVCPlan(vcPlanA);
-    vcUpdateSelBar();
-    document.getElementById('vW1').classList.remove('hid');
-    document.getElementById('vM1').textContent='候选方案生成失败：'+(e.message||'未知错误');
-    btn.disabled=false;
-    updateGenBtn();
-    return;
-  }
-
-  btn.disabled=false;updateGenBtn();
-  if(document.getElementById('autoMode').checked)await genPromptsFromVC()
-}
-
-function buildVariantPrompt({tasks,perTaskCount,info,lang,market,arLabel,sty,aesthetic,prodDesc,useKB}){
-  const taskPrompt=buildPerTaskVariantPrompt({
-    tasks,
-    perTaskCount,
-    context:{
-      info,
-      market,
-      lang,
-      arLabel,
-      style:sty,
-      aesthetic,
-      prodDesc
-    },
-    kbText:useKB?JSON.stringify(KB):''
-  });
-  return `${CUR_PROMPTS.concept}\n\n${taskPrompt}`;
-}
-
-async function callVariantAI(apiKey,txtModel,sys,prodDesc,freeMode){
-  const info=document.getElementById('iInfo').value.trim();
-  const lang=gLang(),model=gModel(),market=gMarket();
-  const parts=[{text:`产品信息：${info}\n市场：${market}\n模特：${model}\n语言：${lang}`}];
-  if(prodImgData){
-    const cleanB64v=await cleanImageData(prodImgData);
-    if(cleanB64v)parts.unshift({inline_data:{mime_type:'image/png',data:cleanB64v}});
-  }
-  const resp=await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${txtModel}:generateContent?key=${apiKey}`,{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{parts}],systemInstruction:{parts:[{text:sys}]},generationConfig:{temperature:freeMode?0.95:0.75,responseMimeType:'application/json',maxOutputTokens:16384}})
-  },120000);
-  if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,120));
-  const d=await resp.json(),txt=d.candidates?.[0]?.content?.parts?.[0]?.text||'';
-  let parsed;
-  try{
-    const raw=JSON.parse(txt);
-    parsed=Array.isArray(raw)?raw:(raw?.variants||raw?.candidates||raw?.tasks);
-  }catch(error){
-    throw new Error('AI 返回的方案不完整或格式错误，请重新生成');
-  }
-  if(!Array.isArray(parsed))throw new Error('格式错误');
-  return parsed;
-}
+// Text requests are compiled by creative-core.js.
 
 // ═══ STEP 2: RENDER MODULE GROUPS WITH ONE ROW PER PARSED TASK ═══
 function renderVCPlan(variants){
@@ -1857,6 +1664,7 @@ function vcUpdateSelBar(){
 
 // ═══ STEP 2→3: GENERATE PROMPTS FROM SELECTED VARIANTS ═══
 async function genPromptsFromVC(){
+  try{window.PhotoCreativePage.requireScheme()}catch(error){alert(error.message);return}
   const selectedIndices=getSelectedVariantIndicesInOrder(vcPlanA,vcSelected);
   if(selectedIndices.length===0){document.getElementById('vW2').classList.remove('hid');document.getElementById('vM2').textContent='请先选择至少一个候选方案';return}
   document.getElementById('vW2').classList.add('hid');
@@ -1887,6 +1695,7 @@ async function genPromptsFromVC(){
 
   const nextSlots=selVariants.map((v,i)=>({id:i+1,t:v.name,s:v.type_label,d:v.concept,i:v.icon}));
   prompts=normalizeChinesePromptResults(selVariants,[]);
+  window.PhotoCreativePage.bindFbaPreparation();
   SLOTS=nextSlots;
   images=prompts.map(()=>({status:'pending',url:null,error:null}));
   renderPrompts();ckApi();btn.disabled=false;btn.textContent=`✅ 确认选中 ${selectedIndices.length} 个候选，配置图片与提示词`;
@@ -2209,7 +2018,7 @@ function renderPrompts(){
         <div class="pc-work-grid">
           <div class="pc-sec">
             <div class="pc-ll"><span style="color:var(--blue)">中文生图提示词（可编辑）</span><button class="btn-cp" onclick="cpOne(${i})" id="cpZ${i}">📋</button></div>
-            <textarea class="pc-edit" id="zhP${i}" rows="12" placeholder="上传产品资料图后，点击任务列表下方的“生成/更新提示词”" oninput="prompts[${i}].zhFull=this.value;prompts[${i}].prompt_status=this.value.trim()?'manual':'pending';updatePromptReadyState()">${escapeHtml(p.zhFull)}</textarea>
+            <textarea class="pc-edit" id="zhP${i}" rows="12" placeholder="上传产品资料图后，点击任务列表下方的“生成/更新提示词”" oninput="window.PhotoCreativePage.markFbaManual(${i},this.value)">${escapeHtml(p.zhFull)}</textarea>
             ${p.prompt_error?`<div class="er" style="text-align:left;padding:8px 0 0">❌ ${escapeHtml(p.prompt_error)}</div>`:''}
           </div>
           ${renderPromptMedia(p,i)}
@@ -2246,98 +2055,9 @@ function updatePromptReadyState(){
   }
 }
 
-async function generatePromptForItem(prompt,index,apiKey,txtModel){
-  const productImages=normalizeProductImages(prompt.prodImgs,prompt.prodImg);
-  if(!productImages.length)throw new Error('缺少产品资料图');
-  const [productB64s,referenceB64]=await Promise.all([
-    Promise.all(productImages.map(image=>cleanImageData(image))).then(items=>items.filter(Boolean)),
-    prompt.refImg?cleanImageData(prompt.refImg):Promise.resolve(null)
-  ]);
-  if(!productB64s.length)throw new Error('产品资料图读取失败');
+async function generatePromptForItem(prompt){return window.PhotoCreativePage.generatePromptForItem(prompt)}
 
-  const parts=[];
-  parts.push({text:`PRODUCT TRUTH SOURCES 1-${productB64s.length}. These are the primary images and the only authoritative source for product identity. Read them together to identify the user product's real shape, parts, quantities, colors, variants, dimensions, packaging, logo, labels, and material.`});
-  productB64s.forEach((data,imageIndex)=>parts.push(
-    {text:`PRODUCT TRUTH SOURCE ${imageIndex+1} OF ${productB64s.length}`},
-    {inline_data:{mime_type:'image/png',data}}
-  ));
-  if(referenceB64)parts.push(
-    {text:'TARGET TEMPLATE REFERENCE — TEMPLATE ONLY. Analyze only its layout, panel structure, camera angle, spacing, arrows, lighting, color rhythm, and information hierarchy. Every product, package, logo, brand name, label, number, and written claim visible in this image belongs to somebody else and MUST NOT be copied into the output prompt.'},
-    {inline_data:{mime_type:'image/png',data:referenceB64}}
-  );
-
-  const info=document.getElementById('iInfo').value.trim();
-  const arMode=document.getElementById('iAR').value;
-  const finalRatio=resolveAspectRatio(prompt.aspect_ratio,arMode);
-  const style=document.getElementById('iStyle').value.trim();
-  const systemInstruction=`${CUR_PROMPTS.prompt}
-
-══ 最高优先级：产品身份与参考模板必须严格分离 ══
-1. PRODUCT TRUTH SOURCE 图片是唯一产品事实来源。最终提示词中的产品外观、数量、颜色、尺寸、配件、包装、Logo、品牌和标签只能来自这些图片或用户产品文字。
-2. TARGET TEMPLATE REFERENCE 只是目标版式与视觉模板。必须把其中原有产品、包装、Logo、品牌名、型号、数字、文字和卖点全部替换成用户产品；严禁照抄、沿用或混入。
-3. 原设计方案或参考图如果描述了与产品资料图不一致的商品，必须删除这些冲突描述，并改写为产品资料图中的真实商品。
-4. 允许借用参考图的构图、分区、留白、箭头关系、镜头、背景、光影与视觉层级，但不能保留参考图商品身份。
-5. 本次只处理一个任务。严格输出 JSON 数组，且只能包含一个对象：[{"zh":"中文提示词"}]。`;
-  const request=`产品文字资料：
-${info||'以产品资料图为准'}
-
-已选任务：${prompt.task_name}
-候选方案：${prompt.t}
-原始设计方案（只保留与产品资料图不冲突的版式和场景要求）：
-${prompt.d}
-
-最终画幅：${finalRatio}
-目标市场：美国 Amazon FBA
-图片内文案：English-US
-${style?`风格偏好：${style}\n`:''}
-请综合全部 PRODUCT TRUTH SOURCE 图片识别真实产品，再借用 TARGET TEMPLATE REFERENCE 的结构与视觉语言，写出一条可直接生图的中文提示词。提示词必须明确写出“参考图仅作结构模板，参考图中的旧产品与旧包装全部替换为产品资料图中的真实产品”。不得出现只在目标参考图中存在的品牌、包装名、产品名、型号、尺寸或英文文案。`;
-  parts.push({text:request});
-
-  const response=await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${txtModel}:generateContent?key=${apiKey}`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      contents:[{parts}],
-      systemInstruction:{parts:[{text:systemInstruction}]},
-      generationConfig:{temperature:0.45,responseMimeType:'application/json',maxOutputTokens:8192}
-    })
-  },120000);
-  if(!response.ok)throw new Error('API '+response.status+': '+(await response.text()).slice(0,160));
-  const data=await response.json();
-  const text=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
-  const parsed=JSON.parse(text);
-  const item=Array.isArray(parsed)?parsed[0]:parsed;
-  const generated=String(item?.zh||item?.prompt_zh||item?.prompt||'').trim();
-  if(!generated)throw new Error('AI 未返回有效中文提示词');
-  return generated;
-}
-
-async function generatePromptsWithMedia(){
-  syncPromptEdits();
-  const apiKey=document.getElementById('aKey').value.trim();
-  const txtModel=document.getElementById('txtMdl').value;
-  if(!apiKey){alert('请先填写 API Key');return}
-  const missing=prompts.filter(prompt=>normalizeProductImages(prompt.prodImgs,prompt.prodImg).length===0);
-  if(missing.length){alert(`还有 ${missing.length} 项未上传产品资料图。`);return}
-  clearStep4();
-  for(let index=0;index<prompts.length;index++){
-    const prompt=prompts[index];
-    prompt.prompt_status='loading';
-    prompt.prompt_error='';
-    renderPrompts();
-    try{
-      prompt.zhFull=await generatePromptForItem(prompt,index,apiKey,txtModel);
-      prompt.prompt_status='ready';
-    }catch(error){
-      prompt.prompt_status='error';
-      prompt.prompt_error=error.message||'提示词生成失败';
-    }
-    renderPrompts();
-  }
-  images=prompts.map(()=>({status:'pending',url:null,error:null}));
-  updatePromptReadyState();
-  if(document.getElementById('autoMode').checked&&prompts.every(prompt=>['ready','manual'].includes(prompt.prompt_status)))await startGen();
-}
+async function generatePromptsWithMedia(){return window.PhotoCreativePage.generatePromptsWithMedia()}
 
 function getActivePrompt(i){return document.getElementById('zhP'+i)?.value||prompts[i]?.zhFull||''}
 function cpOne(i){const el=document.getElementById('zhP'+i);navigator.clipboard.writeText(el.value);const b=document.getElementById('cpZ'+i);b.textContent='✓';b.classList.add('ok');setTimeout(()=>{b.textContent='📋';b.classList.remove('ok')},1500)}
@@ -2487,87 +2207,12 @@ async function callOpenAiImageApi(model,prompt,aspectRatio,mainBase64Images,refe
   try{data=JSON.parse(raw)}catch(e){throw new Error(`OpenAI 请求返回异常（HTTP ${resp.status}）`)}
   if(!resp.ok||data.error)throw new Error(typeof data.error==='string'?data.error:(data.error?.message||`OpenAI API ${resp.status}`));
   if(!data.imageUrl)throw new Error('OpenAI API 没有返回图片');
+  if(data.request)window.PhotoCreative.record({...data.request,status:"success"});
   return data.imageUrl;
 }
 
-async function startGen(){
-  clearStep4();renderIG();scrollToBlock('step4');
-  const key=document.getElementById('aKey').value.trim(),mdl=document.getElementById('aMdl').value;
-  for(let i=0;i<prompts.length;i++){images[i]={status:'loading'};renderIG();try{images[i]={status:'done',url:await callGemini(key,mdl,getActivePrompt(i),prompts[i])}}catch(err){images[i]={status:'error',url:null,error:err.message||'失败'}}renderIG()}
-}
-async function callGemini(apiKey,model,prompt,task={}){
-  const imageModel=normalizeImageModel(model);
-  const globalAr=document.getElementById('iAR')?.value||'task';
-  const liveTask=parsedTasks.find(item=>item.task_id===task.task_id)||task;
-  const media=resolveTaskMedia(liveTask,prodImgData,refImgData,globalAr);
-  const productImages=media.productImages;
-  const referenceImage=media.referenceImage;
-  const ar=normalizeImageAspectRatio(media.aspectRatio);
-  if(isOpenAiImageModel(imageModel)){
-    const [productB64s,referenceB64]=await Promise.all([
-      Promise.all(productImages.map(image=>cleanImageData(image))).then(items=>items.filter(Boolean)),
-      referenceImage?cleanImageData(referenceImage):Promise.resolve(null)
-    ]);
-    if(!productB64s.length)throw new Error('当前任务缺少产品资料图，请返回第三步上传后重试');
-    const refNote=referenceB64?'The reference image is the TARGET TEMPLATE REFERENCE. It controls only the desired structure and finished look; replace all of its merchandise identity.':'No separate target template reference image is provided.';
-    const prodApp=productAppearance?`Product color: ${productAppearance}. Refer to it as "${productAppearance} product". Do NOT change its color.`:'';
-    const arNote=`ASPECT RATIO: Generate the output image with an aspect ratio of exactly ${ar}.`;
-    const sourceNote=`\n[Multiple Product Originals]\nYou received ${productB64s.length} PRODUCT SOURCE image(s). Treat them as complementary evidence of the same product family. Use the exact angle, count, color, style, and size requested by the prompt; do not place every variant into the result unless explicitly requested.\n`;
-    const imgInstructions=CUR_PROMPTS.imggen.replace('{refNote}',refNote).replace('{prodAppearance}',prodApp).replace('{arNote}',arNote)+'\n\n'+sourceNote+'\n\n';
-    const identityLock=`# NON-NEGOTIABLE PRODUCT IDENTITY LOCK
-- Product source images are the only authority for product identity, packaging, labels, colors, quantities, sizes, and parts.
-- A target template controls only structure and visual treatment; remove its original product identity.
-- Keep the user's real product unmistakably dominant and follow the requested angle, count, and variant.`;
-    return callOpenAiImageApi(imageModel,imgInstructions+'# Prompt\n'+prompt+'\n\n'+identityLock+'\n\n# Final Aspect Ratio Override\nGenerate exactly '+ar+'.',ar,productB64s,referenceB64);
-  }
-  if(imageModel.startsWith('imagen')){
-    if(productImages.length||referenceImage)throw new Error('Imagen 不支持产品图或参考图输入，请改用 Nano Banana 生图模型');
-    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:predict?key=${apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({instances:[{prompt}],parameters:{sampleCount:1,aspectRatio:ar}})});
-    if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,200));
-    const d=await resp.json(),b=d.predictions?.[0]?.bytesBase64Encoded;if(!b)throw new Error('No image');return'data:image/png;base64,'+b;
-  }else{
-      const parts=[];
-      let imgInstructions='';
-      const [productB64s,referenceB64]=await Promise.all([
-        Promise.all(productImages.map(image=>cleanImageData(image))).then(items=>items.filter(Boolean)),
-        referenceImage?cleanImageData(referenceImage):Promise.resolve(null)
-      ]);
-      if(productB64s.length){
-        parts.push({text:`PRODUCT TRUTH SOURCES 1-${productB64s.length}. These are the primary images and the only authoritative product-identity sources. They take priority over the target template and any conflicting wording in the prompt. Compare them together for exact shape, components, labels, colors, quantities, size relationships, packaging, and variant differences.`});
-        productB64s.forEach((data,index)=>{
-          parts.push(
-            {text:`PRODUCT TRUTH SOURCE ${index+1} OF ${productB64s.length}`},
-            {inline_data:{mime_type:'image/png',data}}
-          );
-        });
-      }
-      if(referenceB64){
-        parts.push(
-          {text:'TARGET TEMPLATE REFERENCE — TEMPLATE ONLY. Match its composition, panel structure, camera treatment, spacing, arrows, lighting, color rhythm, and information hierarchy. Every product, package, logo, brand, label, number, and written claim visible here belongs to the template and MUST be removed and replaced.'},
-          {inline_data:{mime_type:'image/png',data:referenceB64}}
-        );
-      }
-      if(productB64s.length){
-      const refNote=referenceB64?'The later labeled image is the TARGET TEMPLATE REFERENCE. It controls only the desired structure and finished look; all of its merchandise identity must be replaced.':'No separate target template reference image is provided.';
-      const prodApp=productAppearance?`Product color: ${productAppearance}. Refer to it as "${productAppearance} product". Do NOT change its color.`:'';
-        const arNote = "ASPECT RATIO: You MUST generate the output image with an aspect ratio of exactly " + ar + ".";
-        const sourceNote=`\n[Multiple Product Originals]\nYou received ${productB64s.length} PRODUCT SOURCE image(s). Treat them as complementary evidence of the same product family. Use the exact angle, count, color, style, and size requested by the prompt; do not place every variant into the result unless explicitly requested.\n`;
-        imgInstructions=CUR_PROMPTS.imggen.replace('{refNote}',refNote).replace('{prodAppearance}',prodApp).replace('{arNote}',arNote)+'\n\n'+sourceNote+'\n\n';
-    }
-    if(!productB64s.length)throw new Error('当前任务缺少产品资料图，请返回第三步上传后重新生成提示词');
-    const identityLock=`# NON-NEGOTIABLE PRODUCT IDENTITY LOCK
-- The PRODUCT TRUTH SOURCES are the only source for what product, packaging, logo, brand, labels, colors, quantities, sizes, and parts appear.
-- The TARGET TEMPLATE REFERENCE controls only structure and visual treatment. Remove every original product, package, logo, brand name, model number, label, number, and written claim from that template.
-- Replace all template merchandise with the real user product from PRODUCT TRUTH SOURCES.
-- If any wording in the prompt conflicts with PRODUCT TRUTH SOURCES or names something seen only in the template, ignore that conflicting wording.
-- The final image must make the user product unmistakably dominant and must contain no trace of the template product identity.`;
-    parts.push({text:imgInstructions+'# Prompt\n'+prompt+'\n\n'+identityLock+'\n\n# Final Aspect Ratio Override\nGenerate exactly '+ar+'. Ignore any different aspect ratio mentioned earlier.'});
-    const generationConfig=buildMiniImageGenerationConfig(imageModel,ar);
-    const resp=await fetch(buildImageGenerateContentUrl(imageModel,apiKey),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts}],generationConfig})});
-    if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,200));
-    const d=await resp.json();for(const p of(d.candidates?.[0]?.content?.parts||[])){if(p.inlineData)return`data:${p.inlineData.mimeType};base64,${p.inlineData.data}`}throw new Error('No image');
-  }
-}
+async function startGen(){return window.PhotoCreativePage.startGen()}
+async function callGemini(apiKey,model,prompt,task={}){return window.PhotoCreativePage.callGemini(apiKey,model,prompt,task)}
 
 
 function renderIG(){
@@ -2578,7 +2223,7 @@ function renderIG(){
     else slot=`<img src="${escapeAttr(img.url)}" onclick="openEdit(${i})" title="点击编辑">`;
     return`<div class="ic"><div class="is">${slot}</div><div class="ii"><div class="il">${escapeHtml(p.i)} 图${p.id}：${escapeHtml(p.t)}</div><div class="isu">${escapeHtml(p.s)}</div>${img?.status==='done'?`<div class="ia"><button class="btn btn-sm btn-x" onclick="openEdit(${i})">✏️ 编辑</button><button class="btn btn-sm btn-x" onclick="retry(${i})">🎲 重抽</button><button class="btn btn-sm btn-x" onclick="dlIdx(${i})">⬇</button></div>`:''}</div></div>`}).join('');
 }
-async function retry(i){const key=document.getElementById('aKey').value.trim(),mdl=document.getElementById('aMdl').value;images[i]={status:'loading'};renderIG();try{images[i]={status:'done',url:await callGemini(key,mdl,getActivePrompt(i),prompts[i])}}catch(err){images[i]={status:'error',error:err.message}}renderIG()}
+async function retry(index){return window.PhotoCreativePage.retry(index)}
 
 // ═══ DOWNLOAD ═══
 function dlIdx(i){if(!images[i]?.url)return;const a=document.createElement('a');a.href=images[i].url;a.download=`图${i+1}_${SLOTS[i].t}.png`;a.click()}
@@ -2676,18 +2321,9 @@ function openEdit(i){
 
 function hMo(){document.getElementById('mBg').classList.add('hid');document.body.style.overflow=''}
 
-const MERGE_TEMPLATES = {
-  combine: `Creatively combine the elements and styles of the first and second images. \n\n# My Request\n[Describe any additional changes here]`,
-  replace_person: `Replace the person in the first image with the person from the second image. \n\n# Instructions for AI\n- The first image is the scene.\n- The second image contains the new person.\n- Extract the person from the second image.\n- Remove the original person from the first image.\n- Place the new person into the scene, matching lighting, shadows, and perspective.\n- Then, apply my specific request below.\n\n# My Request\n[Describe any additional changes here]`,
-  add_logo: `Add the second image as a logo or watermark onto the first image.\n  \n# Instructions for AI\n- The first image is the main picture.\n- The second image is the logo.\n- Preserve the transparency of the logo.\n- Then, apply my specific request below.\n\n# My Request\n[Describe placement, size, or other effects here]`,
-  replace_background: `Use the second image as a new background for the main subject in the first image.\n\n# Instructions for AI\n- The first image contains the main subject.\n- The second image is the new background.\n- Extract the subject and place it on the new background realistically.\n- Then, apply my specific request below.\n\n# My Request\n[Describe any additional changes here]`,
-  replace_product: `Replace the main product in the first image with the product from the second image.\n\n# Instructions for AI\n- The first image is the scene.\n- The second image contains the new product.\n- Swap the products, maintaining the scene's lighting and style.\n- Then, apply my specific request below.\n\n# My Request\n[Describe any additional changes here]`
-};
+// Editing presets are stored in CUR_PROMPTS.editTemplates.
 
-function changeMergeMode() {
-  const mode = document.getElementById('mMergeMode').value;
-  document.getElementById('mPmt').value = MERGE_TEMPLATES[mode] || '';
-}
+function changeMergeMode(){const templates=window.PhotoCreative.parseMap(CUR_PROMPTS.editTemplates,"编辑模板");document.getElementById("mPmt").value=templates[document.getElementById("mMergeMode").value]||""}
 
 async function miniEditorChangeImg(input,type){
   const selected=await readImageFiles(input.files);
@@ -2732,76 +2368,7 @@ function useEditResult(){
   renderIG();
 }
 
-async function runEdit(){
-  const key=document.getElementById('aKey').value.trim();
-  const mdl=document.getElementById('aMdl').value;
-  if(isOpenAiImageModel(mdl)?!(localStorage.getItem('openai_custom_api_key')||'').trim():!key){document.getElementById('mRes').innerHTML=`<div class="er">❌ 请先填写${isOpenAiImageModel(mdl)?' OpenAI':' Gemini'} API Key</div>`;return}
-  const prompt=document.getElementById('mPmt').value.trim();
-  if(!prompt){document.getElementById('mRes').innerHTML='<div class="er">❌ 请输入提示词/编辑指令</div>';return}
-  miniAspectRatio=normalizeMiniAspectRatio(document.getElementById('mAspectRatio')?.value||miniAspectRatio);
-  updateMiniAspectRatio(false);
-  const btn=document.getElementById('mEBtn');btn.disabled=true;btn.textContent='⏳ 单次生图中...';
-  document.getElementById('mRes').innerHTML=`<div class="ld"><div class="sp"></div><span>正在生成 ${miniAspectRatio} 编辑图...</span></div>`;
-  try{
-    const curSrc=document.getElementById('mImg').src;
-    const [productB64s,currentB64,referenceB64]=await Promise.all([
-      Promise.all(miniProdImgs.map(image=>cleanImageData(image))).then(items=>items.filter(Boolean)),
-      curSrc?cleanImageData(curSrc):Promise.resolve(null),
-      miniRefImg?cleanImageData(miniRefImg):Promise.resolve(null)
-    ]);
-    if(!currentB64)throw new Error('当前图片读取失败，请关闭编辑器后重试');
-
-    const variationId=globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const instruction=buildMiniEditInstruction({
-      prompt,
-      aspectRatio:miniAspectRatio,
-      variationId,
-      hasProductImage:productB64s.length>0,
-      hasReferenceImage:!!referenceB64,
-      productAppearance
-    });
-    const parts=[{text:instruction}];
-    if(productB64s.length){
-      parts.push({text:`PRODUCT TRUTH SOURCES 1-${productB64s.length}. Read them together as the only authoritative product identity. Preserve the exact angle, count, color, style, dimensions, labels, and parts required by the edit prompt; do not combine incompatible variants.`});
-      productB64s.forEach((data,index)=>parts.push(
-        {text:`PRODUCT TRUTH SOURCE ${index+1} OF ${productB64s.length}`},
-        {inline_data:{mime_type:'image/png',data}}
-      ));
-    }
-    parts.push(
-      {text:`CURRENT IMAGE TO EDIT. Its original aspect ratio is preserved. Redraw, outpaint, and recompose it naturally into the requested ${miniAspectRatio} output.`},
-      {inline_data:{mime_type:'image/png',data:currentB64}}
-    );
-    if(referenceB64)parts.push(
-      {text:'TARGET TEMPLATE REFERENCE. Match its desired structure, style, and composition, but remove its original merchandise identity and replace it with the product from PRODUCT TRUTH SOURCES.'},
-      {inline_data:{mime_type:'image/png',data:referenceB64}}
-    );
-
-    let url=null;
-    if(isOpenAiImageModel(mdl)){
-      url=await callOpenAiImageApi(mdl,instruction,miniAspectRatio,[...productB64s,currentB64],referenceB64);
-    }else{
-      const editModel=normalizeImageModel(mdl.startsWith('imagen')?'gemini-2.5-flash-image':mdl);
-      const generationConfig=buildMiniImageGenerationConfig(editModel,miniAspectRatio);
-      const resp=await fetchWithTimeout(buildImageGenerateContentUrl(editModel,key),{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({contents:[{parts}],generationConfig})
-      },120000);
-      if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,200));
-      const d=await resp.json();
-      for(const p of(d.candidates?.[0]?.content?.parts||[])){if(p.inlineData){url=`data:${p.inlineData.mimeType};base64,${p.inlineData.data}`;break}}
-    }
-    if(!url)throw new Error('No image in response');
-    editResult=url;
-    document.getElementById('mRes').innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:contain">`;
-    document.getElementById('mABtn').classList.remove('hid');
-    document.getElementById('mUseBtn').classList.remove('hid');
-    document.getElementById('mDlResBtn').classList.remove('hid');
-  }catch(err){
-    document.getElementById('mRes').innerHTML=`<div class="er">❌ ${err.message}</div>`;
-  }
-  btn.disabled=false;btn.textContent='✨ 生成编辑图';
-}
+async function runEdit(){return window.PhotoCreativePage.runEdit()}
 
 function applyEdit(){if(editResult&&editIdx>=0){images[editIdx].url=editResult;renderIG();hMo()}}
 
@@ -2843,9 +2410,9 @@ function positionZoom(e){
 const _inIframe=(function(){try{return window.self!==window.top}catch(e){return true}})();
 const _erpCbs={};
 if(_inIframe){window.addEventListener('message',function(e){if(e.data&&e.data._erp){var c=_erpCbs[e.data._erp];if(c)c.slice().forEach(function(fn){fn({detail:e.data.detail})})}});}
-function _erpOn(n,fn){if(_inIframe){(_erpCbs[n]=_erpCbs[n]||[]).push(fn)}else document.addEventListener(n,fn)}
-function _erpOff(n,fn){if(_inIframe){var a=_erpCbs[n];if(a){var i=a.indexOf(fn);if(i>=0)a.splice(i,1)}}else document.removeEventListener(n,fn)}
-function _erpEmit(n,d){if(_inIframe)window.parent.postMessage({_erp:n,detail:d},'*');else document.dispatchEvent(new CustomEvent(n,{detail:d}))}
+function _erpOn(n,fn){document.addEventListener(n,fn);if(_inIframe){(_erpCbs[n]=_erpCbs[n]||[]).push(fn)}}
+function _erpOff(n,fn){document.removeEventListener(n,fn);if(_inIframe){var a=_erpCbs[n];if(a){var i=a.indexOf(fn);if(i>=0)a.splice(i,1)}}}
+function _erpEmit(n,d){document.dispatchEvent(new CustomEvent(n,{detail:d}));if(_inIframe)try{window.parent.postMessage({_erp:n,detail:d},'*')}catch(e){}}
 
 // ═══ SPU 数据专属自愈引擎 V24 (静默无打扰版) ═══
 function fetchSPUData() {
@@ -2868,7 +2435,7 @@ function fetchSPUData() {
     btn.textContent = '⏳ 抓取中...'; 
     btn.disabled = true;
 
-    const handler = function(e) {
+    const handler = async function(e) {
         _erpOff('RESPONSE_SPU_FETCH', handler);
         const res = e.detail;
         console.log('【V24 响应】', res);
@@ -2910,20 +2477,30 @@ function fetchSPUData() {
             infoEl.dispatchEvent(new Event('change'));
         }
 
+        let productImageLoaded = false;
+        let productImageError = null;
         if (targetImgUrl && typeof setImg === 'function') {
-            setImg('prod', targetImgUrl); 
+            try {
+                setImg('prod', await remoteImageToDataUrl(targetImgUrl));
+                productImageLoaded = true;
+            } catch (error) {
+                productImageError = error;
+                console.error('SPU 产品图片下载失败：', error);
+            }
         }
 
         // --- 5. 状态反馈 (核心 UX 优化：静默动效) ---
-        if (title || targetImgUrl) {
-            // 成功时不弹窗，按钮变字，1.5秒后恢复
+        if (productImageLoaded) {
             btn.textContent = '✓ 抓取成功';
             setTimeout(() => {
                 btn.textContent = '↓ 抓取 ERP';
                 btn.disabled = false;
             }, 1500);
+        } else if (title || targetImgUrl) {
+            btn.textContent = '⚠ 图片加载失败';
+            btn.disabled = false;
+            alert('产品资料已抓取，但没有取得可用的产品图片。请重试或手动上传图片。'+(productImageError?.message?'\n\n原因：'+productImageError.message:''));
         } else {
-            // 彻底失败时恢复按钮并弹窗报错
             btn.textContent = '↓ 抓取 ERP';
             btn.disabled = false;
             alert("❌ 未能获取有效数据。如果该 SPU 存在，请确认您已在新标签页登录了 ERP。");
@@ -2992,17 +2569,8 @@ document.addEventListener('paste', (e) => {
 });
 
 async function extractTasksWithAI(csvText) {
-  const prompt = `你是一个专业的美国 Amazon FBA 视觉主管。以下是运营填写的作图需求表(可能包含多个子表单的内容，由 ===== 表名 ===== 分隔)。
-请深度遍历这些表格，提取所有的“作图任务”。忽略与作图无关的说明行。
-请输出 JSON 数组，每个对象必须包含：
-- group_name: 该任务所属模块名称。优先使用表名、分区标题或原文中的模块名；同一模块下的任务必须返回完全相同的 group_name。
-- name: 必须完全保留运营在Excel中起的原始命名（例如：A+主场景图1、场景图2、功能卖点图等）。如果没有明确列出，请根据表名和行数生成描述性的命名。
-- ratio: 画幅比例，格式必须是“正整数:正整数”。原文明确比例时原样保留；未明确时根据该任务的图片用途、构图方向和版位要求判断最合适比例，不要给所有任务固定同一比例。
-- desc: 完整保留人类填写的中文作图要求（包含主体要求、场景、排版、限制条件等），这里只做任务提取，不要把它冒充成 AI 设计方案。
-所有任务均面向美国 Amazon FBA，禁止加入其他国家或地区电商平台审美。
-
-CSV数据：
-${csvText}`;
+  const settings=JSON.parse(JSON.stringify(CUR_PROMPTS));
+  const extractionContext=window.PhotoCreativePage.context();
 
   const excelBox = document.getElementById('excelUpBox');
   let oriHtml = '';
@@ -3018,26 +2586,11 @@ ${csvText}`;
     
     if (excelBox) excelBox.innerHTML = '<div style="font-size:12px;color:var(--blue);font-weight:bold;margin-top:10px">正在用 AI 分析 Excel 提取任务...</div>';
 
-    const resp = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${mdl}:generateContent?key=${key}`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        contents: [{role: 'user', parts: [{text: prompt}]}],
-        generationConfig: {responseMimeType: 'application/json',maxOutputTokens:8192}
-      })
-    },90000);
-    
-    if (excelBox) excelBox.innerHTML = oriHtml;
-    
-    if(!resp.ok)throw new Error('API '+resp.status+': '+(await resp.text()).slice(0,160));
-    const res = await resp.json();
-    if(res.error) throw new Error(res.error.message);
-    const text = res.candidates[0].content.parts[0].text;
-    
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if(!jsonMatch) throw new Error("AI 返回的数据格式不正确");
-    const tasks = JSON.parse(jsonMatch[0]);
-    
+    const core=window.PhotoCreative;
+    const schema=core.array(core.object(["group_name","name","ratio","desc"]));
+    schema.items.properties.group_name.minLength=0;schema.items.properties.ratio.minLength=0;
+    const tasks=await core.requestText({apiKey:key,model:mdl,mode:PROMPT_MODE,stage:"extract",settings,context:extractionContext,input:{csvText},schema});
+    if(excelBox)excelBox.innerHTML=oriHtml;
     if (tasks && tasks.length > 0) {
       parsedTasks = tasks.map((t, i) => {
         const name = t.name || ('任务 ' + (i+1));
@@ -3091,5 +2644,6 @@ ${csvText}`;
 // ==== END EXCEL PARSING LOGIC ====
 
 </script>
+<script src="/creative-page.js"></script>
 </body>
 </html>
