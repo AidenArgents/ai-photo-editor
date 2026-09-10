@@ -217,6 +217,18 @@ body{font-family:var(--f);background:var(--bg);color:var(--t1);line-height:1.6;-
 	  <option value="gpt-image-2:low">GPT Image 2 低 · $0.005–0.006/¥0.04（快速省钱）</option>
 	  <option value="gpt-image-2:medium">GPT Image 2 中 · $0.041–0.053/¥0.30–0.38（推荐）</option>
 	  <option value="gpt-image-2:high">GPT Image 2 高 · $0.165–0.211/¥1.19–1.52（高质量）</option>
+	  <option value="gpt-image-2.5-sunburst:auto">GPT Image 2.5 Sunburst 自动 · 图像出$30/¥216 M tokens（自动质量·精确编辑·暂无明确价格）</option>
+	  <option value="gpt-image-2.5-sunburst:low">GPT Image 2.5 Sunburst 低 · 图像出$30/¥216 M tokens（低质量·精确编辑·暂无明确价格）</option>
+	  <option value="gpt-image-2.5-sunburst:medium">GPT Image 2.5 Sunburst 中 · 图像出$30/¥216 M tokens（中等质量·精确编辑·暂无明确价格）</option>
+	  <option value="gpt-image-2.5-sunburst:high">GPT Image 2.5 Sunburst 高 · 图像出$30/¥216 M tokens（高质量·精确编辑·暂无明确价格）</option>
+	  <option value="gpt-image-2.5-sunburst:xhigh">GPT Image 2.5 Sunburst 超高 · 图像出$30/¥216 M tokens（超高质量·精确编辑·暂无明确价格）</option>
+	  <option value="gpt-image-2.5-sunburst:max">GPT Image 2.5 Sunburst 最高 · 图像出$30/¥216 M tokens（最高质量·精确编辑·暂无明确价格）</option>
+	  <option value="gpt-image-2.5-flare:auto">GPT Image 2.5 Flare 自动 · 图像出$30/¥216 M tokens（自动质量·快速生成·暂无明确价格）</option>
+	  <option value="gpt-image-2.5-flare:low">GPT Image 2.5 Flare 低 · 图像出$30/¥216 M tokens（低质量·快速生成·暂无明确价格）</option>
+	  <option value="gpt-image-2.5-flare:medium">GPT Image 2.5 Flare 中 · 图像出$30/¥216 M tokens（中等质量·快速生成·暂无明确价格）</option>
+	  <option value="gpt-image-2.5-flare:high">GPT Image 2.5 Flare 高 · 图像出$30/¥216 M tokens（高质量·快速生成·暂无明确价格）</option>
+	  <option value="gpt-image-2.5-flare:xhigh">GPT Image 2.5 Flare 超高 · 图像出$30/¥216 M tokens（超高质量·快速生成·暂无明确价格）</option>
+	  <option value="gpt-image-2.5-flare:max">GPT Image 2.5 Flare 最高 · 图像出$30/¥216 M tokens（最高质量·快速生成·暂无明确价格）</option>
 	</select>
     <span class="hint"><a href="https://aistudio.google.com/apikey" target="_blank">获取Key →</a> · Key存于浏览器本地</span>
     <label style="display:flex;align-items:center;gap:4px;margin-left:auto;cursor:pointer;user-select:none"><input type="checkbox" id="autoMode" onchange="saveSettings()" style="cursor:pointer"><span style="font-size:11px;font-weight:600;color:var(--t2)">全自动</span><span style="font-size:10px;color:var(--t3)">（不保证最终质量）</span></label>
@@ -953,7 +965,7 @@ function clearStep4(){
 }
 
 // ═══ STEP 4: IMAGE GENERATION ═══
-function isOpenAiImageModel(model){return /^gpt-image-2:(auto|low|medium|high)$/.test(String(model||''))}
+function isOpenAiImageModel(model){return /^gpt-image-(?:2|2\.5-(?:sunburst|flare)):(?:auto|low|medium|high|xhigh|max)$/.test(String(model||''))}
 function base64PngBlob(value){
   const base64=String(value||'').replace(/^data:[^;]+;base64,/, '');
   if(!base64)return null;
@@ -961,7 +973,7 @@ function base64PngBlob(value){
   for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
   return new Blob([bytes],{type:'image/png'});
 }
-async function callOpenAiImageApi(model,prompt,aspectRatio,mainBase64Images,referenceBase64){
+async function callOpenAiImageApi(model,prompt,aspectRatio,mainBase64Images,referenceBase64,signal){
   const openAiKey=(localStorage.getItem('openai_custom_api_key')||'').trim();
   if(!openAiKey)throw new Error('请先在页面右上角填写 OpenAI API Key');
   const mainImages=(mainBase64Images||[]).filter(Boolean);
@@ -974,7 +986,9 @@ async function callOpenAiImageApi(model,prompt,aspectRatio,mainBase64Images,refe
   form.append('highFidelityPreserve','false');
   form.append('mergeMode','custom');
   form.append('model',model);
-  const resp=await fetch('/api/edit-image',{method:'POST',headers:{'x-openai-api-key':openAiKey},body:form});
+  const timeoutSignal=AbortSignal.timeout(90000);
+  const requestSignal=signal?(typeof AbortSignal.any==='function'?AbortSignal.any([signal,timeoutSignal]):signal):timeoutSignal;
+  const resp=await fetch('/api/edit-image',{method:'POST',headers:{'x-openai-api-key':openAiKey},body:form,signal:requestSignal});
   const raw=await resp.text();let data;
   try{data=JSON.parse(raw)}catch(e){throw new Error(`OpenAI 请求返回异常（HTTP ${resp.status}）`)}
   if(!resp.ok||data.error)throw new Error(typeof data.error==='string'?data.error:(data.error?.message||`OpenAI API ${resp.status}`));

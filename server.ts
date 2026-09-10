@@ -66,13 +66,25 @@ function getPublicErrorMessage(error: any): string {
   return error?.message || "An error occurred during image processing.";
 }
 
-type OpenAiImageQuality = "auto" | "low" | "medium" | "high";
+type OpenAiImageQuality = "auto" | "low" | "medium" | "high" | "xhigh" | "max";
 
-const OPENAI_IMAGE_SELECTIONS: Record<string, OpenAiImageQuality> = {
-  "gpt-image-2:auto": "auto",
-  "gpt-image-2:low": "low",
-  "gpt-image-2:medium": "medium",
-  "gpt-image-2:high": "high",
+const OPENAI_IMAGE_SELECTIONS: Record<string, { model: string; quality: OpenAiImageQuality }> = {
+  "gpt-image-2:auto": { model: "gpt-image-2", quality: "auto" },
+  "gpt-image-2:low": { model: "gpt-image-2", quality: "low" },
+  "gpt-image-2:medium": { model: "gpt-image-2", quality: "medium" },
+  "gpt-image-2:high": { model: "gpt-image-2", quality: "high" },
+  "gpt-image-2.5-sunburst:auto": { model: "gpt-image-2.5-sunburst", quality: "auto" },
+  "gpt-image-2.5-sunburst:low": { model: "gpt-image-2.5-sunburst", quality: "low" },
+  "gpt-image-2.5-sunburst:medium": { model: "gpt-image-2.5-sunburst", quality: "medium" },
+  "gpt-image-2.5-sunburst:high": { model: "gpt-image-2.5-sunburst", quality: "high" },
+  "gpt-image-2.5-sunburst:xhigh": { model: "gpt-image-2.5-sunburst", quality: "xhigh" },
+  "gpt-image-2.5-sunburst:max": { model: "gpt-image-2.5-sunburst", quality: "max" },
+  "gpt-image-2.5-flare:auto": { model: "gpt-image-2.5-flare", quality: "auto" },
+  "gpt-image-2.5-flare:low": { model: "gpt-image-2.5-flare", quality: "low" },
+  "gpt-image-2.5-flare:medium": { model: "gpt-image-2.5-flare", quality: "medium" },
+  "gpt-image-2.5-flare:high": { model: "gpt-image-2.5-flare", quality: "high" },
+  "gpt-image-2.5-flare:xhigh": { model: "gpt-image-2.5-flare", quality: "xhigh" },
+  "gpt-image-2.5-flare:max": { model: "gpt-image-2.5-flare", quality: "max" },
 };
 
 function getRequestOpenAiApiKey(req: any): string {
@@ -95,6 +107,7 @@ function getOpenAiImageSize(aspectRatio: string): string {
 
 async function editImageWithOpenAi(options: {
   apiKey: string;
+  model: string;
   imageFiles: any[];
   secondaryImageFile?: any;
   prompt: string;
@@ -102,7 +115,7 @@ async function editImageWithOpenAi(options: {
   aspectRatio: string;
 }): Promise<string> {
   const form = new FormData();
-  form.append("model", "gpt-image-2");
+  form.append("model", options.model);
   form.append("prompt", options.prompt);
   form.append("quality", options.quality);
   form.append("size", getOpenAiImageSize(options.aspectRatio));
@@ -243,6 +256,42 @@ const IMAGE_MODEL_PROMPT_PROFILES: Record<
   "gpt-image-2:high": {
     displayName: "GPT Image 2（高质量）",
   },
+  "gpt-image-2.5-sunburst:auto": {
+    displayName: "GPT Image 2.5 Sunburst（自动质量）",
+  },
+  "gpt-image-2.5-sunburst:low": {
+    displayName: "GPT Image 2.5 Sunburst（低质量）",
+  },
+  "gpt-image-2.5-sunburst:medium": {
+    displayName: "GPT Image 2.5 Sunburst（中等质量）",
+  },
+  "gpt-image-2.5-sunburst:high": {
+    displayName: "GPT Image 2.5 Sunburst（高质量）",
+  },
+  "gpt-image-2.5-sunburst:xhigh": {
+    displayName: "GPT Image 2.5 Sunburst（超高质量）",
+  },
+  "gpt-image-2.5-sunburst:max": {
+    displayName: "GPT Image 2.5 Sunburst（最高质量）",
+  },
+  "gpt-image-2.5-flare:auto": {
+    displayName: "GPT Image 2.5 Flare（自动质量）",
+  },
+  "gpt-image-2.5-flare:low": {
+    displayName: "GPT Image 2.5 Flare（低质量）",
+  },
+  "gpt-image-2.5-flare:medium": {
+    displayName: "GPT Image 2.5 Flare（中等质量）",
+  },
+  "gpt-image-2.5-flare:high": {
+    displayName: "GPT Image 2.5 Flare（高质量）",
+  },
+  "gpt-image-2.5-flare:xhigh": {
+    displayName: "GPT Image 2.5 Flare（超高质量）",
+  },
+  "gpt-image-2.5-flare:max": {
+    displayName: "GPT Image 2.5 Flare（最高质量）",
+  },
 };
 
 function getRequestApiKey(req: any): string {
@@ -355,14 +404,14 @@ app.post(
       if (!imageFiles.length) return res.status(400).json({ error: "Main image is required." });
       if (typeof prompt !== "string" || !prompt.trim()) return res.status(400).json({ error: "Prompt is required." });
       const requestedModel = req.body.model || "gemini-2.5-flash-image";
-      const quality = OPENAI_IMAGE_SELECTIONS[requestedModel];
+      const openAiSelection = OPENAI_IMAGE_SELECTIONS[requestedModel];
       const imageMetadata = [...imageFiles, ...(secondaryImageFile ? [secondaryImageFile] : [])].map((file:any,index:number)=>({index:index+1,name:file.originalname,mimeType:file.mimetype,bytes:file.size}));
       const request = { stage:"image-api", revision:"2026-09-04.1", model:requestedModel, prompt:prompt.trim(), images:imageMetadata, parameters:{} as Record<string,unknown> };
-      if (quality) {
+      if (openAiSelection) {
         const apiKey=getRequestOpenAiApiKey(req);
         if(!apiKey) return res.status(400).json({error:"请填写 OpenAI API Key"});
-        request.parameters={model:"gpt-image-2",quality,size:getOpenAiImageSize(aspectRatio)};
-        const imageUrl=await editImageWithOpenAi({apiKey,imageFiles,secondaryImageFile,prompt:prompt.trim(),quality,aspectRatio});
+        request.parameters={model:openAiSelection.model,quality:openAiSelection.quality,size:getOpenAiImageSize(aspectRatio)};
+        const imageUrl=await editImageWithOpenAi({apiKey,model:openAiSelection.model,imageFiles,secondaryImageFile,prompt:prompt.trim(),quality:openAiSelection.quality,aspectRatio});
         return res.json({imageUrl,request});
       }
       const apiKey=getRequestApiKey(req);

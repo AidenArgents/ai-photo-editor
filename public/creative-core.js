@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const REVISION = '2026-09-08.4';
+  const REVISION = '2026-09-10.2';
   const clone = value => JSON.parse(JSON.stringify(value));
   const object = properties => ({ type: 'object', properties: Object.fromEntries(properties.map(key => [key, { type: 'string', minLength: 1 }])), required: properties, additionalProperties: false });
   const array = (items, count) => ({ type: 'array', items, ...(count == null ? {} : { minItems: count, maxItems: count }) });
@@ -23,6 +23,24 @@
     shopee: { name: 'Shopee', direction: 'Vibrant, high-saturation commercial style with clear mobile readability, prominent focal point, and energetic promotional appeal.' },
     lazada: { name: 'Lazada', direction: 'Clean, modern, premium e-commerce composition with elegant product focus and high aesthetic appeal.' },
     dtc: { name: '独立站 / DTC', direction: 'Brand-led editorial product storytelling, sophisticated art direction, generous intentional spacing and material texture.' },
+  };
+  const categoryRules = {
+    general: '依据实际产品选择摄影和证据，不推断不存在的功能。',
+    beauty: '准确表达包装、质地和有依据的使用方式；不虚构功效、成分、前后对比。',
+    home: '真实尺度、材质、承重和使用关系；不虚构容量或配件。',
+    fitness: '合理人体动作、结构和受力；不虚构减重或健康效果。',
+    electronics: '准确接口、按键、线材和组件，不生成不存在的功能。',
+    baby_toys: '准确表达适用年龄、尺寸、零件数量和成人/儿童使用关系；不虚构材质、安全认证、承重或教育功效，避免不安全的使用场景。',
+    pet_supplies: '匹配真实宠物物种、体型、尺寸和使用方式；不虚构治疗、驱虫、营养或行为改善效果，避免危险佩戴和误食场景。',
+    automotive_tools: '准确表达接口、规格、安装位置、适配车型或部件和工具使用关系；不虚构兼容性、扭矩、承重、性能提升或安全认证。',
+    jewelry_accessories: '准确表达尺寸比例、材质、颜色、镶嵌结构、扣件和佩戴位置；不虚构贵金属纯度、宝石等级、证书或保值功效。',
+    outdoor_camping: '准确表达尺寸、容量、承重、搭建结构、配件数量和户外使用关系；不虚构防水、防风、保温或安全等级，避免不合理地形、火源和天气场景。',
+    home_improvement: '准确表达尺寸、材质、连接结构、安装位置、施工步骤和覆盖关系；不虚构承重、防火、防水、耐久性或施工后的结构效果。',
+    garden_hardware: '准确表达工具结构、规格、接口、适用对象和操作动作；不虚构动力、切割能力、适配性或安全认证，保持合理防护与受力关系。',
+    bedding_textiles: '准确表达尺寸、件数、面料、织法、颜色、铺设和垂坠关系；不虚构保暖、抗菌、防螨、材质成分或认证。',
+    household_cleaning: '准确表达包装形态、容量、用量、适用表面和安全操作；不虚构杀菌、去污、除螨或无毒效果，避免危险混用和不合理接触。',
+    kitchen_dining: '准确表达尺寸、容量、材质、件数、盛装和烹饪关系；不虚构食品级、耐热、微波炉或洗碗机适用性，保持真实尺度和使用方式。',
+    apparel_footwear_bags: '准确表达尺码、版型、材质、颜色、缝线、五金、口袋、配件和穿戴关系；不虚构面料成分、防水、承重或功能表现。',
   };
   const modes = {
     taotu: `你是电商视觉总监/AI作图专家，拥有百万级爆款操盘经验。根据产品信息和目标市场，为电商黄金9图生成高质量设计理念。
@@ -149,7 +167,7 @@ concepts数组（恰好9个），每个对应slots中的一张图，格式：
       editTemplates: JSON.stringify({ combine:'参考 REFERENCE 的风格和光影，调整 CURRENT IMAGE TO EDIT；保留商品身份。',replace_person:'把 CURRENT IMAGE TO EDIT 中的人物替换为 REFERENCE 中的人物，保持商品不变，协调动作和光线。',add_logo:'将 REFERENCE 的标志加入 CURRENT IMAGE TO EDIT，保持标志比例和边缘。',replace_background:'依据 REFERENCE 更换 CURRENT IMAGE TO EDIT 的背景，保留产品原貌。',replace_product:'将 CURRENT IMAGE TO EDIT 中的旧商品替换成 PRODUCT SOURCE 的商品，保持场景透视与光影。' },null,2),
       contextRules: '本次taskContext是当前任务选择的唯一依据：使用其中的国家、语言、模特要求、品牌和版位。用户资料与知识库只作素材，不沿用旧市场或旧平台。不要拼接其他任务。模型无法从照片保证识别国籍，应通过符合本市场的环境、服饰与使用情境表达，不按国籍强行固定面孔。',
       platforms: JSON.stringify(platforms, null, 2),
-      categoryRules: JSON.stringify({ general: '依据实际产品选择摄影和证据，不推断不存在的功能。', beauty: '准确表达包装、质地和有依据的使用方式；不虚构功效、成分、前后对比。', home: '真实尺度、材质、承重和使用关系；不虚构容量或配件。', fitness: '合理人体动作、结构和受力；不虚构减重或健康效果。', electronics: '准确接口、按键、线材和组件，不生成不存在的功能。' }, null, 2),
+      categoryRules: JSON.stringify(categoryRules, null, 2),
       runtimeOptions: JSON.stringify({ schemeTemperature: 0.7, promptTemperature: 0.5, knowledgeLimit: 30, knowledgeTerms: [] }, null, 2),
     });
     defaultRegistry.set(mode, clone(defaults));
@@ -344,7 +362,7 @@ concepts数组（恰好9个），每个对应slots中的一张图，格式：
     for (const [id, map] of [['creativePlatform', parseMap(getSettings().platforms, '平台档案')], ['creativeCategory', parseMap(getSettings().categoryRules, '品类档案')]]) {
       const select = document.getElementById(id); if (!select) continue;
       const previous = select.value; select.replaceChildren();
-      const categoryNames = {general:'通用',beauty:'美妆个护',home:'家居',fitness:'健身运动',electronics:'电子产品'};
+      const categoryNames = {general:'通用',beauty:'美妆个护',home:'家居',fitness:'健身运动',electronics:'电子产品',baby_toys:'母婴玩具',pet_supplies:'宠物用品',automotive_tools:'汽摩工具',jewelry_accessories:'珠宝配饰',outdoor_camping:'户外露营',home_improvement:'家装建材',garden_hardware:'园艺五金',bedding_textiles:'家纺寝具',household_cleaning:'清洁日化',kitchen_dining:'厨房餐饮',apparel_footwear_bags:'服装鞋包'};
       for (const [key, item] of Object.entries(map)) { const option = document.createElement('option'); option.value = key; option.textContent = item?.name || (id==='creativeCategory' && categoryNames[key]) || key; select.append(option); }
       select.value = mode === 'fba' && id === 'creativePlatform' ? 'amazon' : (Object.hasOwn(map, previous) ? previous : Object.keys(map)[0] || '');
     }

@@ -117,6 +117,18 @@ async function webTakeover(){
  assert.equal(s.images.filter(item=>item.status==='done').length,9,'takeover finishes all missing images without rebuilding steps 1-3');
  console.log('PASS active Web batch can be taken over by another provider without rebuilding prompts');
 }
+async function completedBatchRerun(){
+ const {sandbox:s,context,node,images}=runtime('taotu');
+ vm.runInContext(functions('public/web/taotu.html',['genConcepts','genPrompts','startGen','renderCC','saveConcepts','okAll']),context);
+ await s.genConcepts();s.okAll();await s.genPrompts();await s.startGen();
+ assert.equal(images.length,9,'initial batch completes');
+ assert.equal(node('gBtn').disabled,false,'completed batch must remain restartable');
+ assert.match(node('gBtn').textContent,/重新生成全部图片/);
+ node('aMdl').value='gemini-web';await s.startGen();
+ assert.equal(images.length,18,'changing the image provider can rerun step 4 without rebuilding steps 1-3');
+ assert(images.slice(9).every(item=>item.provider==='gemini'),'rerun must use the newly selected provider');
+ console.log('PASS completed image batch can rerun with a newly selected provider');
+}
 async function fbaBatch(){
  const {sandbox:s,context,node,calls,images}=runtime('fba');
  vm.runInContext(functions('public/fba.html',['genConcepts','generatePromptsWithMedia','startGen']),context);
@@ -168,4 +180,4 @@ function fbaSettings(){
  }
  console.log('PASS FBA settings save keeps extraction and product-fidelity fields separate');
 }
-(async()=>{settings();fbaSettings();await suite('public/taotu.html');await suite('public/web/taotu.html');for(const mode of ['zhutu','changjing','fba'])await variants(mode);await webTakeover();await fbaBatch();})().catch(error=>{console.error(error);process.exitCode=1;});
+(async()=>{settings();fbaSettings();await suite('public/taotu.html');await suite('public/web/taotu.html');for(const mode of ['zhutu','changjing','fba'])await variants(mode);await webTakeover();await completedBatchRerun();await fbaBatch();})().catch(error=>{console.error(error);process.exitCode=1;});

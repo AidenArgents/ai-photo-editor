@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Header from './components/Header';
-import ApiEditorPage from './components/editor/ApiEditorPage';
-import WebEditorPage from './components/editor/WebEditorPage';
+import EditorWorkspace from './components/editor/EditorWorkspace';
 
 const EDITOR_MODEL_IDS = [
   'gemini-2.5-flash-image',
@@ -12,6 +11,18 @@ const EDITOR_MODEL_IDS = [
   'gpt-image-2:low',
   'gpt-image-2:medium',
   'gpt-image-2:high',
+  'gpt-image-2.5-sunburst:auto',
+  'gpt-image-2.5-sunburst:low',
+  'gpt-image-2.5-sunburst:medium',
+  'gpt-image-2.5-sunburst:high',
+  'gpt-image-2.5-sunburst:xhigh',
+  'gpt-image-2.5-sunburst:max',
+  'gpt-image-2.5-flare:auto',
+  'gpt-image-2.5-flare:low',
+  'gpt-image-2.5-flare:medium',
+  'gpt-image-2.5-flare:high',
+  'gpt-image-2.5-flare:xhigh',
+  'gpt-image-2.5-flare:max',
 ] as const;
 
 const DEFAULT_EDITOR_MODEL = 'gemini-2.5-flash-image';
@@ -251,20 +262,13 @@ export default function App(): React.JSX.Element {
         {/* Right Side Main Content Area */}
         <div className="flex-1 min-w-0 w-full flex flex-col min-h-0 overflow-hidden">
           <div className={activeTab === 'editor' ? 'contents' : 'hidden'}>
-            {appMode === 'web' ? (
-              <React.Fragment key={`web-${webProvider}`}>
-                <WebEditorPage
-                  webProvider={webProvider}
-                  customApiKey={customApiKey}
-                />
-              </React.Fragment>
-            ) : (
-              <ApiEditorPage
-                selectedModel={selectedModel}
-                customApiKey={customApiKey}
-                openAiApiKey={openAiApiKey}
-              />
-            )}
+            <EditorWorkspace
+              appMode={appMode}
+              webProvider={webProvider}
+              selectedModel={selectedModel}
+              customApiKey={customApiKey}
+              openAiApiKey={openAiApiKey}
+            />
           </div>
           {activeTab !== 'editor' && (activeTab === 'fba' ? (
             <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border border-blue-200 overflow-hidden w-full h-[calc(100vh-100px)] min-h-[920px] relative animate-fadeIn flex-1">

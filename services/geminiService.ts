@@ -289,7 +289,7 @@ export const editImage = async (
     if (customApiKey) {
       headers['x-gemini-api-key'] = customApiKey;
     }
-    if (openAiApiKey && requestModel?.startsWith('gpt-image-2:')) {
+    if (openAiApiKey && requestModel?.startsWith('gpt-image-')) {
       headers['x-openai-api-key'] = openAiApiKey;
     }
 

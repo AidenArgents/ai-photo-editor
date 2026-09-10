@@ -1110,7 +1110,7 @@ function base64PngBlob(value){
   for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
   return new Blob([bytes],{type:'image/png'});
 }
-async function callOpenAiImageApi(model,prompt,aspectRatio,mainBase64Images,referenceBase64){
+async function callOpenAiImageApi(model,prompt,aspectRatio,mainBase64Images,referenceBase64,signal){
   const openAiKey=(localStorage.getItem('openai_custom_api_key')||'').trim();
   if(!openAiKey)throw new Error('请先在页面右上角填写 OpenAI API Key');
   const mainImages=(mainBase64Images||[]).filter(Boolean);
@@ -1123,7 +1123,9 @@ async function callOpenAiImageApi(model,prompt,aspectRatio,mainBase64Images,refe
   form.append('highFidelityPreserve','false');
   form.append('mergeMode','custom');
   form.append('model',model);
-  const resp=await fetch('/api/edit-image',{method:'POST',headers:{'x-openai-api-key':openAiKey},body:form});
+  const timeoutSignal=AbortSignal.timeout(90000);
+  const requestSignal=signal?(typeof AbortSignal.any==='function'?AbortSignal.any([signal,timeoutSignal]):signal):timeoutSignal;
+  const resp=await fetch('/api/edit-image',{method:'POST',headers:{'x-openai-api-key':openAiKey},body:form,signal:requestSignal});
   const raw=await resp.text();let data;
   try{data=JSON.parse(raw)}catch(e){throw new Error(`OpenAI 请求返回异常（HTTP ${resp.status}）`)}
   if(!resp.ok||data.error)throw new Error(typeof data.error==='string'?data.error:(data.error?.message||`OpenAI API ${resp.status}`));

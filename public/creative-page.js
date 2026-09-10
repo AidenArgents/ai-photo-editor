@@ -232,36 +232,52 @@
     if (promptPlanSignature !== currentPlanSignature()) throw new Error('方案内容或选择已变化，请重新生成提示词');
     if (promptDna !== core.fingerprint(dna())) throw new Error('视觉DNA已修改，请重新生成提示词');
   }
+  let takeoverPromise = null;
+
   function refreshImageButton() {
     const button = el('gBtn');
     if (!button || !prompts.length) return;
     const remaining = prompts.filter((_, index) => images[index]?.status !== 'done').length;
+    if (imageRun) {
+      button.textContent = `⏳ 正在出图...（剩余${remaining}张 · 点击重新出图）`;
+      button.disabled = false;
+      return;
+    }
+    button.disabled = false;
     button.textContent = remaining > 0 && remaining < prompts.length
       ? `🖼️ 继续生成缺失图片（${remaining}张）`
-      : remaining === 0 ? '✅ 图片已全部完成' : '🖼️ 一键生成全部图片';
+      : remaining === 0 ? '🔄 使用当前模型重新生成全部图片' : '🖼️ 一键生成全部图片';
   }
   async function generateImages(singleIndex) {
+    while (takeoverPromise) {
+      await takeoverPromise.catch(() => undefined);
+    }
     // A second click is an intentional takeover: stop the old web task, keep
     // its completed images, then continue with the currently selected channel.
     if (imageRun) {
-      imageRun.controller.abort();
-      await imageRun.promise.catch(() => undefined);
+      const oldRun = imageRun;
+      oldRun.controller.abort();
+      takeoverPromise = oldRun.promise.catch(() => undefined);
+      await takeoverPromise;
+      takeoverPromise = null;
     }
     const controller = new AbortController();
     const run = { controller, promise: null };
     const promise = exclusive(async () => {
       assertImageReady();
+      const allDone = prompts.length > 0 && prompts.every((_, index) => images[index]?.status === 'done');
       const indices = Number.isInteger(singleIndex)
         ? [singleIndex]
-        : prompts.map((_, index) => index).filter(index => images[index]?.status !== 'done');
+        : prompts.map((_, index) => index).filter(index => allDone || images[index]?.status !== 'done');
       if (!indices.length) { refreshImageButton(); scrollToBlock('step4'); return; }
       const sourceKey = flow.key(), model = value('aMdl'), apiKey = value('aKey').trim();
       const requests = indices.map((index, i) => ({ index, prompt: getActivePrompt(index), task: Object.assign(copy(prompts[index]), { __restoreEditor: i === indices.length - 1, __signal: controller.signal }) }));
       scrollToBlock('step4');
+      refreshImageButton();
       for (const request of requests) {
         if (controller.signal.aborted) { const stopped = new Error('旧的出图流程已停止，当前操作将按现有方案继续'); stopped.name = 'AbortError'; throw stopped; }
         if (sourceKey !== flow.key()) throw new Error('任务资料已变化，尚未发送的图片已暂停；已有结果保留');
-        images[request.index] = { status: 'loading' }; renderIG();
+        images[request.index] = { status: 'loading' }; renderIG(); refreshImageButton();
         try {
           const url = await generateImage(apiKey, model, request.prompt, request.task);
           if (sourceKey !== flow.key()) throw new Error('任务资料在出图时变化；返回图片未写入新任务，可在网页原会话查看');
@@ -280,13 +296,20 @@
           }
         }
         renderIG(); refreshImageButton();
-        if (requests.length > 1 && typeof setTimeout !== 'undefined') {
-          await new Promise(r => setTimeout(r, 1500));
+        if (requests.length > 1 && !controller.signal.aborted && typeof setTimeout !== 'undefined') {
+          await new Promise(resolve => {
+            const timer = setTimeout(resolve, 1500);
+            controller.signal.addEventListener('abort', () => {
+              clearTimeout(timer);
+              resolve();
+            }, { once: true });
+          });
         }
       }
     });
     run.promise = promise;
     imageRun = run;
+    refreshImageButton();
     try { return await promise; }
     finally { if (imageRun === run) imageRun = null; refreshImageButton(); }
   }
@@ -334,14 +357,21 @@
         // Existing multipart adapter expects PNG; preserve its proven conversion path.
         const converted = await Promise.all(imageData.map(data => cleanImageData(`data:${data.mimeType};base64,${data.data}`)));
         const referenceIndex = sources.findIndex(item => item.role.includes('REFERENCE'));
-        const result = await callOpenAiImageApi(model, instruction, ratio, referenceIndex < 0 ? converted : converted.filter((_,index)=>index!==referenceIndex), referenceIndex < 0 ? null : converted[referenceIndex]);
+        const result = await callOpenAiImageApi(model, instruction, ratio, referenceIndex < 0 ? converted : converted.filter((_,index)=>index!==referenceIndex), referenceIndex < 0 ? null : converted[referenceIndex], task.__signal);
         trace.status = 'success'; return result;
       }
       if (model.startsWith('imagen')) throw new Error('此模型不支持产品参考图；为避免改错商品，请使用支持图片输入的出图模型');
       parts.push({ text: instruction });
       const config = { responseModalities: ['TEXT', 'IMAGE'], ...(ratio !== 'auto' ? { imageConfig: { aspectRatio: ratio } } : {}) };
       trace.parameters = config;
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: 'POST', signal: AbortSignal.timeout(180000), headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }, body: JSON.stringify({ contents: [{ parts }], generationConfig: config }) });
+      const timeoutSignal = AbortSignal.timeout(90000);
+      let requestSignal = timeoutSignal;
+      if (task.__signal) {
+        requestSignal = typeof AbortSignal.any === 'function'
+          ? AbortSignal.any([task.__signal, timeoutSignal])
+          : task.__signal;
+      }
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: 'POST', signal: requestSignal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }, body: JSON.stringify({ contents: [{ parts }], generationConfig: config }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error?.message || 'API ' + response.status);
       const result = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData;
@@ -370,5 +400,5 @@
       finally { btn.disabled=false;btn.textContent='✨ AI编辑'; }
     });
   }
-  window.PhotoCreativePage = Object.freeze({ genConcepts: generateSchemes, genPrompts: generatePrompts, startGen: () => generateImages(), retry: index => generateImages(index), callGemini: generateImage, runEdit, generatePromptForItem: generateFbaPrompt, generatePromptsWithMedia: generateFbaPrompts, markFbaManual, bindFbaPreparation: () => { fbaPreparedSignature = currentPlanSignature(); }, requireScheme: () => { if (busy) throw new Error('当前任务仍在运行，请等待结束后再确认方案'); return flow.requireScheme(); }, context, flow });
+  window.PhotoCreativePage = Object.freeze({ genConcepts: generateSchemes, genPrompts: generatePrompts, startGen: () => generateImages(), stopGen: async () => { if (imageRun) { imageRun.controller.abort(); await imageRun.promise.catch(() => undefined); } }, retry: index => generateImages(index), callGemini: generateImage, runEdit, generatePromptForItem: generateFbaPrompt, generatePromptsWithMedia: generateFbaPrompts, markFbaManual, bindFbaPreparation: () => { fbaPreparedSignature = currentPlanSignature(); }, requireScheme: () => { if (busy) throw new Error('当前任务仍在运行，请等待结束后再确认方案'); return flow.requireScheme(); }, context, flow });
 })();

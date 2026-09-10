@@ -31,7 +31,7 @@ const Header = ({
   showModelSelector = true,
   showOpenAiKeyField = false,
 }: HeaderProps): React.JSX.Element => {
-  const isOpenAiModel = selectedModel.startsWith('gpt-image-2:');
+  const isOpenAiModel = selectedModel.startsWith('gpt-image-');
   const shouldShowOpenAiKey = appMode === 'api' && (isOpenAiModel || showOpenAiKeyField);
   const [showGeminiKey, setShowGeminiKey] = React.useState(false);
   const [showOpenAiKey, setShowOpenAiKey] = React.useState(false);
@@ -80,6 +80,18 @@ const Header = ({
                       <option value="gpt-image-2:low">GPT Image 2 低 · $0.005–0.006/¥0.04（快速省钱）</option>
                       <option value="gpt-image-2:medium">GPT Image 2 中 · $0.041–0.053/¥0.30–0.38（推荐）</option>
                       <option value="gpt-image-2:high">GPT Image 2 高 · $0.165–0.211/¥1.19–1.52（高质量）</option>
+                      <option value="gpt-image-2.5-sunburst:auto">GPT Image 2.5 Sunburst 自动 · 图像出$30/¥216 M tokens（自动质量·精确编辑·暂无明确价格）</option>
+                      <option value="gpt-image-2.5-sunburst:low">GPT Image 2.5 Sunburst 低 · 图像出$30/¥216 M tokens（低质量·精确编辑·暂无明确价格）</option>
+                      <option value="gpt-image-2.5-sunburst:medium">GPT Image 2.5 Sunburst 中 · 图像出$30/¥216 M tokens（中等质量·精确编辑·暂无明确价格）</option>
+                      <option value="gpt-image-2.5-sunburst:high">GPT Image 2.5 Sunburst 高 · 图像出$30/¥216 M tokens（高质量·精确编辑·暂无明确价格）</option>
+                      <option value="gpt-image-2.5-sunburst:xhigh">GPT Image 2.5 Sunburst 超高 · 图像出$30/¥216 M tokens（超高质量·精确编辑·暂无明确价格）</option>
+                      <option value="gpt-image-2.5-sunburst:max">GPT Image 2.5 Sunburst 最高 · 图像出$30/¥216 M tokens（最高质量·精确编辑·暂无明确价格）</option>
+                      <option value="gpt-image-2.5-flare:auto">GPT Image 2.5 Flare 自动 · 图像出$30/¥216 M tokens（自动质量·快速生成·暂无明确价格）</option>
+                      <option value="gpt-image-2.5-flare:low">GPT Image 2.5 Flare 低 · 图像出$30/¥216 M tokens（低质量·快速生成·暂无明确价格）</option>
+                      <option value="gpt-image-2.5-flare:medium">GPT Image 2.5 Flare 中 · 图像出$30/¥216 M tokens（中等质量·快速生成·暂无明确价格）</option>
+                      <option value="gpt-image-2.5-flare:high">GPT Image 2.5 Flare 高 · 图像出$30/¥216 M tokens（高质量·快速生成·暂无明确价格）</option>
+                      <option value="gpt-image-2.5-flare:xhigh">GPT Image 2.5 Flare 超高 · 图像出$30/¥216 M tokens（超高质量·快速生成·暂无明确价格）</option>
+                      <option value="gpt-image-2.5-flare:max">GPT Image 2.5 Flare 最高 · 图像出$30/¥216 M tokens（最高质量·快速生成·暂无明确价格）</option>
                     </select>
                   )}
                 </div>

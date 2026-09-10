@@ -49,11 +49,54 @@
     return config;
   }
 
+  const LEGACY_CATEGORY_RULES_20260908 = Object.freeze({
+    general: '依据实际产品选择摄影和证据，不推断不存在的功能。',
+    beauty: '准确表达包装、质地和有依据的使用方式；不虚构功效、成分、前后对比。',
+    home: '真实尺度、材质、承重和使用关系；不虚构容量或配件。',
+    fitness: '合理人体动作、结构和受力；不虚构减重或健康效果。',
+    electronics: '准确接口、按键、线材和组件，不生成不存在的功能。',
+  });
+
+  function isLegacyBuiltInCategoryRules(value) {
+    if (typeof value !== 'string') return false;
+    try {
+      const parsed = JSON.parse(value);
+      const expectedKeys = Object.keys(LEGACY_CATEGORY_RULES_20260908);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) &&
+        Object.keys(parsed).length === expectedKeys.length &&
+        expectedKeys.every((key) => parsed[key] === LEGACY_CATEGORY_RULES_20260908[key]);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function addMissingCategoryRules(value, defaultValue) {
+    if (typeof value !== 'string' || typeof defaultValue !== 'string') return value;
+    try {
+      const parsed = JSON.parse(value);
+      const defaults = JSON.parse(defaultValue);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !defaults || typeof defaults !== 'object' || Array.isArray(defaults)) return value;
+      let changed = false;
+      for (const key of ['baby_toys', 'pet_supplies', 'automotive_tools', 'jewelry_accessories', 'outdoor_camping', 'home_improvement', 'garden_hardware', 'bedding_textiles', 'household_cleaning', 'kitchen_dining', 'apparel_footwear_bags']) {
+        if (Object.hasOwn(parsed, key) || !Object.hasOwn(defaults, key)) continue;
+        parsed[key] = defaults[key];
+        changed = true;
+      }
+      return changed ? JSON.stringify(parsed, null, 2) : value;
+    } catch (_) {
+      return value;
+    }
+  }
+
   function pickPrompts(defaults, stored, mode) {
     const prompts = { ...defaults };
     const definition = definitions.get(mode);
     for (const key of Object.keys(defaults)) {
-      const val = stored?.[key];
+      const storedValue = stored?.[key];
+      const legacyCategoryRules = key === 'categoryRules' && isLegacyBuiltInCategoryRules(storedValue);
+      const val = key === 'categoryRules' && stored?.defaultsRevision !== definition?.revision && !legacyCategoryRules
+        ? addMissingCategoryRules(storedValue, defaults[key])
+        : storedValue;
       const isOutdated20260908 = typeof val === 'string' && (
         val.includes('No automatic flags, cacti') ||
         val.includes('No automatic carnival') ||
@@ -62,7 +105,8 @@
         (key === 'aesthetic' && val.includes('Contemporary Mexican everyday life'))
       );
       const oldDefault = stored?.defaultsRevision !== definition?.revision && (
-        val === definition?.legacy?.[key] || isOutdated20260908
+        val === definition?.legacy?.[key] || isOutdated20260908 ||
+        legacyCategoryRules
       );
       if (typeof val === 'string' && !oldDefault) prompts[key] = val;
     }

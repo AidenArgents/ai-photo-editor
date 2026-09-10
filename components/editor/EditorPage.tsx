@@ -56,6 +56,18 @@ export default function EditorPage({
     }
   }, [secondaryImage, mergeMode]);
 
+  useEffect(() => {
+    if (aspectRatio === 'auto') {
+      setAspectRatioWarning(null);
+      return;
+    }
+    setAspectRatioWarning(
+      mergeMode === 'custom'
+        ? customAspectRatioWarning
+        : '画幅交给模型的原生参数；默认发送原图。可手动选择补白，但补白不保证产品完全不变。'
+    );
+  }, [aspectRatio, mergeMode, customAspectRatioWarning]);
+
   const resetOutput = useCallback(() => {
     sourceRevision.current++;
     setEditedImage(null);

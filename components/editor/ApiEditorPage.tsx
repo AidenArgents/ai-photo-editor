@@ -11,7 +11,7 @@ interface ApiEditorPageProps {
 
 export default function ApiEditorPage({ selectedModel, customApiKey, openAiApiKey }: ApiEditorPageProps): React.JSX.Element {
   const generateImage = useCallback(async (input: EditorGenerateInput) => {
-    if (selectedModel.startsWith('gpt-image-2:') && !openAiApiKey.trim()) {
+    if (selectedModel.startsWith('gpt-image-') && !openAiApiKey.trim()) {
       throw new Error('请先在页面右上角填写 OpenAI API Key。');
     }
     return editImage(
